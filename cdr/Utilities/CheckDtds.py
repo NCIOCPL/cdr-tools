@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: CheckDtds.py,v 1.3 2002-06-27 20:35:40 bkline Exp $
+# $Id: CheckDtds.py,v 1.4 2002-08-30 16:32:35 bkline Exp $
 #
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2002/06/27 20:35:40  bkline
+# fixed rules path
+#
 # Revision 1.2  2002/06/27 19:30:36  bkline
 # Added command-line argument for www path base.
 #
@@ -22,8 +25,7 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 dir = sys.argv[1] + '/cgi-bin/Ticket/ClientFiles/Rules'
-session = cdr.login('rmk', '***REDACTED***')
-docTypes = cdr.getDoctypes(session)
+docTypes = cdr.getDoctypes('guest')
 for docType in docTypes:
     try:
         path = "%s/%s.dtd" % (dir, docType)
@@ -36,7 +38,7 @@ for docType in docTypes:
             continue
         #sys.stderr.write("old start is at %d\n" % start)
         current = current[start:]
-        dtInfo = cdr.getDoctype(session, docType)
+        dtInfo = cdr.getDoctype('guest', docType)
         #sys.stderr.write("new DTD retrieved\n")
         if not dtInfo.dtd:
             sys.stderr.write("Can't get new DTD for %s\n" % docType)
