@@ -1,24 +1,25 @@
 #----------------------------------------------------------------------
 #
-# $Id: LoadZipCodes.py,v 1.1 2003-09-09 15:09:56 bkline Exp $
+# $Id: LoadZipCodes.py,v 1.2 2005-03-16 18:44:22 venglisc Exp $
 #
 # Utility to drop, re-create, and load the zipcode validation table.
 # Required command-line argument is path to comma-delimited ASCII
 # file from ZIPInfo (ZIPList5).
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2003/09/09 15:09:56  bkline
+# Script to create and populate zipcode table.
+#
 #----------------------------------------------------------------------
 import cdrdb, sys
 import csv   #http://www.object-craft.com.au/projects/csv/
 
 file   = open(sys.argv[1])
-line   = file.readline()   # Skip field names.
-line   = file.readline()   # Skip copyright notice.
-line   = file.readline()
 conn   = cdrdb.connect()
 cursor = conn.cursor()
-parser = csv.parser()
+reader = csv.reader(file)
 added  = 0
+header = 0
 try:
     cursor.execute("DROP TABLE zipcode")
     conn.commit()
@@ -40,17 +41,17 @@ cursor.execute("""\
 conn.commit()
 cursor.execute("GRANT select ON zipcode TO CdrGuest")
 conn.commit()
-while line:
-    fields = parser.parse(line)
-    if len(fields) == 8:
-        cursor.execute("""\
+for row in reader:
+    if header > 1:
+        if len(row) == 8:
+            cursor.execute("""\
             INSERT INTO zipcode (city, st, zip, area_code, county_fips,
                                  county_name, preferred, zip_code_type)
-                  VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", fields)
-        conn.commit()
-        added += 1
-        print "added %d rows" % added
-    else:
-        print "invalid line: [%s]" % line.strip()
-    line = file.readline()
+                  VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", row)
+            conn.commit()
+            added += 1
+            print "added %d rows" % added
+        else:
+            print "invalid line: %s" % row
+    header += 1
 file.close()
