@@ -1,13 +1,16 @@
 #----------------------------------------------------------------------
 #
-# $Id: EmailerLookupTables.py,v 1.1 2004-11-23 16:45:36 bkline Exp $
+# $Id: EmailerLookupTables.py,v 1.2 2004-11-24 05:21:38 bkline Exp $
 #
 # Creates and saves a serialized copy of the lookup table values for
 # the emailer server.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/11/23 16:45:36  bkline
+# Nightly scripts for refreshing emailer lookup tables.
+#
 #----------------------------------------------------------------------
-import cdr, cdrdb, time, pickle, EmailerProtSites
+import cdr, cdrdb, time, pickle, EmailerProtSites, bz2, cdrmailcommon
 
 start  = time.time()
 tables = []
@@ -53,7 +56,7 @@ tables.append(EmailerProtSites.load())
 #----------------------------------------------------------------------
 # Upload the new values.
 #----------------------------------------------------------------------
-bytes   = pickle.dumps(tableFile)
+bytes   = pickle.dumps(tables)
 bytes   = bz2.compress(bytes)
 conn    = cdrmailcommon.emailerConn('dropbox')
 cursor  = conn.cursor()
