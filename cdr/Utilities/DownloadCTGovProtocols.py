@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.5 2004-01-14 19:25:19 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.6 2004-01-27 15:04:32 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2004/01/14 19:25:19  bkline
+# Added support for the new download report requirements.
+#
 # Revision 1.4  2003/12/18 21:04:41  bkline
 # Modified code to check for changes before pulling down a fresh
 # copy of the XML for a document markes as "Not yet reviewed,"
@@ -385,7 +388,7 @@ cursor.execute("""\
         ON gu.usr = u.id
       JOIN grp g
         ON g.id = gu.grp
-     WHERE g.name = 'CTGOV Maintainers'
+     WHERE g.name = 'CTGov Publishers'
        AND u.email IS NOT NULL
        AND u.email <> ''""")
 recips = []
