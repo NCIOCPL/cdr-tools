@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: ActiveNCIProtocols.py,v 1.1 2003-11-04 13:24:55 bkline Exp $
+# $Id: ActiveNCIProtocols.py,v 1.2 2003-11-04 13:27:47 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2003/11/04 13:24:55  bkline
+# New report on total active NCI-sponsored protocols for a given fiscal
+# year.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, re, xml.dom.minidom, time, sys
 
@@ -160,7 +164,6 @@ for row in rows:
             for site in leadOrg.sites:
                 orgs[site] = 1
     done += 1
-    if nProtocols > 5: break
     sys.stderr.write("\rprocessed %d of %d" % (done, len(rows)))
 print "\n%d active NCI-sponsored protocols" % nProtocols
 print "%d unique lead and participating orgs" % len(orgs)
