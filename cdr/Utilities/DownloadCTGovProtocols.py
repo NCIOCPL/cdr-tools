@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.14 2005-01-19 15:14:52 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.15 2005-01-24 15:30:52 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.14  2005/01/19 15:14:52  bkline
+# Added code to unlock documents into which we insert NCT IDs.
+#
 # Revision 1.13  2004/12/20 19:58:50  bkline
 # Added tally of NCT IDs inserted into trials.
 #
@@ -365,7 +368,7 @@ else:
     except Exception, e:
         msg = "Failure downloading trials: %s" % str(e)
         reportFailure(cursor, msg)
-    name = time.strftime("CTGovDownload-%Y%m%d%H%M%S.zip")
+    name = time.strftime("CTGovDownloads/CTGovDownload-%Y%m%d%H%M%S.zip")
     try:
         zipFile = open(name, "wb")
         zipFile.write(page)
