@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.3 2003-12-14 19:46:58 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.4 2003-12-18 21:04:41 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2003/12/14 19:46:58  bkline
+# Added logging to logfile with standard CDR logging facility.
+#
 # Revision 1.2  2003/12/14 19:07:06  bkline
 # Final versions for promotion to production system.
 #
@@ -188,14 +191,13 @@ for name in nameList: #['NCT00050011.xml']: #nameList:
             log("Skipping %s, disposition is %s\n" % (doc.nlmId, dispName))
             tally[0] += 1
             continue
-        elif dispName == 'imported':
-            if not compareXml(doc.oldXml, doc.xmlFile):
-                log("Skipping %s (already imported, unchanged at NLM)\n"
-                    % doc.nlmId)
-                tally[0] += 1
-                continue
-            else:
-                disp = dispCodes['import requested']
+        elif not compareXml(doc.oldXml, doc.xmlFile):
+            log("Skipping %s (already imported, unchanged at NLM)\n" 
+                % doc.nlmId)
+            tally[0] += 1
+            continue
+        if dispName == 'imported':
+            disp = dispCodes['import requested']
         try:
             cursor.execute("""\
                 UPDATE ctgov_import
