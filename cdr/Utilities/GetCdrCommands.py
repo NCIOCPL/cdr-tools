@@ -1,29 +1,66 @@
 #----------------------------------------------------------------------
 #
-# $Id: GetCdrCommands.py,v 1.1 2002-09-29 14:15:21 bkline Exp $
+# $Id: GetCdrCommands.py,v 1.2 2002-09-29 14:45:56 bkline Exp $
 #
 # Extracts command sets from the CDR command log into a form which can
 # be resubmitted to the CDR Server.
 #
+# Attributes are inserted into each CdrCommandSet element for the
+# ID of the thread used to process the commands and for the date/time
+# when the commands were originally submitted.
+#
+# An optional command-line argument can be given to specify that only
+# commands submitted by the CdrGuest account are to be extracted (these
+# are the most likely commands to succeed on resubmission).
+#
 # See the more extensive comments in RunCdrCommands.py
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2002/09/29 14:15:21  bkline
+# Tools for extracting and running commands from the CDR command log.
+#
 #----------------------------------------------------------------------
-import cdrdb, re, sys
+import cdrdb, re, sys, time
 
-if len(sys.argv) < 2:
-    sys.stderr.write("usage: GetCommands2 start-time [end-time]\n")
-    sys.stderr.write(
-            ' e.g.: GetCommands2 "2002-09-28 13:51" "2002-09-28 13:55"\n')
+#----------------------------------------------------------------------
+# Explain how to invoke the program.
+#----------------------------------------------------------------------
+def usage():
+    for line in (
+        'usage: GetCdrCommands [--guestonly] start-time [end-time]\n',
+        ' e.g.: GetCdrCommands "2002-09-28 13:51" "2002-09-28 13:55"\n'
+    ):
+        sys.stderr.write(line)
+
+#----------------------------------------------------------------------
+# Parse the command-line arguments.
+#----------------------------------------------------------------------
+nextArg = 1
+guestOnly = 0
+if len(sys.argv) > nextArg and sys.argv[1] == "--guestonly":
+    guestOnly = 1
+    nextArg += 1
+if len(sys.argv) <= nextArg:
+    usage()
     sys.exit(1)
-startTime = sys.argv[1]
+startTime = sys.argv[nextArg]
+nextArg += 1
+if len(sys.argv) > nextArg:
+    endTime = sys.argv[nextArg]
+    nextArg += 1
+else:
+    endTime = time.strftime("%Y-%m-%d %H:%M:%S")
 
-# Warning! Y2.2K bug.
-endTime   = len(sys.argv) < 3 and "2200-01-01" or sys.argv[2]
+#----------------------------------------------------------------------
+# Callback for regular-expression substitution to insert attributes.
+#----------------------------------------------------------------------
+pattern = re.compile("<CdrCommandSet>")
 def insertAttrs(matchobj):
     return "<CdrCommandSet thread='%d' received='%s'>" % (thread, received)
 
-pattern = re.compile("<CdrCommandSet>")
+#----------------------------------------------------------------------
+# Get the rows from the command log.
+#----------------------------------------------------------------------
 conn = cdrdb.connect()
 cursor = conn.cursor()
 cursor.execute("""\
@@ -32,10 +69,23 @@ cursor.execute("""\
          WHERE received BETWEEN '%s' AND '%s'
       ORDER BY received""" % (startTime, endTime))
 row = cursor.fetchone()
+
+#----------------------------------------------------------------------
+# Top-level wrapper element.
+#----------------------------------------------------------------------
 print "<CdrCommandSets>"
+
+#----------------------------------------------------------------------
+# Add each set of commands, filtering if requested.
+#----------------------------------------------------------------------
 while row:
     commandSet, thread, received = row
-    commandSet = pattern.sub(insertAttrs, commandSet)
-    print commandSet
+    if not guestOnly or commandSet.find("<SessionId>guest</SessionId>") != -1:
+        commandSet = pattern.sub(insertAttrs, commandSet)
+        print commandSet
     row = cursor.fetchone()
+
+#----------------------------------------------------------------------
+# Close top-level wrapper element.
+#----------------------------------------------------------------------
 print "</CdrCommandSets>"
