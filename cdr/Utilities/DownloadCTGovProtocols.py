@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.2 2003-12-14 19:07:06 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.3 2003-12-14 19:46:58 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2003/12/14 19:07:06  bkline
+# Final versions for promotion to production system.
+#
 # Revision 1.1  2003/11/26 13:01:20  bkline
 # Nightly job to pull down the latest set of cancer trials from
 # ClinicalTrials.gov.
@@ -10,9 +13,14 @@
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
 
+LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
+
 def log(what):
     sys.stderr.write(what)
-    sys.stdout.write(what)
+    #sys.stdout.write(what)
+    if what and what[-1] == '\n':
+        what = what[:-1]
+    cdr.logwrite(what, LOGFILE)
 
 def loadDispositions(cursor):
     dispNames = {}
