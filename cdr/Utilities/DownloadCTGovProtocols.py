@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.1 2003-11-26 13:01:20 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.2 2003-12-14 19:07:06 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2003/11/26 13:01:20  bkline
+# Nightly job to pull down the latest set of cancer trials from
+# ClinicalTrials.gov.
+#
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
 
@@ -44,6 +48,9 @@ class Doc:
         self.nciSponsored  = 0
         self.verified      = None
         self.lastChanged   = None
+        self.cdrId         = None
+        self.disposition   = None
+        self.oldXml        = None
         for node in self.dom.documentElement.childNodes:
             if node.nodeName == "id_info":
                 for child in node.childNodes:
@@ -68,6 +75,20 @@ class Doc:
             elif node.nodeName == "lastchanged_date":
                 self.lastChanged = cdr.getTextContent(node).strip()
         self.title = self.officialTitle or self.briefTitle
+        if self.nlmId:
+            row = None
+            try:
+                cursor.execute("""\
+            SELECT xml, cdr_id, disposition
+              FROM ctgov_import
+             WHERE nlm_id = ?""", self.nlmId)
+                row = cursor.fetchone()
+            except Exception, e:
+                log("Failure selecting from ctgov_import for %s\n"
+                    % self.nlmId)
+                sys.exit(1)
+            if row:
+                self.oldXml, self.cdrId, self.disposition = row
 
 #----------------------------------------------------------------------
 # Seed the table with documents we know to be duplicates.
@@ -145,41 +166,30 @@ for name in nameList: #['NCT00050011.xml']: #nameList:
         log("Skipping %s, which has no title\n" % doc.nlmId)
     #elif doc.nciSponsored:
     #    log("Skipping %s, which is NCI sponsored\n" % doc.nlmId)
-    elif doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
+    elif not doc.cdrId and doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
         log("Skipping %s, which has a CDR ID\n" % doc.nlmId)
-    elif doc.status and doc.status.upper() not in ("RECRUITING",
-                                                   "NOT YET RECRUITING"):
+    elif not doc.cdrId and (not doc.status or
+                            doc.status.upper() not in ("RECRUITING",
+                                                       "NOT YET RECRUITING")):
         log("Skipping %s, which has a status of %s\n" % (doc.nlmId,
                                                          doc.status))
-    else:
-        row = None
-        try:
-            cursor.execute("""\
-            SELECT xml, cdr_id, disposition
-              FROM ctgov_import
-             WHERE nlm_id = ?""", doc.nlmId)
-            row = cursor.fetchone()
-        except Exception, e:
-            log("Failure selecting from ctgov_import for %s\n" % doc.nlmId)
+    elif doc.disposition:
+        disp = doc.disposition
+        dispName = dispNames[disp]
+        if dispName in ('out of scope', 'duplicate'):
+            log("Skipping %s, disposition is %s\n" % (doc.nlmId, dispName))
             tally[0] += 1
             continue
-        if row:
-            docXml, cdrId, disp = row
-            if disp in (dispCodes['out of scope'],
-                        dispCodes['duplicate']):
-                log("Skipping %s, disposition is %s\n" % (doc.nlmId,
-                                                          dispNames[disp]))
+        elif dispName == 'imported':
+            if not compareXml(doc.oldXml, doc.xmlFile):
+                log("Skipping %s (already imported, unchanged at NLM)\n"
+                    % doc.nlmId)
                 tally[0] += 1
                 continue
-            elif disp == dispCodes['imported']:
-                if not compareXml(docXml, doc.xmlFile):
-                    log("Skipping %s (already imported, unchanged at NLM)\n"
-                        % doc.nlmId)
-                    tally[0] += 1
-                else:
-                    disp = dispCodes['import requested']
-            try:
-                cursor.execute("""\
+            else:
+                disp = dispCodes['import requested']
+        try:
+            cursor.execute("""\
                 UPDATE ctgov_import
                    SET title = ?,
                        xml = ?,
@@ -189,39 +199,39 @@ for name in nameList: #['NCT00050011.xml']: #nameList:
                        verified = ?,
                        changed = ?
                  WHERE nlm_id = ?""",
-                               (doc.title[:255],
-                                doc.xmlFile,
-                                disp,
-                                doc.verified,
-                                doc.lastChanged,
-                                doc.nlmId))
-                conn.commit()
-                wanted = 1
-                updated += 1
-                log("Updated %s with disposition %s\n" % (doc.nlmId,
-                                                          dispNames[disp]))
-            except Exception, info:
-                log("Failure updating %s: %s\n" % (doc.nlmId, str(info)))
-        else:
-            disp = dispCodes['not yet reviewed']
-            try:
-                cursor.execute("""\
+                           (doc.title[:255],
+                            doc.xmlFile,
+                            disp,
+                            doc.verified,
+                            doc.lastChanged,
+                            doc.nlmId))
+            conn.commit()
+            wanted = 1
+            updated += 1
+            log("Updated %s with disposition %s\n" % (doc.nlmId,
+                                                      dispNames[disp]))
+        except Exception, info:
+            log("Failure updating %s: %s\n" % (doc.nlmId, str(info)))
+    else:
+        disp = dispCodes['not yet reviewed']
+        try:
+            cursor.execute("""\
         INSERT INTO ctgov_import (nlm_id, title, xml, downloaded,
                                   disposition, dt, verified, changed)
-              VALUES (?, ?, ?, GETDATE(), ?, GETDATE(), ?, ?)""",
-                               (doc.nlmId,
-                                doc.title[:255],
-                                doc.xmlFile,
-                                disp,
-                                doc.verified,
-                                doc.lastChanged))
-                conn.commit()
-                wanted = 1
-                added += 1
-                log("Added %s with disposition %s\n" % (doc.nlmId,
-                                                        dispNames[disp]))
-            except Exception, info:
-                log("Failure importing %s: %s\n" % (doc.nlmId, str(info)))
+             VALUES (?, ?, ?, GETDATE(), ?, GETDATE(), ?, ?)""",
+                           (doc.nlmId,
+                            doc.title[:255],
+                            doc.xmlFile,
+                            disp,
+                            doc.verified,
+                            doc.lastChanged))
+            conn.commit()
+            wanted = 1
+            added += 1
+            log("Added %s with disposition %s\n" % (doc.nlmId,
+                                                    dispNames[disp]))
+        except Exception, info:
+            log("Failure importing %s: %s\n" % (doc.nlmId, str(info)))
     tally[wanted] += 1
 
 log("Added %d; updated %d; skipped %d\n" % (added, updated, tally[0]))

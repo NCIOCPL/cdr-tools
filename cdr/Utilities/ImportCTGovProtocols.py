@@ -1,10 +1,22 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.1 2003-11-05 16:25:19 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.2 2003-12-14 19:07:06 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2003/11/05 16:25:19  bkline
+# Batch job for adding or updating CTGovProtocols to/in the CDR.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys, xml.sax, re
+
+class Flags:
+    def __init__(self):
+        self.clear()
+    def clear(self):
+        self.isNew = 'N'
+        self.needsReview = 'N'
+        self.pubVersionCreated = 'N'
+        self.locked = 0
 
 class CTGovHandler(xml.sax.handler.ContentHandler):
     def __init__(self):
@@ -38,7 +50,7 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
     def processingInstruction(self, target, data):
         self.doc += "<?%s %s?>" % (target, data)
     def parsePara(self):
-        self.para = self.para.strip()
+        #self.para = self.para.strip()
         self.para = self.para.replace(u"\r", "")
         if not self.para:
             return u"<Para/>\n"
@@ -54,35 +66,36 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
                 result += u"<Para>%s</Para>\n" % chunk.strip()
         return result
 
-parser = CTGovHandler()
 def parseParas(doc):
     parser.doc = u""
     xml.sax.parseString(doc, parser)
     return parser.doc
 
-LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovImport.log"
-def log(msg, cdrErrors = None):
+def log(msg, cdrErrors = None, tback = 0):
     if cdrErrors:
         errors = cdr.getErrors(cdrErrors, asSequence = 1)
         if not errors:
-            cdr.logwrite(msg, LOGFILE)
+            cdr.logwrite(msg, LOGFILE, tback)
         elif len(errors) == 1:
-            cdr.logwrite("%s: %s" % (msg, errors[0]), LOGFILE)
+            cdr.logwrite("%s: %s" % (msg, errors[0]), LOGFILE, tback)
         else:
-            cdr.logwrite(msg, LOGFILE)
+            cdr.logwrite(msg, LOGFILE, tback)
             cdr.logwrite(errors, LOGFILE)
     else:
-        cdr.logwrite(msg, LOGFILE)
+        cdr.logwrite(msg, LOGFILE, tback)
 
 def checkResponse(resp):
     if not resp[0]:
         errors = cdr.getErrors(resp[1], errorsExpected = 1, asSequence = 1)
         raise Exception(errors)
+    if resp[1]:
+        errors = cdr.getErrors(resp[1], errorsExpected = 0, asSequence = 1)
+        return errors
 
 def extractDocSubset(cdrId, docVer = None):
-    response = cdr.filter(session,
-                          'name:Extract Significant CTGovProtocol Elements',
-                          cdrId, docVer = docVer)
+    response = cdr.filterDoc(session,
+                          ['name:Extract Significant CTGovProtocol Elements'],
+                             cdrId, docVer = docVer)
     if not response[0]:
         raise Exception(response[1])
     return response[0]
@@ -109,19 +122,22 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
     docObject.xml = newDoc.replace('@@PDQIndexing@@', element)
     return str(docObject)
 
-def mergeChanges(cdrId, newDoc):
+def mergeChanges(cdrId, newDoc, flags):
 
-    whichSet = None
-    response = cdr.getDoc(session, cdrId, checkout = 'Y')
+    response = cdr.getDoc(session, cdrId, checkout = 'Y', getObject = 1)
     errors   = cdr.getErrors(response, errorsExpected = 0, asSequence = 1)
     if errors:
-        lockedDocs[cdrId] = 1
+        flags.locked = 1
+        cursor.execute("""\
+        INSERT INTO ctgov_import_event (job, nlm_id, locked, new)
+             VALUES (?, ?, 'Y', 'N')""", (job, nlmId))
+        conn.commit()
         raise Exception(errors)
     docObject = response
     originalXml = docObject.xml
-    response = cdr.filter(session,
-                          'name:Extract Significant CTGovProtocol Elements',
-                          doc = newDoc)
+    response = cdr.filterDoc(session,
+                          ['name:Extract Significant CTGovProtocol Elements'],
+                             doc = newDoc)
     if not response[0]:
         raise Exception(response[1])
     newSubset = response[0]
@@ -130,9 +146,10 @@ def mergeChanges(cdrId, newDoc):
     # Save the old CWD as a version if appropriate.
     if isChanged == 'Y':
         comment = 'ImportCTGovProtocols: preserving current working doc'
-        response = cdr.repDoc(session, doc = `docObject`, ver = 'Y',
-                              comment = comment, reason = comment,
-                              showWarnings = 1)
+        #print str(docObject)
+        response = cdr.repDoc(session, doc = str(docObject), ver = 'Y',
+                              reason = comment, comment = comment,
+                              showWarnings = 1, verPublishable = 'N')
         checkResponse(response)
 
 
@@ -141,44 +158,104 @@ def mergeChanges(cdrId, newDoc):
 
         # If the differences are not significant, create a new pub. ver.
         if hasMajorDiffs(cdrId, lastPub, newSubset):
-            whichSet = needsReview
+            flags.needsReview = 'Y'
         else:
             newPubVer = mergeVersion(newDoc, cdrId, docObject, lastPub)
             comment = 'ImportCTGovProtocols: creating new publishable version'
             response = cdr.repDoc(session, doc = newPubVer, ver = 'Y',
                                   verPublishable = 'Y', val = 'Y',
-                                  comment = comment, reason = comment,
+                                  reason = comment, comment = comment,
                                   showWarnings = 1)
-            checkResponse(response)
-            whichSet = pubVersionsCreated
+            errs = checkResponse(response)
+            flags.pubVersionCreated = errs and 'F' or 'Y'
+            if errs:
+                cdr.logwrite("%s: %s" % (cdrId, errs[0]), LOGFILE)
 
-    else:
-
-        if hasMajorDiffs(cdrId, None, newSubset):
-            whichSet = needsReview
+    elif hasMajorDiffs(cdrId, None, newSubset):
+        flags.needsReview = 'Y'
         
-    # Create a new CWD from the one we found.
+    # Create a new CWD from the one we found updated with NLM's changes.
     newCwd   = mergeVersion(newDoc, cdrId, docObject, "Current")
     comment  = 'ImportCTGovProtocols: creating new CWD'
     response = cdr.repDoc(session, doc = newCwd,
-                          comment = comment, reason = comment,
+                          reason = comment, comment = comment,
                           showWarnings = 1)
     checkResponse(response)
 
-    # Remember what we did for the report.
-    if whichSet:
-        whichSet[cdrId] = 1
+#----------------------------------------------------------------------
+# Plug in PDQ sponsorship information if appropriate.
+#----------------------------------------------------------------------
+pdqSponsorshipMap = {
+    "NATIONAL CENTER FOR COMPLEMENTARY AND ALTERNATIVE MEDICINE"      :"NCCAM",
+    "NATIONAL HEART, LUNG, AND BLOOOD INSTITUTE"                      :"NHLBI",
+    "NATIONAL INSTITUTE OF ALLERGY AND INFECTIOUS DISEASES"           :"NIAID",
+    "NATIONAL INSTITUTE OF ARTHRITIS AND MUSCULOSKELETAL DISEASES"    :"NIAMS",
+    "NATIONAL INSTITUTE OF DENTAL AND CRANIOFACIAL RESEARCH"          :"NIDCR",
+    "NATIONAL INSTITUTE OF DIABETES AND DIGESTIVE AND KIDNEY DISEASES":"NIDDK",
+    "NATIONAL INSTITUTE OF NEUROLOGICAL DISORDERS AND STROKE"         :"NINDS",
+    "NATIONAL EYE INSTITUTE"                                          :"NEI",
+    "NATIONAL INSTITUTE ON AGING"                                     :"NIA",
+    "NATIONAL INSTITUTE OF CHILD HEALTH AND HUMAN DEVELOPMENT"        :"NICHD",
+    "NATIONAL INSTITUTE ON DEAFNESS AND OTHER COMMUNICATION DISORDERS":"NIDCD",
+    "NATIONAL INSTITUTE OF ENVIRONMENTAL HEALTH SCIENCES"             :"NIEHS",
+    "NATIONAL CENTER FOR RESEARCH RESOURCES"                          :"NCRR",
+    "NATIONAL HUMAN GENOME RESEARCH INSTITUTE"                        :"NHGRI",
+    "NATIONAL INSTITUTE OF MENTAL HEALTH"                             :"NIMH",
+    "NATIONAL INSTITUTE OF GENERAL MEDICAL SCIENCES"                  :"NIGMS"
+    }
+def fixPdqSponsorship(doc):
+    pdqSponsorship = ""
+    match = spPatt.search(doc)
+    if match:
+        digits = re.sub(r"[^\d]", "", match.group(1))
+        if digits:
+            docId  = int(digits)
+            cursor.execute("""\
+            SELECT value
+              FROM query_term
+             WHERE path = '/Organization/OrganizationType'
+               AND doc_id = ?""", docId)
+            rows = cursor.fetchall()
+            if rows:
+                orgType = rows[0][0].strip().upper()
+                print "orgType: %s" % orgType
+                if orgType == "PHARMACEUTICAL/BIOMEDICAL":
+                    pdqSponsorship = "Pharmaceutical/Industry"
+                elif orgType == "NCI INSTITUTE, DIVISION, OR OFFICE":
+                    pdqSponsorship = "NCI"
+                elif orgType == "NIH INSTITUTE, CENTER, OR DIVISION":
+                    pdqSponsorship = "Other"
+                    cursor.execute("""\
+                    SELECT value
+                      FROM query_term
+                     WHERE path = '/Organization/OrganizationNameInformation'
+                                + '/OfficialName/Name'
+                       AND doc_id = ?""", docId)
+                    rows = cursor.fetchall()
+                    if rows:
+                        orgName = rows[0][0].strip().upper()
+                        print "orgName: %s" % orgName
+                        if pdqSponsorshipMap.has_key(orgName):
+                            pdqSponsorship = pdqSponsorshipMap[orgName]
+                else:
+                    pdqSponsorship = "Other"
+    if pdqSponsorship:
+        pdqSponsorship = ("<PDQSponsorship>%s</PDQSponsorship>" %
+                          pdqSponsorship)
+        print pdqSponsorship
+        return spPatt.sub(pdqSponsorship, doc)
+    return doc
 
 #----------------------------------------------------------------------
-# Processing starts here.
+# Module-scoped data.
 #----------------------------------------------------------------------
-conn               = cdrdb.connect()
-cursor             = conn.cursor()
-needsReview        = {}
-pubVersionsCreated = {}
-lockedDocs         = {}
-session            = cdr.login(sys.argv[1], sys.argv[2])
-errors             = cdr.getErrors(session, errorsExpected = 0, asSequence = 1)
+LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovImport.log"
+parser  = CTGovHandler()
+conn    = cdrdb.connect()
+cursor  = conn.cursor()
+session = cdr.login('CTGovImport', '***REMOVED***')
+errors  = cdr.getErrors(session, errorsExpected = 0, asSequence = 1)
+spPatt  = re.compile("@@PDQSPONSORSHIP=([^@]*)@@")
 if errors:
     cdr.logwrite("Login failure", session)
     sys.stderr.write("Login failure: %s" % str(errors))
@@ -192,8 +269,14 @@ cursor.execute("""\
         ON d.id = c.disposition
      WHERE d.name = 'import requested'""")
 rows = cursor.fetchall()
-
+cursor.execute("INSERT into ctgov_import_job (dt) VALUES (GETDATE())")
+conn.commit()
+cursor.execute("SELECT @@IDENTITY")
+job = cursor.fetchone()[0]
+flags = Flags()
 for nlmId, cdrId in rows:
+    print nlmId, cdrId
+    flags.clear()
     cursor.execute("SELECT xml FROM ctgov_import WHERE nlm_id = ?", nlmId)
     doc = cursor.fetchone()[0]
     parms = [['newDoc', cdrId and 'N' or 'Y']]
@@ -203,24 +286,31 @@ for nlmId, cdrId in rows:
         log("Failure converting %s" % nlmId, resp)
         continue
     doc = parseParas(resp[0])
+    doc = fixPdqSponsorship(doc)
 
     #------------------------------------------------------------------
     # Add new doc.
     #------------------------------------------------------------------
     if not cdrId:
-        comment = 'Adding imported CTGovProtocol document'
+        flags.isNew = 'Y'
+        comment = ('ImportCTGovProtocols: '
+                   'Adding imported CTGovProtocol document')
         resp = cdr.addDoc(session, doc = """\
 <CdrDoc Type='CTGovProtocol'>
- <CdrDocCtl/>
+ <CdrDocCtl>
+  <DocComment>%s</DocComment>
+ </CdrDocCtl>
  <CdrDocXml><![CDATA[%s]]></CdrDocXml>
 </CdrDoc>
-""" % doc.encode('utf-8'), showWarnings = 1, #comment = comment,
-                          reason = comment)
+""" % (comment, doc.encode('utf-8')), showWarnings = 1,
+                          reason = comment, ver = "Y", val = "N",
+                          verPublishable = 'N')
         if not resp[0]:
             log("Failure adding %s" % nlmId, resp[1])
         else:
-            print cdr.unlock(session, resp[0],
-                             reason = 'Unlocking imported CTGovProtocol doc')
+            cdr.unlock(session, resp[0],
+                       reason = 'ImportCTGovProtocols: '
+                                'Unlocking imported CTGovProtocol doc')
             digits = re.sub(r'[^\d]', '', resp[0])
             cdrId = int(digits)
             cursor.execute("""\
@@ -231,15 +321,13 @@ for nlmId, cdrId in rows:
              WHERE nlm_id = ?""", (importedDisposition, cdrId, nlmId))
             conn.commit()
             log("Added %s as %s" % (nlmId, resp[0]))
-            newDocs[cdrId] = 1
 
     #------------------------------------------------------------------
     # Merge changes into existing doc.
     #------------------------------------------------------------------
     else:
         try:
-            comment = 'Merging changes into CTGovProtocol document'
-            mergeChanges("CDR%d" % cdrId, doc)
+            mergeChanges("CDR%d" % cdrId, doc.encode('utf-8'), flags)
             cursor.execute("""\
             UPDATE ctgov_import
                SET disposition = ?,
@@ -248,6 +336,23 @@ for nlmId, cdrId in rows:
             conn.commit()
         except Exception, info:
             log("Failure merging changes for %s into %s: %s" %
-                (nlmId, cdrId, str(info)))
-        cdr.unlock(session, "CDR%d" % cdrId,
-                   reason = 'Unlocking updated CTGovProtocol doc')
+                (nlmId, cdrId, str(info)), tback = (flags.locked == 0))
+            #raise
+        if not flags.locked:
+            cdr.unlock(session, "CDR%d" % cdrId,
+                       reason = 'ImportCTGovProtocols: '
+                                'Unlocking updated CTGovProtocol doc')
+            log("Updated CDR%d from %s" % (cdrId, nlmId))
+    if not flags.locked:
+        try:
+            cursor.execute("""\
+ INSERT INTO ctgov_import_event(job, nlm_id, new, needs_review, pub_version)
+      VALUES (?, ?, ?, ?, ?)""", (job,
+                                  nlmId,
+                                  flags.isNew,
+                                  flags.needsReview,
+                                  flags.pubVersionCreated))
+            conn.commit()
+        except Exception, info:
+            log("Failure record import event for %s: %s" %
+                (nlmId, str(info)))
