@@ -1,27 +1,38 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1174.py,v 1.1 2004-04-05 19:32:33 bkline Exp $
+# $Id: Request1174.py,v 1.2 2004-06-19 12:30:02 bkline Exp $
 #
 # Report on Board member CIPS contact addresses (one-off for Lakshmi).
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/04/05 19:32:33  bkline
+# One-off report on Board member CIPS contact addresses for Lakshmi.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, cdrcgi, re, sys, xml.sax.saxutils, xml.dom.minidom
 
 def extractAddress(xmlContent):
+    lines = u''
+    sep = u''
     dom = xml.dom.minidom.parseString(xmlContent)
     for node in dom.documentElement.childNodes:
-        if node.nodeName == 'PostalAddress':
-            lines = u''
-            sep = u''
+        if node.nodeName == 'OrgName':
+            lines += sep + xml.sax.saxutils.escape(cdr.getTextContent(node))
+            sep = u'<br>'
+        elif node.nodeName == 'ParentNames':
+            for child in node.childNodes:
+                if child.nodeName == 'ParentName':
+                    value = xml.sax.saxutils.escape(cdr.getTextContent(child))
+                    lines += sep + value
+                    sep = u'<br>'
+        elif node.nodeName == 'PostalAddress':
             for child in node.childNodes:
                 if child.nodeName in ('Street','City','State','Country',
                                       'PostalCode_ZIP'):
                     value = xml.sax.saxutils.escape(cdr.getTextContent(child))
                     lines += sep + value
                     sep = u'<br>'
-            return lines
-    return u""
+    return lines
                 
 conn = cdrdb.connect("CdrGuest")
 cursor = conn.cursor()
