@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: OneOffRequest1158.py,v 1.3 2004-03-31 13:46:30 bkline Exp $
+# $Id: OneOffRequest1158.py,v 1.4 2004-05-03 14:54:59 bkline Exp $
 #
 # This task is required to facilitate web-based updates. Persons who are 
 # designated as Protocol Update Persons will need to have an UpdateMode
@@ -21,6 +21,9 @@
 # part of the wrapper will still be applicable.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2004/03/31 13:46:30  bkline
+# Removed testing throttle.
+#
 # Revision 1.2  2004/03/30 22:12:37  bkline
 # Fixed typo in PDQ sponsorship mapping value.
 #
@@ -40,7 +43,7 @@ class Filter:
         conn = cdrdb.connect('CdrGuest')
         cursor = conn.cursor()
         cursor.execute("""\
-                     SELECT r.doc_id
+                     SELECT DISTINCT r.doc_id
                        FROM query_term r
                        JOIN query_term c
                          ON r.doc_id = c.doc_id
@@ -104,5 +107,6 @@ class Transform:
         return response[0]
 # ModifyDocs.DEBUG = 1
 job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
-                     'PersonRole element added (one-off request #1158).')
+                     "Update Mode element added because of Protocol "
+                     "Update Person Role (#1558).")
 job.run()
