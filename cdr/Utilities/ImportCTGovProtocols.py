@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.4 2004-03-22 15:38:40 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.5 2004-03-30 16:52:57 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2004/03/22 15:38:40  bkline
+# Enhancements for request #1150 (PDQ sponsorship handling changes).
+#
 # Revision 1.3  2003/12/16 13:28:58  bkline
 # Improved detection and elimination of blank Para and ListItem elements.
 #
@@ -213,7 +216,8 @@ pdqSponsorshipMap = {
     "NATIONAL HUMAN GENOME RESEARCH INSTITUTE"                        :"NHGRI",
     "NATIONAL INSTITUTE OF MENTAL HEALTH"                             :"NIMH",
     "NATIONAL INSTITUTE OF GENERAL MEDICAL SCIENCES"                  :"NIGMS",
-    "NATIONAL INSTITUTE OF NURSING RESEARCH"                          :"NINR"
+    "NATIONAL INSTITUTE OF NURSING RESEARCH"                          :"NINR",
+    "WARREN GRANT MAGNUSON CLINICAL CENTER"                       :"NIH WBMCC"
     }
 def fixPdqSponsorship(doc):
     pdqSponsorship = ""
