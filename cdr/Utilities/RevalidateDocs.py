@@ -30,6 +30,7 @@ usage: RevalidateDocs {options} userid password
                        Link tables will not be updated
   --doctype name    = Only validate docs with doctype = name, else all types
   --maxdocs number  = Stop after validating _number_ documents
+  --progress number = Report progress to stderr every _number_ documents
   --outfile filename= Write messages to output file _filename_
                        If --quiet, --outfile is illegal
   --host name       = Name of host computer, else this computer
@@ -48,6 +49,7 @@ verbose   = 0
 valOnly   = 'N'
 docType   = None
 maxCount  = 999999999
+progCount = 999999999
 outFile   = None
 host      = cdr.DEFAULT_HOST
 port      = cdr.DEFAULT_PORT
@@ -58,7 +60,7 @@ password  = None
 try:
     (opts, args) = getopt.getopt (sys.argv[1:], "", ('schemaonly', 'linkonly',
                     'quiet', 'verbose', 'noupdate',
-                    'doctype=', 'maxdocs=', 'outfile=',
+                    'doctype=', 'maxdocs=', 'progress=', 'outfile=',
                     'host=', 'port='))
 except getopt.GetoptError, info:
     usage ("Command line error: %s" % str(info))
@@ -85,6 +87,11 @@ for (option, optarg) in opts:
             maxCount = int(optarg)
         except ValueError:
             usage ("option --maxdocs requires numeric argument")
+    elif option == '--progress':
+        try:
+            progCount = int(optarg)
+        except ValueError:
+            usage ("option --progress requires numeric argument")
     elif option == '--outfile':
         outFile = optarg
     elif option == '--port':
@@ -175,8 +182,6 @@ for rowDocId, rowDocType in rows:
                           (rowDocType, rowDocId, str(info)))
         sys.exit(1)
 
-    valCount += 1
-
     # Only look at response if we were not quieted
     if not quiet:
         # Were there errors?
@@ -191,6 +196,11 @@ for rowDocId, rowDocType in rows:
         elif verbose:
             # Only output good records if in verbose mode
             outf.write ("%s: %d:\n" % (rowDocType, rowDocId))
+
+    # Record and report progress
+    valCount += 1
+    if valCount % progCount == 0:
+        sys.stderr.write ("Validated %d docs\n" % valCount)
 
 # Done processing, add final stats if requested
 if not quiet:
