@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.13 2004-12-20 19:58:50 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.14 2005-01-19 15:14:52 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.13  2004/12/20 19:58:50  bkline
+# Added tally of NCT IDs inserted into trials.
+#
 # Revision 1.12  2004/12/10 12:45:49  bkline
 # Switched to writing copy of documents into a subdirectory; added
 # code to insert NCT IDs into CDR documents we have exported to NLM.
@@ -406,7 +409,7 @@ for name in nameList:
 
     #------------------------------------------------------------------
     # Skip documents they got from us in the first place.
-    # Request #1374: pick up the NCT IDs for the documents.
+    # Request #1374: pick up the NCT IDs for these documents.
     #------------------------------------------------------------------
     elif not doc.cdrId and doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
         cdrId = cdr.exNormalize(doc.orgStudyId)[1]
@@ -418,6 +421,7 @@ for name in nameList:
                 inserter = NctIdInserter(doc.nlmId)
                 cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
                 cdrDoc.saveChanges(logWrapper)
+                cdr.unlock(session, "CDR%010d" % cdrId)
                 stats.nctAdded += 1
         except Exception, e:
             log("Failure adding NCT ID %s to CDR%s: %s" % (doc.nlmId,
