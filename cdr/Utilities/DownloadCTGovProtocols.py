@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.6 2004-01-27 15:04:32 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.7 2004-02-24 12:47:17 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.6  2004/01/27 15:04:32  bkline
+# Changed email group from CTGOV Maintainers to CTGov Publishers at
+# Lakshmi's request.
+#
 # Revision 1.5  2004/01/14 19:25:19  bkline
 # Added support for the new download report requirements.
 #
@@ -250,6 +254,17 @@ for name in nameList:
                                                        "NOT YET RECRUITING")):
         log("Skipping %s, which has a status of %s\n" % (doc.nlmId,
                                                          doc.status))
+
+        # 2004-02-12, request (#1106) from Lakshmi: drop the row if it exists.
+        if doc.disposition is not None:
+            try:
+                cursor.execute("DELETE ctgov_import WHERE nlm_id = ?",
+                               doc.nlmId)
+                conn.commit()
+                log("dropped existing row for %s\n" % doc.nlmId)
+            except Exception, e:
+                log("failure dropping row for %s: %s\n" % (doc.nlmId, str(e)))
+
         stats.closed += 1
 
     #------------------------------------------------------------------
