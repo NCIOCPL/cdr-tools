@@ -20,5 +20,5 @@ rows = cursor.fetchall()
 print "reindexing %d documents" % len(rows)
 for row in rows:
     print "reindexing CDR%010d" % row[0]
-    resp = cdr.reindex(session, row[0])
+    resp = cdr.reindex('guest', row[0])
     if resp: print resp
