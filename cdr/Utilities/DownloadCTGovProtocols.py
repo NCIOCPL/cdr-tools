@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.10 2004-07-28 13:11:27 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.11 2004-08-02 15:55:07 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.10  2004/07/28 13:11:27  bkline
+# Added code to handle database failure when trying to send out email
+# report of failure.
+#
 # Revision 1.9  2004/07/28 13:07:08  bkline
 # Added email report on failure.
 #
@@ -85,7 +89,7 @@ def compareXml(a, b):
 #----------------------------------------------------------------------
 # Gather a list of email recipients for reports.
 #----------------------------------------------------------------------
-def getEmailRecipients(cursor, includeDeveloper = false):
+def getEmailRecipients(cursor, includeDeveloper = False):
     try:
         cursor.execute("""\
             SELECT u.email
@@ -95,6 +99,7 @@ def getEmailRecipients(cursor, includeDeveloper = false):
               JOIN grp g
                 ON g.id = gu.grp
              WHERE g.name = 'CTGov Publishers'
+               AND u.expired IS NULL
                AND u.email IS NOT NULL
                AND u.email <> ''""")
         recips = [row[0] for row in cursor.fetchall()]
@@ -117,7 +122,7 @@ def sendReport(recips, subject, body):
 #----------------------------------------------------------------------
 def reportFailure(context, message):
     log(message)
-    recips = getEmailRecipients(cursor, includeDeveloper = true)
+    recips = getEmailRecipients(cursor, includeDeveloper = True)
     subject = "CTGov Download Failure Report"
     sendReport(recips, subject, message)
     sys.exit(1)
