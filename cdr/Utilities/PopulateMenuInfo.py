@@ -1,10 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: PopulateMenuInfo.py,v 1.3 2003-04-08 18:41:11 bkline Exp $
+# $Id: PopulateMenuInfo.py,v 1.4 2003-04-08 20:39:18 bkline Exp $
 #
 # Populate the CDR Term documents with MenuInformation elements.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2003/04/08 18:41:11  bkline
+# Added missing checkIn argument to command to replace document.
+#
 # Revision 1.2  2003/03/31 16:11:57  bkline
 # First working version.
 #
@@ -302,7 +305,12 @@ cursor.execute("""\
               WHERE s.value = 'Cancer stage'
                 AND n.path = '/Term/PreferredName'
                 AND t.path = '/Term/SemanticType/@cdr:ref'
-                AND s.path = '/Term/PreferredName'""")
+                AND s.path = '/Term/PreferredName'
+                AND NOT EXISTS (SELECT *
+                                  FROM query_term
+                                 WHERE doc_id = n.doc_id
+                                   AND path = '/Term/TermType/TermTypeName'
+                                   AND value = 'Obsolete term'""")
 conn.commit()
 countRows("#CancerStage")
 
