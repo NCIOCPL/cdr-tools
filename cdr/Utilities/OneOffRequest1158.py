@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: OneOffRequest1158.py,v 1.4 2004-05-03 14:54:59 bkline Exp $
+# $Id: OneOffRequest1158.py,v 1.5 2004-05-17 14:43:29 bkline Exp $
 #
 # This task is required to facilitate web-based updates. Persons who are 
 # designated as Protocol Update Persons will need to have an UpdateMode
@@ -21,6 +21,10 @@
 # part of the wrapper will still be applicable.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2004/05/03 14:54:59  bkline
+# Changed comment stored with document at Lakshmi's request; modified
+# selection query to ensure that a document is only processed once.
+#
 # Revision 1.3  2004/03/31 13:46:30  bkline
 # Removed testing throttle.
 #
@@ -108,5 +112,5 @@ class Transform:
 # ModifyDocs.DEBUG = 1
 job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
                      "Update Mode element added because of Protocol "
-                     "Update Person Role (#1558).")
+                     "Update Person Role (#1158).")
 job.run()
