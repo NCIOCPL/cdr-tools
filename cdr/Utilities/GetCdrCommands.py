@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: GetCdrCommands.py,v 1.2 2002-09-29 14:45:56 bkline Exp $
+# $Id: GetCdrCommands.py,v 1.3 2003-04-08 18:32:27 bkline Exp $
 #
 # Extracts command sets from the CDR command log into a form which can
 # be resubmitted to the CDR Server.
@@ -16,6 +16,9 @@
 # See the more extensive comments in RunCdrCommands.py
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2002/09/29 14:45:56  bkline
+# Added --guestonly option.
+#
 # Revision 1.1  2002/09/29 14:15:21  bkline
 # Tools for extracting and running commands from the CDR command log.
 #
@@ -59,6 +62,15 @@ def insertAttrs(matchobj):
     return "<CdrCommandSet thread='%d' received='%s'>" % (thread, received)
 
 #----------------------------------------------------------------------
+# Take care of characters that print can't handle.
+#----------------------------------------------------------------------
+decodePattern = re.compile(u"([\u0080-\uffff])")
+def decode(xml):
+    return re.sub(decodePattern,
+                  lambda match: u"&#x%X;" % ord(match.group(0)[0]), xml)
+#                  unicode(xml, 'utf-8')).encode('latin-1')
+
+#----------------------------------------------------------------------
 # Get the rows from the command log.
 #----------------------------------------------------------------------
 conn = cdrdb.connect()
@@ -82,7 +94,7 @@ while row:
     commandSet, thread, received = row
     if not guestOnly or commandSet.find("<SessionId>guest</SessionId>") != -1:
         commandSet = pattern.sub(insertAttrs, commandSet)
-        print commandSet
+        print decode(commandSet)
     row = cursor.fetchone()
 
 #----------------------------------------------------------------------
