@@ -1,16 +1,24 @@
 #----------------------------------------------------------------------
 #
-# $Id: CheckDtds.py,v 1.1 2002-06-06 15:44:00 bkline Exp $
+# $Id: CheckDtds.py,v 1.2 2002-06-27 19:30:36 bkline Exp $
 #
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2002/06/06 15:44:00  bkline
+# Utility to bring client DTDs up to date.
+#
 #----------------------------------------------------------------------
 
 import cdr, sys
 
-dir = '/Inetpub/wwwtest/cgi-bin/Ticket/ClientFiles/Rules'
+if len(sys.argv) != 2:
+    sys.stderr.write("usage: CheckDtds webserver-base-path\n" \
+                     " e.g.: CheckDtds d:/InetPub/wwwroot\n")
+    sys.exit(1)
+
+dir = sys.argv[1] + '/cgi-bin/Ticket/ClientFiles/Display'
 session = cdr.login('rmk', '***REDACTED***')
 docTypes = cdr.getDoctypes(session)
 for docType in docTypes:
