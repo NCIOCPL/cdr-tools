@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DenormalizeDocs.py,v 1.1 2002-09-15 19:08:04 bkline Exp $
+# $Id: DenormalizeDocs.py,v 1.2 2003-03-04 16:07:29 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2002/09/15 19:08:04  bkline
+# New tools.
+#
 #----------------------------------------------------------------------
 import sys, cdr, cdrdb
 
@@ -32,6 +35,9 @@ filters = {
     "PoliticalSubUnit": [
         "name:Denormalization Filter (1/1): Political SubUnit",
         "name:Vendor Filter: PoliticalSubUnit"
+    ],
+    "StatMailer": [
+        "name:InScopeProtocol Status and Participant Mailer"
     ],
 }
 
