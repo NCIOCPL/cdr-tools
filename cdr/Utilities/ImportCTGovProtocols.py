@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.2 2003-12-14 19:07:06 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.3 2003-12-16 13:28:58 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2003/12/14 19:07:06  bkline
+# Final versions for promotion to production system.
+#
 # Revision 1.1  2003/11/05 16:25:19  bkline
 # Batch job for adding or updating CTGovProtocols to/in the CDR.
 #
@@ -58,12 +61,17 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
         chunks = re.split(u"\n\n+", self.para)
         for chunk in chunks:
             if re.match(r"\s+-\s", chunk):
-                result += u"<ItemizedList>\n"
+                items = u""
                 for item in re.split(r"\n\s+-\s", u"dummy\n" + chunk)[1:]:
-                    result += u"<ListItem>%s</ListItem>\n" % item.strip()
-                result += u"</ItemizedList>\n"
+                    i = item.strip()
+                    if i:
+                        items += u"<ListItem>%s</ListItem>\n" % i
+                if items:
+                    result += u"<ItemizedList>\n%s</ItemizedList>\n" % items
             else:
-                result += u"<Para>%s</Para>\n" % chunk.strip()
+                para = chunk.strip()
+                if para:
+                    result += u"<Para>%s</Para>\n" % para
         return result
 
 def parseParas(doc):
