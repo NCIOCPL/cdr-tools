@@ -1,7 +1,17 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1349.py,v 1.1 2004-10-11 12:40:46 bkline Exp $
+# $Id: Request1349.py,v 1.2 2004-10-12 13:21:44 bkline Exp $
 #
+# [Kim]
+# Attempting to summarize Friday's decisions. Most of this is reflected 
+# in the issues.
+#
+# Web-based mailers - Cooperative Groups (Issue 1349)
+# *  One-off global to add update mode (S&P Check) to RSS data for all
+#    cooperative groups in the hard coded list (Bob)
+# [this supercedes the request below from Lakshmi]
+#
+# [Lakshmi]
 # Actually after thinking a little more about this, I was wondering why
 # we should not remove the PUP role altogether if the person has more
 # than one role and also remove the Person link altogether. What do you
@@ -33,8 +43,12 @@
 # Can the program report these instances? CIAT can then fix manually.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/10/11 12:40:46  bkline
+# Suppress mailers for NCI Cooperative groups that will be updated from
+# RSS data.
+#
 #----------------------------------------------------------------------
-import cdr, cdrdb, ModifyDocs, sys
+import cdr, cdrdb, ModifyDocs, sys, xml.sax
 
 #----------------------------------------------------------------------
 # The Filter class is given to the ModifyDocs.Job object, which invokes
@@ -43,6 +57,7 @@ import cdr, cdrdb, ModifyDocs, sys
 #----------------------------------------------------------------------
 class Filter:
     def getDocIds(self):
+        ids = {}
         conn = cdrdb.connect('CdrGuest')
         cursor = conn.cursor()
         cursor.execute("""\
@@ -55,7 +70,92 @@ SELECT DISTINCT q.doc_id
             AND q.path = '/InScopeProtocol/ProtocolAdminInfo'
                        + '/ProtocolLeadOrg/LeadOrganizationID/@cdr:ref'
             AND v.publishable = 'Y'""")
-        return [row[0] for row in cursor.fetchall()]
+        for row in cursor.fetchall():
+            ids[row[0]] = 1
+        cursor.execute("""\
+SELECT DISTINCT q.doc_id
+           FROM query_term q
+           JOIN ready_for_review r
+             ON r.doc_id = q.doc_id
+          WHERE q.int_val IN (32676, 30265, 35676, 36120,
+                              36176, 35709, 36149, 35883)
+            AND q.path = '/InScopeProtocol/ProtocolAdminInfo'
+                       + '/ProtocolLeadOrg/LeadOrganizationID/@cdr:ref'""")
+        for row in cursor.fetchall():
+            ids[row[0]] = 1
+        keys = ids.keys()
+        keys.sort()
+        return keys[:100]
+
+class UpdateModeHandler(xml.sax.handler.ContentHandler):
+    
+    nciCoopGroups = { 32676: True,
+                      30265: True,
+                      35676: True,
+                      36120: True,
+                      36176: True,
+                      35709: True,
+                      36149: True,
+                      35883: True }
+
+    def __init__(self):
+        self.docStrings         = []
+        self.hasSandPUpdateMode = False
+        self.inSandPUpdateMode  = False
+        self.changed            = False
+        self.oldValue           = u""
+        self.inNciCoopGroup     = False
+    
+    def startDocument(self):
+        self.docStrings         = [u"<?xml version='1.0'?>\n"]
+        self.hasSandPUpdateMode = False
+        self.inSandPUpdateMode  = False
+        self.changed            = False
+        self.oldValue           = u""
+        self.inNciCoopGroup     = False
+
+    def startElement(self, name, attributes):
+        if name == u'ProtocolLeadOrg':
+            self.hasSandPUpdateMode = False
+            self.inNciCoopGroup = False
+        elif name == u"LeadOrganizationID":
+            orgId = attributes.getValue('cdr:ref')
+            if orgId:
+                orgId = cdr.exNormalize(orgId)[1]
+                if orgId in UpdateModeHandler.nciCoopGroups:
+                    self.inNciCoopGroup = True
+        elif name == u'UpdateMode':
+            if self.inNciCoopGroup:
+                if attributes.getValue('MailerType') == 'Protocol_SandP':
+                    self.hasSandPUpdateMode = True
+                    self.inSandPUpdateMode = True
+                    self.oldValue = u""
+        self.docStrings.append(u"<%s" % name)
+        for attrName in attributes.getNames():
+            val = xml.sax.saxutils.quoteattr(attributes.getValue(attrName))
+            self.docStrings.append(u" %s=%s" % (attrName, val))
+        self.docStrings.append(u">")
+    def endElement(self, name):
+        if name == 'ProtocolLeadOrg':
+            if self.inNciCoopGroup and not self.hasSandPUpdateMode:
+                self.docStrings.append(u'<UpdateMode MailerType='
+                                       u'"Protocol_SandP">RSS</UpdateMode>')
+                self.changed = True
+            self.inNciCoopGroup = False
+        if self.inSandPUpdateMode:
+            if self.inNciCoopGroup:
+                self.docStrings.append(u"RSS")
+                if self.oldValue != u"RSS":
+                    self.changed = True
+            self.inSandPUpdateMode = False
+        self.docStrings.append(u"</%s>" % name)
+    def characters(self, content):
+        if self.inNciCoopGroup and self.inSandPUpdateMode:
+            self.oldValue += content
+        else:
+            self.docStrings.append(xml.sax.saxutils.escape(content))
+    def processingInstruction(self, target, data):
+        self.docStrings.append(u"<?%s %s?>" % (target, data))
 
 #----------------------------------------------------------------------
 # The Transform class is given to the ModifyDocs.Job object, which in
@@ -66,105 +166,15 @@ SELECT DISTINCT q.doc_id
 # See comment at top for this job's logic.
 #----------------------------------------------------------------------
 class Transform:
+    def __init__(self):
+        self.parser = UpdateModeHandler()
     def run(self, docObj):
-        filter = """\
-<?xml version='1.0' encoding='UTF-8'?>
-
-<xsl:transform                version = '1.0' 
-                            xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
-                            xmlns:cdr = 'cips.nci.nih.gov/cdr'>
-
- <xsl:output                   method = 'xml'/>
- <xsl:variable                   name = 'orgList'
-                               select = '"CDR0000032676 CDR0000030265
-                                          CDR0000035676 CDR0000036120
-                                          CDR0000036176 CDR0000035709
-                                          CDR0000036149 CDR0000035883"'/>
-
- <!--
- =======================================================================
- Copy most things straight through.
- ======================================================================= -->
- <xsl:template                  match = '@*|node()|comment()|
-                                         processing-instruction()'>
-  <xsl:copy>
-   <xsl:apply-templates        select = '@*|node()|comment()|
-                                         processing-instruction()'/>
-  </xsl:copy>
- </xsl:template>
-
- <!-- Extract organization ID, without fragment ID. -->
- <xsl:template                   name = 'extractOrgId'>
-  <xsl:param                     name = 'ref'/>
-  <xsl:choose>
-   <xsl:when                     test = 'contains($ref, "#")'>
-    <xsl:value-of              select = 'substring-before($ref, "#")'/>
-   </xsl:when>
-   <xsl:when                     test = 'not($ref) or $ref = ""'>
-    <xsl:value-of              select = '"NO-ID"'/>
-   </xsl:when>
-   <xsl:otherwise>
-    <xsl:value-of              select = '$ref'/>
-   </xsl:otherwise>
-  </xsl:choose>
- </xsl:template>
-
- <!-- Special handling for certain protocol lead org persons. -->
- <xsl:template                  match = 'ProtocolLeadOrg/LeadOrgPersonnel'>
-  <xsl:variable                  name = 'orgId'>
-   <xsl:call-template            name = 'extractOrgId'>
-    <xsl:with-param              name = 'ref'
-                               select = '../LeadOrganizationID/@cdr:ref'/>
-   </xsl:call-template>
-  </xsl:variable>
-  <xsl:if                        test = 'not(contains($orgList, $orgId)) or
-                                          PersonRole != "Update person" or
-                                          not(../LeadOrgPersonnel
-                                            [PersonRole != "Update person"])'>
-   <xsl:copy>
-    <xsl:apply-templates       select = '@*|node()|comment()|
-                                         processing-instruction()'/>
-   </xsl:copy>
-  </xsl:if>
- </xsl:template>
-
- <!-- Special processing for lead org personnel roles. -->
- <xsl:template                  match = 'LeadOrgPersonnel/PersonRole'>
-  <xsl:variable                  name = 'orgId'>
-   <xsl:call-template            name = 'extractOrgId'>
-    <xsl:with-param              name = 'ref'
-                               select = '../../LeadOrganizationID/@cdr:ref'/>
-   </xsl:call-template>
-  </xsl:variable>
-  <xsl:choose>
-   <xsl:when                     test = 'contains($orgList, $orgId) and
-                                         . = "Update person"'>
-    <xsl:if                      test = 'not(../../LeadOrgPersonnel
-                                         [PersonRole != "Update person"])'>
-     <xsl:message>Lead org has only PUPs</xsl:message>
-     <xsl:copy>
-      <xsl:apply-templates     select = '@*|node()|comment()|
-                                         processing-instruction()'/>
-     </xsl:copy>
-    </xsl:if>
-   </xsl:when>
-   <xsl:otherwise>
-    <xsl:copy>
-     <xsl:apply-templates      select = '@*|node()|comment()|
-                                         processing-instruction()'/>
-    </xsl:copy>
-   </xsl:otherwise>
-  </xsl:choose>
- </xsl:template>
-</xsl:transform>
-"""
-        response = cdr.filterDoc('guest', filter, doc = docObj.xml, inline = 1)
-        if type(response) in (type(""), type(u"")):
-            raise Exception("Failure in normalizeDoc: %s" % response)
-        if response[1]:
-            job.log("%s: lead org with only PUP" % docObj.id)
-        return response[0]
+        xml.sax.parseString(docObj.xml, self.parser)
+        if self.parser.changed:
+            return u"".join(self.parser.docStrings).encode('utf-8')
+        else:
+            return docObj.xml
 
 job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
-                     "Drop PUPs (request #1349).", testMode = False)
+                     "Add RSS update mode (request #1349).", testMode = True)
 job.run()
