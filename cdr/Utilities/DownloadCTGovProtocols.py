@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.8 2004-07-28 12:33:35 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.9 2004-07-28 13:07:08 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.8  2004/07/28 12:33:35  bkline
+# Added logging for download/zipfile failures.
+#
 # Revision 1.7  2004/02/24 12:47:17  bkline
 # Added code to drop rows from ctgov_import for trials which NLM is no
 # longer exporting.
@@ -33,7 +36,9 @@
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
 import socket
 
-LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
+LOGFILE   = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
+developer = '***REMOVED***' # for error reports
+server    = socket.gethostname()
 
 #----------------------------------------------------------------------
 # Log activity, errors to the download log and to the console.
@@ -73,6 +78,42 @@ def normalizeXml(doc):
 #----------------------------------------------------------------------
 def compareXml(a, b):
     return cmp(normalizeXml(a), normalizeXml(b))
+
+#----------------------------------------------------------------------
+# Gather a list of email recipients for reports.
+#----------------------------------------------------------------------
+def getEmailRecipients(cursor, includeDeveloper = false):
+    cursor.execute("""\
+        SELECT u.email
+          FROM usr u
+          JOIN grp_usr gu
+            ON gu.usr = u.id
+          JOIN grp g
+            ON g.id = gu.grp
+         WHERE g.name = 'CTGov Publishers'
+           AND u.email IS NOT NULL
+           AND u.email <> ''""")
+    recips = [row[0] for row in cursor.fetchall()]
+    if includeDeveloper and developer not in recips:
+        recips.append(developer)
+    return recips
+
+#----------------------------------------------------------------------
+# Mail a report to the specified recipient list.
+#----------------------------------------------------------------------
+def sendReport(recips, subject, body):
+    sender = "cdr@%s.nci.nih.gov" % server
+    cdr.sendMail(sender, recips, subject, body)
+
+#----------------------------------------------------------------------
+# Send a failure report; include the developer.
+#----------------------------------------------------------------------
+def reportFailure(context, message):
+    log(message)
+    recips = getEmailRecipients(cursor, includeDeveloper = true)
+    subject = "CTGov Download Failure Report"
+    sendReport(recips, subject, message)
+    sys.exit(1)
 
 #----------------------------------------------------------------------
 # Object used to track statistics for the download report.
@@ -143,9 +184,9 @@ class Doc:
              WHERE nlm_id = ?""", self.nlmId)
                 row = cursor.fetchone()
             except Exception, e:
-                log("Failure selecting from ctgov_import for %s\n"
-                    % self.nlmId)
-                sys.exit(1)
+                msg = ("Failure selecting from ctgov_import for %s\n"
+                       % self.nlmId)
+                reportFailure(cursor, msg)
             if row:
                 self.oldXml, self.cdrId, self.disposition = row
 
@@ -206,29 +247,29 @@ for line in open('ctgov-dups.txt'):
 if len(sys.argv) > 1:
     name = sys.argv[1]
 else:
-    url     = "http://clinicaltrials.gov/search/condition=cancer?studyxml=true"
+    url  = "http://clinicaltrials.gov/search/condition=cancer?studyxml=true"
     try:
-        urlobj  = urllib.urlopen(url)
-        page    = urlobj.read()
+        urlobj = urllib.urlopen(url)
+        page   = urlobj.read()
     except Exception, e:
-        log("Failure downloading trials: %s" % str(e))
-        sys.exit(1)
-    name    = time.strftime("CTGovDownload-%Y%m%d%H%M%S.zip")
+        msg = "Failure downloading trials: %s" % str(e)
+        reportFailure(cursor, msg)
+    name = time.strftime("CTGovDownload-%Y%m%d%H%M%S.zip")
     try:
         zipFile = open(name, "wb")
         zipFile.write(page)
         zipFile.close()
         log("Trials downloaded to %s\n" % name)
     except Exception, e:
-        log("Failure storing downloaded trials: %s" % str(e))
-        sys.exit(1)
+        msg = "Failure storing downloaded trials: %s" % str(e)
+        reportFailure(cursor, msg)
 when       = time.strftime("%Y-%m-%d")
 try:
-    file       = zipfile.ZipFile(name)
-    nameList   = file.namelist()
+    file     = zipfile.ZipFile(name)
+    nameList = file.namelist()
 except Exception, e:
-    log("Failure opening %s: %s" % (name, str(e)))
-    sys.exit(1)
+    msg = "Failure opening %s: %s" % (name, str(e))
+    reportFailure(cursor, msg)
 stats      = Stats()
 docsInSet  = {}
 logDropped = 1
@@ -409,22 +450,8 @@ except Exception, e:
 #----------------------------------------------------------------------
 # Send out an immediate email report.
 #----------------------------------------------------------------------
-where   = socket.gethostname()
-sender  = "cdr@%s.nci.nih.gov" % where
-subject = "CTGov trials downloaded %s on %s" % (when, where)
-cursor.execute("""\
-    SELECT u.email
-      FROM usr u
-      JOIN grp_usr gu
-        ON gu.usr = u.id
-      JOIN grp g
-        ON g.id = gu.grp
-     WHERE g.name = 'CTGov Publishers'
-       AND u.email IS NOT NULL
-       AND u.email <> ''""")
-recips = []
-for row in cursor.fetchall():
-    recips.append(row[0])
+subject = "CTGov trials downloaded %s on %s" % (when, server)
+recips  = getEmailRecipients(cursor)
 if recips:
     body = """\
                             New trials: %5d
@@ -451,8 +478,7 @@ Trial %s [disposition '%s'] (imported as CDR%d) dropped by NLM.
                 body += """\
 Trial %s [disposition %s] dropped by NLM.
 """ % (droppedDoc.nlmId, droppedDoc.disposition)
-    # recips = ['***REMOVED***']
-    cdr.sendMail(sender, recips, subject, body)
+    sendReport(recips, subject, body)
     log("Mailed download stats to %s\n" % str(recips))
 else:
     log("Warning: no email addresses found for report\n")
