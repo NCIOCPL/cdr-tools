@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.5 2004-03-30 16:52:57 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.6 2004-03-30 22:12:37 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2004/03/30 16:52:57  bkline
+# Added mapping for WARREN GRANT MAGNUSON CLINICAL CENTER (request #1159).
+#
 # Revision 1.4  2004/03/22 15:38:40  bkline
 # Enhancements for request #1150 (PDQ sponsorship handling changes).
 #
@@ -217,7 +220,7 @@ pdqSponsorshipMap = {
     "NATIONAL INSTITUTE OF MENTAL HEALTH"                             :"NIMH",
     "NATIONAL INSTITUTE OF GENERAL MEDICAL SCIENCES"                  :"NIGMS",
     "NATIONAL INSTITUTE OF NURSING RESEARCH"                          :"NINR",
-    "WARREN GRANT MAGNUSON CLINICAL CENTER"                       :"NIH WBMCC"
+    "WARREN GRANT MAGNUSON CLINICAL CENTER"                       :"NIH WGMCC"
     }
 def fixPdqSponsorship(doc):
     pdqSponsorship = ""

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: OneOffRequest1158.py,v 1.1 2004-03-30 18:34:52 bkline Exp $
+# $Id: OneOffRequest1158.py,v 1.2 2004-03-30 22:12:37 bkline Exp $
 #
 # This task is required to facilitate web-based updates. Persons who are 
 # designated as Protocol Update Persons will need to have an UpdateMode
@@ -21,6 +21,9 @@
 # part of the wrapper will still be applicable.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/03/30 18:34:52  bkline
+# Job to insert UpdateMode elements in Person documents.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, ModifyDocs, re, sys
 
@@ -34,14 +37,18 @@ class Filter:
         conn = cdrdb.connect('CdrGuest')
         cursor = conn.cursor()
         cursor.execute("""\
-            SELECT DISTINCT r.doc_id
+            SELECT top 2 r.doc_id
                        FROM query_term r
                        JOIN query_term c
                          ON r.doc_id = c.doc_id
+                       JOIN query_term s
+                         ON s.doc_id = r.doc_id
                       WHERE r.path   = '/Person/PersonLocations' +
                                        '/OtherPracticeLocation/PersonRole'
                         AND r.value  = 'Protocol update person'
                         AND c.path   = '/Person/PersonLocations/CIPSContact'
+                        AND s.path   = '/Person/Status/CurrentStatus'
+                        AND s.value  = 'Active'
                    ORDER BY r.doc_id""")
         return [row[0] for row in cursor.fetchall()]
 
