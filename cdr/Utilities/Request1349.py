@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1349.py,v 1.2 2004-10-12 13:21:44 bkline Exp $
+# $Id: Request1349.py,v 1.3 2004-12-10 12:45:49 bkline Exp $
 #
 # [Kim]
 # Attempting to summarize Friday's decisions. Most of this is reflected 
@@ -43,6 +43,9 @@
 # Can the program report these instances? CIAT can then fix manually.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2004/10/12 13:21:44  bkline
+# Users decided to add RSS UpdateMode elements instead of stripping PUPs.
+#
 # Revision 1.1  2004/10/11 12:40:46  bkline
 # Suppress mailers for NCI Cooperative groups that will be updated from
 # RSS data.
@@ -85,7 +88,7 @@ SELECT DISTINCT q.doc_id
             ids[row[0]] = 1
         keys = ids.keys()
         keys.sort()
-        return keys[:100]
+        return keys
 
 class UpdateModeHandler(xml.sax.handler.ContentHandler):
     
@@ -113,11 +116,13 @@ class UpdateModeHandler(xml.sax.handler.ContentHandler):
         self.changed            = False
         self.oldValue           = u""
         self.inNciCoopGroup     = False
+        self.droppingElements   = False
 
     def startElement(self, name, attributes):
         if name == u'ProtocolLeadOrg':
             self.hasSandPUpdateMode = False
             self.inNciCoopGroup = False
+            self.droppingElements = False
         elif name == u"LeadOrganizationID":
             orgId = attributes.getValue('cdr:ref')
             if orgId:
@@ -130,11 +135,14 @@ class UpdateModeHandler(xml.sax.handler.ContentHandler):
                     self.hasSandPUpdateMode = True
                     self.inSandPUpdateMode = True
                     self.oldValue = u""
-        self.docStrings.append(u"<%s" % name)
-        for attrName in attributes.getNames():
-            val = xml.sax.saxutils.quoteattr(attributes.getValue(attrName))
-            self.docStrings.append(u" %s=%s" % (attrName, val))
-        self.docStrings.append(u">")
+        elif name == u"ProtocolSites" and self.inNciCoopGroup == True:
+            self.droppingElements = False # True to turn this back on
+        if not self.droppingElements:
+            self.docStrings.append(u"<%s" % name)
+            for attrName in attributes.getNames():
+                val = xml.sax.saxutils.quoteattr(attributes.getValue(attrName))
+                self.docStrings.append(u" %s=%s" % (attrName, val))
+            self.docStrings.append(u">")
     def endElement(self, name):
         if name == 'ProtocolLeadOrg':
             if self.inNciCoopGroup and not self.hasSandPUpdateMode:
@@ -148,14 +156,19 @@ class UpdateModeHandler(xml.sax.handler.ContentHandler):
                 if self.oldValue != u"RSS":
                     self.changed = True
             self.inSandPUpdateMode = False
-        self.docStrings.append(u"</%s>" % name)
+        if not self.droppingElements:
+            self.docStrings.append(u"</%s>" % name)
+        elif name == u"ProtocolSites":
+            self.droppingElements = False
     def characters(self, content):
-        if self.inNciCoopGroup and self.inSandPUpdateMode:
-            self.oldValue += content
-        else:
-            self.docStrings.append(xml.sax.saxutils.escape(content))
+        if not self.droppingElements:
+            if self.inNciCoopGroup and self.inSandPUpdateMode:
+                self.oldValue += content
+            else:
+                self.docStrings.append(xml.sax.saxutils.escape(content))
     def processingInstruction(self, target, data):
-        self.docStrings.append(u"<?%s %s?>" % (target, data))
+        if not self.droppingElements:
+            self.docStrings.append(u"<?%s %s?>" % (target, data))
 
 #----------------------------------------------------------------------
 # The Transform class is given to the ModifyDocs.Job object, which in
@@ -176,5 +189,5 @@ class Transform:
             return docObj.xml
 
 job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
-                     "Add RSS update mode (request #1349).", testMode = True)
+                     "Add RSS update mode (request #1349).", testMode = False)
 job.run()

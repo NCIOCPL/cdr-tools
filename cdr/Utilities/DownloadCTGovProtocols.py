@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.11 2004-08-02 15:55:07 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.12 2004-12-10 12:45:49 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.11  2004/08/02 15:55:07  bkline
+# Added test to weed out expired users in the CTGov Publishers group.
+#
 # Revision 1.10  2004/07/28 13:11:27  bkline
 # Added code to handle database failure when trying to send out email
 # report of failure.
@@ -41,11 +44,13 @@
 #
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
-import socket
+import socket, ModifyDocs
 
 LOGFILE   = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
 developer = '***REMOVED***' # for error reports
 server    = socket.gethostname()
+session   = cdr.login('CTGovImport', '***REMOVED***')
+comment   = "Inserting NCT ID from CTGovProtocol download job."
 
 #----------------------------------------------------------------------
 # Log activity, errors to the download log and to the console.
@@ -203,10 +208,96 @@ class Doc:
                 self.oldXml, self.cdrId, self.disposition = row
 
 #----------------------------------------------------------------------
+# An object of this class if fed to the constructor for each ModifyDocs.Doc
+# object, used to insert the NCT ID into existing CDR documents which
+# we've exported to NLM, and which are coming back to us with their ID.
+#----------------------------------------------------------------------
+class NctIdInserter:
+    def __init__(self, nctId):
+        self.nctId = nctId
+    def run(self, docObj):
+        filt = """\
+<?xml version='1.0' encoding='UTF-8'?>
+
+<xsl:transform                version = '1.0' 
+                            xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
+                            xmlns:cdr = 'cips.nci.nih.gov/cdr'>
+
+ <xsl:output                   method = 'xml'/>
+
+ <!--
+ =======================================================================
+ Copy most things straight through.
+ ======================================================================= -->
+ <xsl:template                  match = '@*|node()|comment()|
+                                         processing-instruction()'>
+  <xsl:copy>
+   <xsl:apply-templates        select = '@*|node()|comment()|
+                                         processing-instruction()'/>
+  </xsl:copy>
+ </xsl:template>
+
+ <!-- Add NCT ID if not already present. -->
+ <xsl:template                  match = 'ProtocolIDs'>
+  <xsl:copy>
+   <xsl:apply-templates        select = '@*|node()|comment()|
+                                         processing-instruction()'/>
+   <xsl:if                       test = 'not(OtherID
+                                         [IDType = "ClinicalTrials.gov ID"])'>
+    <OtherID>
+     <IDType>ClinicalTrials.gov ID</IDType>
+     <IDString>%s</IDString>
+    </OtherID>
+   </xsl:if>
+  </xsl:copy>
+ </xsl:template>
+</xsl:transform>
+""" % self.nctId
+        if type(filt) == type(u""):
+            filt = filt.encode('utf-8')
+        result = cdr.filterDoc('guest', filt, doc = docObj.xml, inline = 1)
+        if type(result) in (type(""), type(u"")):
+            sys.stderr.write("%s: %s\n" % (docObj.id, result))
+            return docObj.xml
+        return result[0]
+
+#----------------------------------------------------------------------
+# Pseudo-job class; only need log() method.  An instance of this
+# class is passed to the constructor for ModifyDocs.Doc objects.
+# Logging is passed on to the module-wide function used for all
+# other logging done for this job.  Used for inserting NCT IDs
+# into documents we exported to NLM and which are coming back to
+# us with their own ID.
+#----------------------------------------------------------------------
+class LogWrapper:
+    def __log(self, what):
+        log(what + '\n')
+    log = __log
+
+#----------------------------------------------------------------------
+# Determine whether a CDR document already has the NCT ID.
+#----------------------------------------------------------------------
+def alreadyHasNctId(cdrId):
+    cursor.execute("""\
+        SELECT i.value
+          FROM query_term i
+          JOIN query_term t
+            ON t.doc_id = i.doc_id
+           AND LEFT(i.node_loc, 8) = LEFT(t.node_loc, 8)
+         WHERE i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
+           AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
+           AND t.value = 'ClinicalTrials.gov ID'
+           AND i.doc_id = ?""", cdrId)
+    rows = cursor.fetchall()
+    return rows and rows[0][0] and True or False
+
+#----------------------------------------------------------------------
 # Seed the table with documents we know to be duplicates.
 #----------------------------------------------------------------------
+ModifyDocs._testMode = False
 conn = cdrdb.connect()
 cursor = conn.cursor()
+logWrapper = LogWrapper()
 dispNames, dispCodes = loadDispositions(cursor)
 expr = re.compile(r"CDR0*(\d+)\s+(NCT\d+)\s*")
 for line in open('ctgov-dups.txt'):
@@ -310,10 +401,21 @@ for name in nameList:
 
     #------------------------------------------------------------------
     # Skip documents they got from us in the first place.
+    # Request #1374: pick up the NCT IDs for the documents.
     #------------------------------------------------------------------
     elif not doc.cdrId and doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
+        cdrId = cdr.exNormalize(doc.orgStudyId)[1]
         log("Skipping %s, which has a CDR ID\n" % doc.nlmId)
         stats.pdqCdr += 1
+        try:
+            if not alreadyHasNctId(cdrId):
+                log("Adding NCT ID %s to CDR%s" % (doc.nlmId, cdrId))
+                inserter = NctIdInserter(doc.nlmId)
+                cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
+                cdrDoc.saveChanges(logWrapper)
+        except Exception, e:
+            log("Failure adding NCT ID %s to CDR%s: %s" % (doc.nlmId,
+                                                           cdrId, str(e)))
 
     #------------------------------------------------------------------
     # We don't want closed or completed trials.
@@ -464,7 +566,7 @@ except Exception, e:
 #----------------------------------------------------------------------
 subject = "CTGov trials downloaded %s on %s" % (when, server)
 recips  = getEmailRecipients(cursor)
-if recips:
+if False and recips:
     body = """\
                             New trials: %5d
                         Updated trials: %5d
@@ -494,3 +596,4 @@ Trial %s [disposition %s] dropped by NLM.
     log("Mailed download stats to %s\n" % str(recips))
 else:
     log("Warning: no email addresses found for report\n")
+cdr.logout(session)

@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: UpdateEmailerTrackingInfo.py,v 1.1 2004-06-19 12:30:44 bkline Exp $
+# $Id: UpdateEmailerTrackingInfo.py,v 1.2 2004-12-10 12:45:49 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/06/19 12:30:44  bkline
+# Script to perform scheduled updates of electronic mailer tracking
+# documents.
+#
 #----------------------------------------------------------------------
 import xml.dom.minidom, sys, cdr, cdrmailcommon, time
 
@@ -60,7 +64,7 @@ class Mailer:
             return False
         response.xml = newDoc
         doc = str(response)
-        file = open("tracker-%s.xml" % self.id, "w")
+        file = open("tracker/tracker-%s.xml" % self.id, "w")
         file.write(doc)
         file.close()
         cmt = "Automatic update of electronic mailer tracking document"
