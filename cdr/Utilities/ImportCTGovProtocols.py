@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.3 2003-12-16 13:28:58 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.4 2004-03-22 15:38:40 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2003/12/16 13:28:58  bkline
+# Improved detection and elimination of blank Para and ListItem elements.
+#
 # Revision 1.2  2003/12/14 19:07:06  bkline
 # Final versions for promotion to production system.
 #
@@ -209,22 +212,35 @@ pdqSponsorshipMap = {
     "NATIONAL CENTER FOR RESEARCH RESOURCES"                          :"NCRR",
     "NATIONAL HUMAN GENOME RESEARCH INSTITUTE"                        :"NHGRI",
     "NATIONAL INSTITUTE OF MENTAL HEALTH"                             :"NIMH",
-    "NATIONAL INSTITUTE OF GENERAL MEDICAL SCIENCES"                  :"NIGMS"
+    "NATIONAL INSTITUTE OF GENERAL MEDICAL SCIENCES"                  :"NIGMS",
+    "NATIONAL INSTITUTE OF NURSING RESEARCH"                          :"NINR"
     }
 def fixPdqSponsorship(doc):
     pdqSponsorship = ""
+    docType = None
     match = spPatt.search(doc)
     if match:
         digits = re.sub(r"[^\d]", "", match.group(1))
         if digits:
             docId  = int(digits)
             cursor.execute("""\
-            SELECT value
-              FROM query_term
-             WHERE path = '/Organization/OrganizationType'
-               AND doc_id = ?""", docId)
+                SELECT t.name
+                  FROM doc_type t
+                  JOIN document d
+                    ON d.doc_type = t.id
+                 WHERE d.id = ?""", docId)
             rows = cursor.fetchall()
             if rows:
+                docType = rows[0][0]
+                cursor.execute("""\
+                    SELECT value
+                      FROM query_term
+                     WHERE path = '/Organization/OrganizationType'
+                       AND doc_id = ?""", docId)
+                rows = cursor.fetchall()
+            if docType == "Person":
+                pdqSponsorship = "Other"
+            elif docType and rows:
                 orgType = rows[0][0].strip().upper()
                 print "orgType: %s" % orgType
                 if orgType == "PHARMACEUTICAL/BIOMEDICAL":
