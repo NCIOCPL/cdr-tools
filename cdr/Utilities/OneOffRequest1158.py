@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: OneOffRequest1158.py,v 1.5 2004-05-17 14:43:29 bkline Exp $
+# $Id: OneOffRequest1158.py,v 1.6 2004-06-04 18:15:16 bkline Exp $
 #
 # This task is required to facilitate web-based updates. Persons who are 
 # designated as Protocol Update Persons will need to have an UpdateMode
@@ -21,6 +21,9 @@
 # part of the wrapper will still be applicable.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2004/05/17 14:43:29  bkline
+# Fixed typo in document comment string (1558 -> 1158).
+#
 # Revision 1.4  2004/05/03 14:54:59  bkline
 # Changed comment stored with document at Lakshmi's request; modified
 # selection query to ensure that a document is only processed once.
@@ -37,6 +40,9 @@
 #----------------------------------------------------------------------
 import cdr, cdrdb, ModifyDocs, re, sys
 
+# Flag for second half of this request (see comment #26 for this issue).
+part2 = False
+
 #----------------------------------------------------------------------
 # The Filter class is given to the ModifyDocs.Job object, which invokes
 # the getDocIds() method to retrieve a list of CDR document IDs for
@@ -46,7 +52,28 @@ class Filter:
     def getDocIds(self):
         conn = cdrdb.connect('CdrGuest')
         cursor = conn.cursor()
-        cursor.execute("""\
+        if part2:
+            query = """\
+SELECT DISTINCT p.int_val AS PersonId
+           FROM query_term p
+           JOIN query_term r
+             ON r.doc_id = p.doc_id
+          WHERE p.path  = '/InScopeProtocol/ProtocolAdminInfo'
+                        + '/ProtocolLeadOrg/LeadOrgPersonnel'
+                        + '/Person/@cdr:ref'
+            AND r.path  = '/InScopeProtocol/ProtocolAdminInfo'
+                        + '/ProtocolLeadOrg/LeadOrgPersonnel'
+                        + '/PersonRole'
+            AND r.value = 'Update person'
+            AND LEFT(p.node_loc, 12) = LEFT(r.node_loc, 12)
+            AND p.doc_id NOT IN (SELECT doc_id
+                                   FROM query_term
+                                  WHERE path  = '/Person/PersonLocations'
+                                              + '/OtherPracticeLocation'
+                                              + '/PersonRole'
+                                    AND value = 'Protocol update person')"""
+        else:
+            query = """\
                      SELECT DISTINCT r.doc_id
                        FROM query_term r
                        JOIN query_term c
@@ -59,7 +86,8 @@ class Filter:
                         AND c.path   = '/Person/PersonLocations/CIPSContact'
                         AND s.path   = '/Person/Status/CurrentStatus'
                         AND s.value  = 'Active'
-                   ORDER BY r.doc_id""")
+                   ORDER BY r.doc_id"""
+        cursor.execute(query)
         return [row[0] for row in cursor.fetchall()]
 
 
@@ -110,6 +138,8 @@ class Transform:
             raise Exception("Failure in normalizeDoc: %s" % response)
         return response[0]
 # ModifyDocs.DEBUG = 1
+if len(sys.argv) > 3 and sys.argv[3] == "part2":
+    part2 = True
 job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
                      "Update Mode element added because of Protocol "
                      "Update Person Role (#1158).")
