@@ -1,12 +1,16 @@
 #----------------------------------------------------------------------
 #
-# $Id: PopulateMenuInfo.py,v 1.1 2003-03-31 15:25:26 bkline Exp $
+# $Id: PopulateMenuInfo.py,v 1.2 2003-03-31 16:11:57 bkline Exp $
 #
 # Populate the CDR Term documents with MenuInformation elements.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2003/03/31 15:25:26  bkline
+# Program to automatically insert MenuInformation elements to CDR Term
+# documents.
+#
 #----------------------------------------------------------------------
-import cdr, cdrdb, sys, time, re
+import cdr, cdrdb, sys, time, re, os
 
 #----------------------------------------------------------------------
 # Log processing/error information with a timestamp.
@@ -21,7 +25,7 @@ def log(what):
 #----------------------------------------------------------------------
 def saveDoc(id, doc, verPublishable, checkIn):
     log("saveDoc(%d, pub='%s', checkIn='%s')" % (id, verPublishable, checkIn))
-    return 1
+    #return 1
     comment = "Populating Term document with menu information"
     response = cdr.repDoc(session, doc = doc, ver = 'Y', val = 'Y',
                           verPublishable = verPublishable,
@@ -215,7 +219,11 @@ class Term:
 #----------------------------------------------------------------------
 # Main processing starts here.
 #----------------------------------------------------------------------
-logFile = open("PopulateMenuInfo.log", "a")
+try:
+    os.mkdir("SavedTerms")
+except:
+    pass
+logFile = open("SavedTerms/PopulateMenuInfo.log", "a")
 if not len(sys.argv) == 3:
     sys.stderr.write("usage: PopulateMenuInfo uid pwd\n")
     sys.exit(1)
@@ -245,14 +253,15 @@ log("doc id for cancer term is %d" % cancerId)
 cursor.execute("""\
    CREATE TABLE #CancerType
    (
-       id INTEGER NOT NULL REFERENCES all_docs,
+       id INTEGER NOT NULL,
        display VARCHAR(256) NOT NULL
    )""")
 conn.commit()
 log("Created temp table #CancerType")
 pattern = re.compile(r'<option (selected="selected" )?'
                      r'value=".*%3b(\d*)">([^<]*)</option>')
-for line in open('CancerTypes.html').readlines():
+file = open("//mahler/d$/home/bkline/MenuTerms/CancerTypes.html")
+for line in file.readlines():
     match = pattern.search(line)
     if match:
         try:
@@ -261,10 +270,11 @@ for line in open('CancerTypes.html').readlines():
                            (id, match.group(3).replace("&amp;", "&")))
             conn.commit()
         except:
-            log("failure inserting row into #CancerType for %d(%s)" %
-                (match.group(2), match.group(3))
+            log("failure inserting row into #CancerType for %s (%s)" %
+                (match.group(2), match.group(3)))
     else:
         log("no match for line [%s]" % line.strip())
+file.close()
 countRows("#CancerType")
 
 #----------------------------------------------------------------------
@@ -273,7 +283,7 @@ countRows("#CancerType")
 cursor.execute("""\
     CREATE TABLE #CancerStage
     (
-              id INTEGER NOT NULL REFERENCES all_docs,
+              id INTEGER NOT NULL,
             name NVARCHAR(255)
     )""")
 conn.commit()
@@ -290,7 +300,6 @@ cursor.execute("""\
                 AND n.path = '/Term/PreferredName'
                 AND t.path = '/Term/SemanticType/@cdr:ref'
                 AND s.path = '/Term/PreferredName'""")
-	and term.path = '/Term/SemanticType/@cdr:ref'
 conn.commit()
 countRows("#CancerStage")
 
@@ -301,41 +310,41 @@ countRows("#CancerStage")
 # descendants.
 #----------------------------------------------------------------------
 cursor.execute("""\
-    CREATE TABLE #CancerTypeDescendants
+    CREATE TABLE #CancerTypeDescendant
     (
-     cancer_type INT REFERENCES all_docs,
-      descendant INT REFERENCES all_docs
+     cancer_type INT,
+      descendant INT
     )""")
 conn.commit()
-log("Created temp table #CancerTypeDescendants")
+log("Created temp table #CancerTypeDescendant")
 cursor.execute("""\
-    INSERT INTO #CancerTypeDescendants(cancer_type, descendant)
+    INSERT INTO #CancerTypeDescendant(cancer_type, descendant)
     SELECT DISTINCT p.id, c.doc_id
-               FROM xCancerTypes p
+               FROM #CancerType p
                JOIN query_term c
                  ON c.int_val = p.id
               WHERE c.path = '/Term/TermRelationship/ParentTerm' +
                              '/TermId/@cdr:ref'""")
 conn.commit()
-countRows("#CancerTypeDescendants")
+countRows("#CancerTypeDescendant")
 more = 1
 while more:
     cursor.execute("""\
-    INSERT INTO #CancerTypeDescendants(cancer_type, descendant)
+    INSERT INTO #CancerTypeDescendant(cancer_type, descendant)
     SELECT DISTINCT a.cancer_type, d.doc_id
-               FROM #CancerTypeDescendants a
+               FROM #CancerTypeDescendant a
                JOIN query_term d
                  ON d.int_val = a.descendant
               WHERE d.path = '/Term/TermRelationship/ParentTerm' +
                              '/TermId/@cdr:ref'
                 AND NOT EXISTS (SELECT *
-                                  FROM #CancerTypeDescendants
+                                  FROM #CancerTypeDescendant
                                  WHERE cancer_type = a.cancer_type
                                    AND descendant = d.doc_id)""")
     more = cursor.rowcount > 0 and 1 or 0
     log("%d additional rows inserted" % cursor.rowcount)
     conn.commit()
-    countRows("#CancerTypeDescendants")
+    countRows("#CancerTypeDescendant")
 
 #----------------------------------------------------------------------
 # Set up the table which knows about the versions of these terms.
@@ -362,9 +371,9 @@ cursor.execute("""\
               ON lastv.id = lastp.id
              AND lastp.publishable = 'Y'
            WHERE a.document IN (SELECT DISTINCT descendant
-                                           FROM #CancerTypeDescendants
+                                           FROM #CancerTypeDescendant
                                           UNION
-                                         SELECT id FROM #CancerTypes)
+                                         SELECT id FROM #CancerType)
               OR a.document = %d
         GROUP BY lastv.id""" % cancerId)
 conn.commit()
@@ -372,17 +381,17 @@ countRows("#TermVersions")
 cursor.execute("""\
     UPDATE #TermVersions 
        SET lastv_date = v.updated_dt
-      FROM #TermVersions x, doc_version v
-     WHERE v.id = x.id
-       AND v.num = x.lastv""")
+      FROM #TermVersions tv, doc_version v
+     WHERE v.id = tv.id
+       AND v.num = tv.lastv""")
 conn.commit()
 log("updated lastv_date in #TermVersions")
 cursor.execute("""\
     UPDATE #TermVersions 
        SET lastp_date = v.updated_dt
-      FROM #TermVersions x, doc_version v
-     WHERE v.id = x.id
-       AND v.num = x.lastp""")
+      FROM #TermVersions tv, doc_version v
+     WHERE v.id = tv.id
+       AND v.num = tv.lastp""")
 conn.commit()
 log("updated lastp_date in #TermVersions")
 
@@ -437,7 +446,7 @@ cursor.execute("""\
            END
       FROM #CancerType
       JOIN query_term
-        ON query_term.doc_id = #CancerTypes.id
+        ON query_term.doc_id = #CancerType.id
       JOIN #TermVersions
         ON #TermVersions.id = query_term.doc_id
      WHERE query_term.path = '/Term/PreferredName'""" % statPath)
@@ -477,7 +486,7 @@ cursor.execute("""\
                THEN 1
                ELSE 0
            END
-      FROM #CancerTypeDescendants d
+      FROM #CancerTypeDescendant d
       JOIN #CancerStage s
         ON s.id = d.descendant
       JOIN #TermVersions v
