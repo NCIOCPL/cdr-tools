@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ExtractBoardMemberInfo.py,v 1.1 2004-03-04 15:30:08 bkline Exp $
+# $Id: ExtractBoardMemberInfo.py,v 1.2 2004-05-03 14:14:46 bkline Exp $
 #
 # Generate documents in the following form:
 #  <PDQBoardMemberInfo>
@@ -19,6 +19,9 @@
 #  </PDQBoardMemberInfo>
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/03/04 15:30:08  bkline
+# Utility to populate new PDQBoardMemberInfo documents (issue #1044).
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys
 
@@ -91,6 +94,12 @@ for id in boardMembers:
   <PersonContactID>%s</PersonContactID>
  </BoardMemberContact>
  <BoardMemberContactMode>FedEx</BoardMemberContactMode>
+ <BoardMemberAssistant>
+  <AssistantName><?xm-replace_text {Enter an assistant name (required)}?></AssistantName>
+  <AssistantPhone Public='No'><?xm-replace_text {Enter a phone number (required)}?></AssistantPhone>
+  <AssistantFax><?xm-replace_text {Optionally enter a fax number}?></AssistantFax>
+  <AssistantEmail Public="No"><?xm-replace_text {Optionally enter an email address}?></AssistantEmail>
+ </BoardMemberAssistant>
 """ % (id, memb.cipsContact or u"")
     for board in memb.boards:
         doc += u"""\
@@ -99,6 +108,9 @@ for id in boardMembers:
   <CurrentMember>Yes</CurrentMember>
   <InvitationDate>0000-00-00</InvitationDate>
   <ResponseToInvitation>Accepted</ResponseToInvitation>
+  <TermStartDate><?xm-replace_text {Optionally enter start date for membership term}?></TermStartDate>
+  <TermRenewalFrequency><?xm-replace_text {Optionally select frequency of term renewal}?></TermRenewalFrequency>
+  <AreaOfExpertise><?xm-replace_text {Optionally select an area of expertise}?></AreaOfExpertise>
  </BoardMembershipDetails>
 """ % board.id
     doc += """\
