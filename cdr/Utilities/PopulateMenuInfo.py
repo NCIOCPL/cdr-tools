@@ -1,10 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: PopulateMenuInfo.py,v 1.4 2003-04-08 20:39:18 bkline Exp $
+# $Id: PopulateMenuInfo.py,v 1.5 2003-04-15 15:36:32 bkline Exp $
 #
 # Populate the CDR Term documents with MenuInformation elements.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2003/04/08 20:39:18  bkline
+# Modified query populating #CancerStage to avoid obsolete terms.
+#
 # Revision 1.3  2003/04/08 18:41:11  bkline
 # Added missing checkIn argument to command to replace document.
 #
@@ -310,7 +313,7 @@ cursor.execute("""\
                                   FROM query_term
                                  WHERE doc_id = n.doc_id
                                    AND path = '/Term/TermType/TermTypeName'
-                                   AND value = 'Obsolete term'""")
+                                   AND value = 'Obsolete term')""")
 conn.commit()
 countRows("#CancerStage")
 
