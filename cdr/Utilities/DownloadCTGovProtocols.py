@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.7 2004-02-24 12:47:17 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.8 2004-07-28 12:33:35 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.7  2004/02/24 12:47:17  bkline
+# Added code to drop rows from ctgov_import for trials which NLM is no
+# longer exporting.
+#
 # Revision 1.6  2004/01/27 15:04:32  bkline
 # Changed email group from CTGOV Maintainers to CTGov Publishers at
 # Lakshmi's request.
@@ -203,16 +207,28 @@ if len(sys.argv) > 1:
     name = sys.argv[1]
 else:
     url     = "http://clinicaltrials.gov/search/condition=cancer?studyxml=true"
-    urlobj  = urllib.urlopen(url)
-    page    = urlobj.read()
+    try:
+        urlobj  = urllib.urlopen(url)
+        page    = urlobj.read()
+    except Exception, e:
+        log("Failure downloading trials: %s" % str(e))
+        sys.exit(1)
     name    = time.strftime("CTGovDownload-%Y%m%d%H%M%S.zip")
-    zipFile = open(name, "wb")
-    zipFile.write(page)
-    zipFile.close()
-    log("Trials downloaded to %s\n" % name)
+    try:
+        zipFile = open(name, "wb")
+        zipFile.write(page)
+        zipFile.close()
+        log("Trials downloaded to %s\n" % name)
+    except Exception, e:
+        log("Failure storing downloaded trials: %s" % str(e))
+        sys.exit(1)
 when       = time.strftime("%Y-%m-%d")
-file       = zipfile.ZipFile(name)
-nameList   = file.namelist()
+try:
+    file       = zipfile.ZipFile(name)
+    nameList   = file.namelist()
+except Exception, e:
+    log("Failure opening %s: %s" % (name, str(e)))
+    sys.exit(1)
 stats      = Stats()
 docsInSet  = {}
 logDropped = 1
