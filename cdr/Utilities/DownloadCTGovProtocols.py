@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.9 2004-07-28 13:07:08 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.10 2004-07-28 13:11:27 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.9  2004/07/28 13:07:08  bkline
+# Added email report on failure.
+#
 # Revision 1.8  2004/07/28 12:33:35  bkline
 # Added logging for download/zipfile failures.
 #
@@ -83,20 +86,24 @@ def compareXml(a, b):
 # Gather a list of email recipients for reports.
 #----------------------------------------------------------------------
 def getEmailRecipients(cursor, includeDeveloper = false):
-    cursor.execute("""\
-        SELECT u.email
-          FROM usr u
-          JOIN grp_usr gu
-            ON gu.usr = u.id
-          JOIN grp g
-            ON g.id = gu.grp
-         WHERE g.name = 'CTGov Publishers'
-           AND u.email IS NOT NULL
-           AND u.email <> ''""")
-    recips = [row[0] for row in cursor.fetchall()]
-    if includeDeveloper and developer not in recips:
-        recips.append(developer)
-    return recips
+    try:
+        cursor.execute("""\
+            SELECT u.email
+              FROM usr u
+              JOIN grp_usr gu
+                ON gu.usr = u.id
+              JOIN grp g
+                ON g.id = gu.grp
+             WHERE g.name = 'CTGov Publishers'
+               AND u.email IS NOT NULL
+               AND u.email <> ''""")
+        recips = [row[0] for row in cursor.fetchall()]
+        if includeDeveloper and developer not in recips:
+            recips.append(developer)
+        return recips
+    except:
+        if includeDeveloper:
+            return [developer]
 
 #----------------------------------------------------------------------
 # Mail a report to the specified recipient list.
