@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.12 2004-12-10 12:45:49 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.13 2004-12-20 19:58:50 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.12  2004/12/10 12:45:49  bkline
+# Switched to writing copy of documents into a subdirectory; added
+# code to insert NCT IDs into CDR documents we have exported to NLM.
+#
 # Revision 1.11  2004/08/02 15:55:07  bkline
 # Added test to weed out expired users in the CTGov Publishers group.
 #
@@ -141,6 +145,7 @@ class Stats:
         self.updates    = 0
         self.unchanged  = 0
         self.pdqCdr     = 0
+        self.nctAdded   = 0
         self.duplicates = 0
         self.outOfScope = 0
         self.closed     = 0
@@ -413,6 +418,7 @@ for name in nameList:
                 inserter = NctIdInserter(doc.nlmId)
                 cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
                 cdrDoc.saveChanges(logWrapper)
+                stats.nctAdded += 1
         except Exception, e:
             log("Failure adding NCT ID %s to CDR%s: %s" % (doc.nlmId,
                                                            cdrId, str(e)))
@@ -548,6 +554,7 @@ log("   Skipped duplicate trials: %5d\n" % stats.duplicates)
 log("Skipped out of scope trials: %5d\n" % stats.outOfScope)
 log("      Skipped closed trials: %5d\n" % stats.closed)
 log("               Total trials: %5d\n" % totals)
+log("   Added NCT IDs for trials: %5d\n" % stats.nctAdded)
 try:
     cursor.execute("""\
         INSERT INTO ctgov_download_stats (dt, total_trials, new_trials,
@@ -566,7 +573,7 @@ except Exception, e:
 #----------------------------------------------------------------------
 subject = "CTGov trials downloaded %s on %s" % (when, server)
 recips  = getEmailRecipients(cursor)
-if False and recips:
+if recips:
     body = """\
                             New trials: %5d
                         Updated trials: %5d
@@ -576,9 +583,11 @@ if False and recips:
            Skipped out of scope trials: %5d
    Skipped closed and completed trials: %5d
                           Total trials: %5d
+              Added NCT IDs for trials: %5d
 
 """ % (stats.newTrials, stats.updates, stats.unchanged, stats.pdqCdr, 
-       stats.duplicates, stats.outOfScope, stats.closed, totals)    
+       stats.duplicates, stats.outOfScope, stats.closed, totals,
+       stats.nctAdded)    
     if droppedDocs:
         keys = droppedDocs.keys()
         keys.sort()
