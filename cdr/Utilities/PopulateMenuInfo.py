@@ -1,10 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: PopulateMenuInfo.py,v 1.2 2003-03-31 16:11:57 bkline Exp $
+# $Id: PopulateMenuInfo.py,v 1.3 2003-04-08 18:41:11 bkline Exp $
 #
 # Populate the CDR Term documents with MenuInformation elements.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2003/03/31 16:11:57  bkline
+# First working version.
+#
 # Revision 1.1  2003/03/31 15:25:26  bkline
 # Program to automatically insert MenuInformation elements to CDR Term
 # documents.
@@ -28,7 +31,7 @@ def saveDoc(id, doc, verPublishable, checkIn):
     #return 1
     comment = "Populating Term document with menu information"
     response = cdr.repDoc(session, doc = doc, ver = 'Y', val = 'Y',
-                          verPublishable = verPublishable,
+                          verPublishable = verPublishable, checkIn = checkIn,
                           reason = comment, comment = comment,
                           showWarnings = 'Y')
     if not response[0]:
