@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: OneOffRequest843.py,v 1.1 2003-08-21 12:06:48 bkline Exp $
+# $Id: OneOffRequest843.py,v 1.2 2003-08-21 19:28:18 bkline Exp $
 #
 # CDR request number 843 to transform GlossaryTerm documents to
 # match the new schema changes, introducing new Audience, Dictionary,
@@ -8,6 +8,9 @@
 # type.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2003/08/21 12:06:48  bkline
+# Transforms GlossaryTerm documents to match new schema structure.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, ModifyDocs, re, sys
 
@@ -18,23 +21,15 @@ import cdr, cdrdb, ModifyDocs, re, sys
 #----------------------------------------------------------------------
 class Filter:
     def getDocIds(self):
-##         return (43966, 43967, 43968, 43969)
-##         return [43966, 43967, 43968, 43969, 43970,
-##                 43971, 43972, 43973, 43974, 43975]
         conn = cdrdb.connect('CdrGuest')
         cursor = conn.cursor()
         cursor.execute("""\
-            SELECT TOP 10 d.id
+            SELECT d.id
               FROM document d
               JOIN doc_type t
                 ON t.id = d.doc_type
              WHERE t.name = 'GlossaryTerm'""")
         return [row[0] for row in cursor.fetchall()]
-##        return map(lambda x: x[0], cursor.fetchall())
-##         ids = []
-##         for row in cursor.fetchall():
-##             ids.append(row[0])
-##         return ids
 
 #----------------------------------------------------------------------
 # The Transform class is given to the ModifyDocs.Job object, which in
@@ -114,8 +109,6 @@ class Transform:
         if type(response) in (type(""), type(u"")):
             raise Exception("Failure in normalizeDoc: %s" % response)
         return response[0]
-        #return docObj.xml.replace('TermName', 'XXXXKangarooXXXX')
-        #return docObj.xml.replace('XXXXKangarooXXXX', 'TermName')
 
 job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
                      'Modified to conform to new GlossaryTerm structure')
