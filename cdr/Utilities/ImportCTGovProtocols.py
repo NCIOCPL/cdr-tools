@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.6 2004-03-30 22:12:37 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.7 2004-04-02 19:16:49 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.6  2004/03/30 22:12:37  bkline
+# Fixed typo in PDQ sponsorship mapping value.
+#
 # Revision 1.5  2004/03/30 16:52:57  bkline
 # Added mapping for WARREN GRANT MAGNUSON CLINICAL CENTER (request #1159).
 #
@@ -29,12 +32,16 @@ class Flags:
         self.needsReview = 'N'
         self.pubVersionCreated = 'N'
         self.locked = 0
+        self.terminated = 0
 
 class CTGovHandler(xml.sax.handler.ContentHandler):
-    def __init__(self):
-        self.doc    = u""
-        self.para   = u""
-        self.inPara = 0
+    def __init__(self, flags):
+        self.doc      = u""
+        self.para     = u""
+        self.inPara   = 0
+        self.flags    = flags
+        self.inStatus = 0
+        self.status   = u""
     def startDocument(self):
         self.doc = u"<?xml version='1.0'?>\n"
     def startElement(self, name, attributes):
@@ -42,6 +49,9 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
             self.para   = u""
             self.inPara = 1
         else:
+            if name == 'OverallStatus':
+                self.status = u""
+                self.inStatus = 1
             self.doc += u"<%s" % name
             for attrName in attributes.getNames():
                 val = xml.sax.saxutils.quoteattr(attributes.getValue(attrName))
@@ -53,12 +63,20 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
             self.inPara = 0
             self.para = u""
         else:
+            if name == 'OverallStatus':
+                print "STATUS: ", self.status
+                if self.status.upper().strip() in ("WITHDRAWN", "TERMINATED"):
+                    self.flags.terminated = 1
+                self.inStatus = 0
             self.doc += "</%s>" % name
     def characters(self, content):
         if self.inPara:
             self.para += xml.sax.saxutils.escape(content)
         else:
-            self.doc += xml.sax.saxutils.escape(content)
+            text = xml.sax.saxutils.escape(content)
+            if self.inStatus:
+                self.status += text
+            self.doc += text
     def processingInstruction(self, target, data):
         self.doc += "<?%s %s?>" % (target, data)
     def parsePara(self):
@@ -159,6 +177,7 @@ def mergeChanges(cdrId, newDoc, flags):
         raise Exception(response[1])
     newSubset = response[0]
     lastAny, lastPub, isChanged = cdr.lastVersions(session, cdrId)
+    newCwd   = mergeVersion(newDoc, cdrId, docObject, "Current")
 
     # Save the old CWD as a version if appropriate.
     if isChanged == 'Y':
@@ -170,8 +189,18 @@ def mergeChanges(cdrId, newDoc, flags):
         checkResponse(response)
 
 
+    # New requirement (#1172): special handling for terminated protocols.
+    if flags.terminated:
+        print "handling terminated doc"
+        comment  = 'ImportCTGovProtocols: versioning terminated protocol'
+        response = cdr.repDoc(session, doc = newCwd, ver = 'Y',
+                              verPublishable = 'N',
+                              reason = comment, comment = comment,
+                              showWarnings = 1, activeStatus = 'I')
+        checkResponse(response)
+
     # Has a publishable version ever been saved for this document?
-    if lastPub != -1:
+    elif lastPub != -1:
 
         # If the differences are not significant, create a new pub. ver.
         if hasMajorDiffs(cdrId, lastPub, newSubset):
@@ -192,11 +221,11 @@ def mergeChanges(cdrId, newDoc, flags):
         flags.needsReview = 'Y'
         
     # Create a new CWD from the one we found updated with NLM's changes.
-    newCwd   = mergeVersion(newDoc, cdrId, docObject, "Current")
     comment  = 'ImportCTGovProtocols: creating new CWD'
     response = cdr.repDoc(session, doc = newCwd,
                           reason = comment, comment = comment,
-                          showWarnings = 1)
+                          showWarnings = 1,
+                          activeStatus = flags.terminated and 'I' or None)
     checkResponse(response)
 
 #----------------------------------------------------------------------
@@ -281,7 +310,8 @@ def fixPdqSponsorship(doc):
 # Module-scoped data.
 #----------------------------------------------------------------------
 LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovImport.log"
-parser  = CTGovHandler()
+flags   = Flags()
+parser  = CTGovHandler(flags)
 conn    = cdrdb.connect()
 cursor  = conn.cursor()
 session = cdr.login('CTGovImport', '***REMOVED***')
@@ -304,7 +334,6 @@ cursor.execute("INSERT into ctgov_import_job (dt) VALUES (GETDATE())")
 conn.commit()
 cursor.execute("SELECT @@IDENTITY")
 job = cursor.fetchone()[0]
-flags = Flags()
 for nlmId, cdrId in rows:
     print nlmId, cdrId
     flags.clear()
@@ -316,6 +345,7 @@ for nlmId, cdrId in rows:
     if type(resp) in (type(""), type(u"")):
         log("Failure converting %s" % nlmId, resp)
         continue
+
     doc = parseParas(resp[0])
     doc = fixPdqSponsorship(doc)
 
