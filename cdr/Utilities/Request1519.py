@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1519.py,v 1.1 2005-02-17 16:09:44 bkline Exp $
+# $Id: Request1519.py,v 1.2 2005-05-06 03:05:52 bkline Exp $
 #
 # "To facilitate the CTEP Data export tasks, we need to add CTEPIDS to
 # InScopeProtocols."
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2005/02/17 16:09:44  bkline
+# Program to add CTEP IDs to CDR documents.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, re, sys, ModifyDocs
 
@@ -304,7 +307,7 @@ cdrIds = cdrIdToCtepId.keys()
 cdrIds.sort(sortByNormalizedCtepId)
 for cdrId in cdrIds:
     print "%-40s CDR%d" % (cdrIdToCtepId[cdrId].strip(), cdrId)
-sys.exit(0)
+# sys.exit(0)
 
 #----------------------------------------------------------------------
 # The Filter class is given to the ModifyDocs.Job object, which invokes
