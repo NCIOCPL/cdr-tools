@@ -1,9 +1,12 @@
 ##
 # Validate a previous version of a document against current rules.
 #
-# $Id: valDocVersion.py,v 1.1 2005-05-25 00:42:18 ameyer Exp $
+# $Id: valDocVersion.py,v 1.2 2005-08-03 00:54:46 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2005/05/25 00:42:18  ameyer
+# Initial version.
+#
 ##
 import sys, re, cdr
 
@@ -46,11 +49,11 @@ doc = cdr.getDoc(session, docId, version=verNum, host=host, port=port)
 
 # Got it?
 if doc.startswith("<Errors"):
-    errList = cdr.getErrors(doc, asSequence=true)
+    errList = cdr.getErrors(doc, asSequence=True)
     sys.stderr.write("Error fetching document %d, version %s\n" \
-                     % (docId, str(verNum)))
+                     % (int(docId), str(verNum)))
     for err in errList:
-        sys.stderr.write(" %s\n", err)
+        sys.stderr.write(" %s\n" % err)
     sys.exit(1)
 
 # Find document type from CdrDoc@Type attribute
