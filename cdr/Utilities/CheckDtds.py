@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: CheckDtds.py,v 1.5 2003-04-08 18:40:14 bkline Exp $
+# $Id: CheckDtds.py,v 1.6 2005-08-10 21:13:22 venglisc Exp $
 #
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2003/04/08 18:40:14  bkline
+# Better error handling reading old DTD.
+#
 # Revision 1.4  2002/08/30 16:32:35  bkline
 # Removed hardcoded CDR account credentials.
 #
@@ -59,12 +62,12 @@ for docType in docTypes:
             #sys.stderr.write("old start is at %d\n" % start)
             current = current[start:]
             if newDtd == current: 
-                print "DTD for %s is current" % docType
+                print "DTD for %22s  is current" % docType
                 continue
             else: 
-                print "DTD for %s has changed" % docType
+                print "DTD for %22s has changed" % docType
         else:
-            print "New DTD for %s added" % docType
+            print "DTD for %22s     added" % docType
         try:
             open(path, "w").write(dtInfo.dtd)
         except:
