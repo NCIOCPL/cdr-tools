@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1792.py,v 1.1 2005-08-04 22:56:10 ameyer Exp $
+# $Id: Request1792.py,v 1.2 2005-08-15 22:37:57 ameyer Exp $
 #
 # One off change to modify:
 #
@@ -9,6 +9,9 @@
 #   3 values are changed.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2005/08/04 22:56:10  ameyer
+# Convert some SpecialCategory values to revised text strings.
+#
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, ModifyDocs, sys
@@ -83,7 +86,7 @@ class Transform:
        <xsl:text>NCI Web site featured trial</xsl:text>
      </xsl:when>
      <xsl:when              test = ". = 'Treatment referral center trial'">
-       <xsl:text>Treatment referral center (TRC) trial</xsl:text>
+       <xsl:text>Treatment Referral Center (TRC) trial</xsl:text>
      </xsl:when>
 
      <!-- Leave the rest alone -->
