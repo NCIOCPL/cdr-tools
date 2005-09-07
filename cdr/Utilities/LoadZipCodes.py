@@ -1,12 +1,16 @@
 #----------------------------------------------------------------------
 #
-# $Id: LoadZipCodes.py,v 1.2 2005-03-16 18:44:22 venglisc Exp $
+# $Id: LoadZipCodes.py,v 1.3 2005-09-07 19:11:51 venglisc Exp $
 #
 # Utility to drop, re-create, and load the zipcode validation table.
 # Required command-line argument is path to comma-delimited ASCII
 # file from ZIPInfo (ZIPList5).
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2005/03/16 18:44:22  venglisc
+# Made changes to the program to address a version change of the CSV module
+# (Bug 1457).
+#
 # Revision 1.1  2003/09/09 15:09:56  bkline
 # Script to create and populate zipcode table.
 #
@@ -43,11 +47,13 @@ cursor.execute("GRANT select ON zipcode TO CdrGuest")
 conn.commit()
 for row in reader:
     if header > 1:
-        if len(row) == 8:
+        if len(row) == 16:
+            zipInfo = [row[0], row[1], row[2], row[3], 
+                       row[4], row[5], row[6], row[15]]
             cursor.execute("""\
             INSERT INTO zipcode (city, st, zip, area_code, county_fips,
                                  county_name, preferred, zip_code_type)
-                  VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", row)
+                  VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", zipInfo)
             conn.commit()
             added += 1
             print "added %d rows" % added
