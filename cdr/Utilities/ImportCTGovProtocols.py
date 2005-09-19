@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.7 2004-04-02 19:16:49 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.8 2005-09-19 19:23:59 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.7  2004/04/02 19:16:49  bkline
+# Implemented modification for request #1172 (special handling for
+# terminated protocols).
+#
 # Revision 1.6  2004/03/30 22:12:37  bkline
 # Fixed typo in PDQ sponsorship mapping value.
 #
@@ -205,17 +209,16 @@ def mergeChanges(cdrId, newDoc, flags):
         # If the differences are not significant, create a new pub. ver.
         if hasMajorDiffs(cdrId, lastPub, newSubset):
             flags.needsReview = 'Y'
-        else:
-            newPubVer = mergeVersion(newDoc, cdrId, docObject, lastPub)
-            comment = 'ImportCTGovProtocols: creating new publishable version'
-            response = cdr.repDoc(session, doc = newPubVer, ver = 'Y',
-                                  verPublishable = 'Y', val = 'Y',
-                                  reason = comment, comment = comment,
-                                  showWarnings = 1)
-            errs = checkResponse(response)
-            flags.pubVersionCreated = errs and 'F' or 'Y'
-            if errs:
-                cdr.logwrite("%s: %s" % (cdrId, errs[0]), LOGFILE)
+        newPubVer = mergeVersion(newDoc, cdrId, docObject, lastPub)
+        comment = 'ImportCTGovProtocols: creating new publishable version'
+        response = cdr.repDoc(session, doc = newPubVer, ver = 'Y',
+                              verPublishable = 'Y', val = 'Y',
+                              reason = comment, comment = comment,
+                              showWarnings = 1)
+        errs = checkResponse(response)
+        flags.pubVersionCreated = errs and 'F' or 'Y'
+        if errs:
+            cdr.logwrite("%s: %s" % (cdrId, errs[0]), LOGFILE)
 
     elif hasMajorDiffs(cdrId, None, newSubset):
         flags.needsReview = 'Y'
