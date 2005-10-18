@@ -1,16 +1,19 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1867.py,v 1.1 2005-10-13 14:31:14 ameyer Exp $
+# $Id: Request1867.py,v 1.2 2005-10-18 15:34:15 ameyer Exp $
 #
 # One off program to report on differences between current working
 # versions of CTGovProtocol documents and their last publishable
 # versions.  Done for Bugzilla Request 1867.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2005/10/13 14:31:14  ameyer
+# Report on CTGovImport CWD/PubVer differences.
+#
 #
 #----------------------------------------------------------------------
 
-import sys, os, time, cdr, cdrdb, cdrcgi
+import sys, os, time, textwrap, cdr, cdrdb, cdrcgi
 
 # Define an output report in the temp directory
 if os.environ.has_key("TEMP"):
@@ -50,16 +53,11 @@ def wrap(report):
     oldLines = report.split("\n")
     newLines = []
     for line in oldLines:
-        if len(line) <= 80:
-            newLines.append(line)
-        else:
-            while len(line) > 80:
-                newLines.append(line[:80])
-                line = line[80:]
-            if line:
-                newLines.append(line)
-    return "\n".join(newLines)
+        # Wrap, terminate, and begin each line with a space
+        newLines.append(" " + "\n ".join(textwrap.wrap(line, 90)))
 
+    # Return them into a unified string
+    return ("\n".join(newLines))
 
 #----------------------------------------------------------------------
 # Find doc differences
