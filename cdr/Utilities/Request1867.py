@@ -1,12 +1,15 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1867.py,v 1.3 2005-10-21 03:40:20 ameyer Exp $
+# $Id: Request1867.py,v 1.4 2005-10-25 23:10:54 ameyer Exp $
 #
 # One off program to report on differences between current working
 # versions of CTGovProtocol documents and their last publishable
 # versions.  Done for Bugzilla Request 1867.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2005/10/21 03:40:20  ameyer
+# Major rewrite to meet the real requirements.
+#
 # Revision 1.2  2005/10/18 15:34:15  ameyer
 # Using textwrap to word wrap lines for diff.
 #
@@ -16,7 +19,7 @@
 #
 #----------------------------------------------------------------------
 
-import sys, os, re, time, textwrap, cdr, cdrdb, cdrcgi
+import sys, os, re, time, cgi, textwrap, cdr, cdrdb, cdrcgi
 
 # Define an output report in the temp directory
 if os.environ.has_key("TEMP"):
@@ -30,7 +33,6 @@ rptf    = None
 
 # Pattern for PDQIndexing/EntryDate = YYYY-MM-DD
 DATEPAT = re.compile(r"\d{4}-\d{2}-\d{2}")
-
 
 #----------------------------------------------------------------------
 # Extract the PDQIndexing/EntryDate from a CTGovImportProtocol
@@ -148,9 +150,10 @@ def wrap(report):
     newLines = []
     for line in oldLines:
         # Wrap, terminate, and begin each line with a space
-        newLines.append(" " + "\n ".join(textwrap.wrap(line, 90)))
+        line = " " + "\n ".join(textwrap.wrap(line, 90))
+        newLines.append(line)
 
-    # Return them into a unified string
+    # Return them in a unified string
     return ("\n".join(newLines))
 
 #----------------------------------------------------------------------
@@ -184,9 +187,9 @@ def diffDocs(docIdStr, ver):
 
     name1 = "CWD.xml"
     name2 = "LPV.xml"
-    doc1  = wrap(docCWD.encode('ascii', 'replace'))
-    doc2  = wrap(docVer.encode('ascii', 'replace'))
-    cmd   = "diff -aiU 1 %s %s" % (name1, name2)
+    doc1  = wrap(docCWD.encode('latin-1', 'replace'))
+    doc2  = wrap(docVer.encode('latin-1', 'replace'))
+    cmd   = "diff -a -i -w -B -U 1 %s %s" % (name2, name1)
     try:
         workDir = cdr.makeTempDir('diff')
         os.chdir(workDir)
@@ -209,7 +212,8 @@ def diffDocs(docIdStr, ver):
     if not result.output:
         diffText = None
     else:
-        diffText = "<pre>\n" + cdrcgi.colorDiffs(result.output) + "\n</pre>\n"
+        diffText = "<pre>\n" + cdrcgi.colorDiffs(cgi.escape(result.output)) \
+                 + "\n</pre>\n"
     return diffText
 
 
@@ -306,12 +310,12 @@ totalCnt     = 0
 # Process each one
 for docId in docIds:
 
+    # DEBUG
+    # if totalCnt >= 10: break
+
     # Full CDRnnnnnnnnnn form of doc id
     docIdStr = cdr.exNormalize(docId)[0]
     totalCnt += 1
-
-    # DEBUG
-    # if totalCnt > 10: break
 
     # Get info on versions
     (lastVer, lastPubVer, isChanged) = cdr.lastVersions(session, docIdStr)
