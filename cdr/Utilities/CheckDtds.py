@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: CheckDtds.py,v 1.6 2005-08-10 21:13:22 venglisc Exp $
+# $Id: CheckDtds.py,v 1.7 2006-01-31 19:10:03 bkline Exp $
 #
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.6  2005/08/10 21:13:22  venglisc
+# Minor changes to format the output.
+#
 # Revision 1.5  2003/04/08 18:40:14  bkline
 # Better error handling reading old DTD.
 #
@@ -25,15 +28,10 @@
 
 import cdr, sys
 
-if len(sys.argv) != 2:
-    sys.stderr.write("usage: CheckDtds webserver-base-path\n" \
-                     " e.g.: CheckDtds d:/InetPub/wwwroot\n")
-    sys.exit(1)
-
-dir = sys.argv[1] + '/cgi-bin/Ticket/ClientFiles/Rules'
+directory = 'd:/cdr/ClientFiles/Rules'
 docTypes = cdr.getDoctypes('guest')
 for docType in docTypes:
-    if docType == "Filter": continue
+    if docType.upper() in ("FILTER", "CSS"): continue
     try:
         dtInfo = cdr.getDoctype('guest', docType)
         #sys.stderr.write("new DTD retrieved\n")
@@ -47,7 +45,7 @@ for docType in docTypes:
             #print dtInfo.dtd
             continue
         newDtd = dtInfo.dtd[start:]
-        path = "%s/%s.dtd" % (dir, docType)
+        path = "%s/%s.dtd" % (directory, docType)
         #sys.stderr.write("checking %s\n" % path)
         try:
             current = open(path).read()
