@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.8 2005-09-19 19:23:59 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.9 2006-05-18 18:53:49 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.8  2005/09/19 19:23:59  bkline
+# Modified logic to create publishable version even if significant changes
+# are detected.
+#
 # Revision 1.7  2004/04/02 19:16:49  bkline
 # Implemented modification for request #1172 (special handling for
 # terminated protocols).
@@ -26,7 +30,7 @@
 # Batch job for adding or updating CTGovProtocols to/in the CDR.
 #
 #----------------------------------------------------------------------
-import cdr, cdrdb, sys, xml.sax, re
+import cdr, cdrdb, sys, xml.sax, re, cdrcgi
 
 class Flags:
     def __init__(self):
@@ -104,6 +108,31 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
                 if para:
                     result += u"<Para>%s</Para>\n" % para
         return result
+
+#----------------------------------------------------------------------
+# Gather a list of email recipients for reports.
+#----------------------------------------------------------------------
+def getEmailRecipients(cursor, includeDeveloper = False):
+    developer = '***REMOVED***'
+    try:
+        cursor.execute("""\
+            SELECT u.email
+              FROM usr u
+              JOIN grp_usr gu
+                ON gu.usr = u.id
+              JOIN grp g
+                ON g.id = gu.grp
+             WHERE g.name = 'CTGov Publishers'
+               AND u.expired IS NULL
+               AND u.email IS NOT NULL
+               AND u.email <> ''""")
+        recips = [row[0] for row in cursor.fetchall()]
+        if includeDeveloper and developer not in recips:
+            recips.append(developer)
+        return recips
+    except:
+        if includeDeveloper:
+            return [developer]
 
 def parseParas(doc):
     parser.doc = u""
@@ -337,6 +366,7 @@ cursor.execute("INSERT into ctgov_import_job (dt) VALUES (GETDATE())")
 conn.commit()
 cursor.execute("SELECT @@IDENTITY")
 job = cursor.fetchone()[0]
+failures = []
 for nlmId, cdrId in rows:
     print nlmId, cdrId
     flags.clear()
@@ -346,6 +376,7 @@ for nlmId, cdrId in rows:
     resp = cdr.filterDoc('guest', ['name:Import CTGovProtocol'], doc = doc,
                          parm = parms)
     if type(resp) in (type(""), type(u"")):
+        failures.append("Failure converting %s" % nlmId)
         log("Failure converting %s" % nlmId, resp)
         continue
 
@@ -371,6 +402,7 @@ for nlmId, cdrId in rows:
                           verPublishable = 'N')
         if not resp[0]:
             log("Failure adding %s" % nlmId, resp[1])
+            failures.append("Failure adding %s" % nlmId)
         else:
             cdr.unlock(session, resp[0],
                        reason = 'ImportCTGovProtocols: '
@@ -399,6 +431,8 @@ for nlmId, cdrId in rows:
              WHERE nlm_id = ?""", (importedDisposition, nlmId))
             conn.commit()
         except Exception, info:
+            failures.append("Failure merging changes for %s into %s" %
+                            (nlmId, cdrId))
             log("Failure merging changes for %s into %s: %s" %
                 (nlmId, cdrId, str(info)), tback = (flags.locked == 0))
             #raise
@@ -418,5 +452,18 @@ for nlmId, cdrId in rows:
                                   flags.pubVersionCreated))
             conn.commit()
         except Exception, info:
-            log("Failure record import event for %s: %s" %
+            failures.append("Failure recording import event for %s" % nlmId)
+            log("Failure recording import event for %s: %s" %
                 (nlmId, str(info)))
+if failures:
+    recips = getEmailRecipients(cursor, True)
+    print recips
+    recips = ['***REMOVED***']
+    body = """\
+CT.gov import failures encountered; see logs for more information:
+
+%s
+""" % "\n".join(failures)
+    subject = "CT.gov import failures"
+    sender = "cdr@%s" % cdrcgi.WEBSERVER
+    cdr.sendMail(sender, recips, subject, body)
