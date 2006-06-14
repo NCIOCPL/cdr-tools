@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: RefreshManifest.py,v 1.1 2006-01-24 21:52:47 bkline Exp $
+# $Id: RefreshManifest.py,v 1.2 2006-06-14 13:18:44 bkline Exp $
 #
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2006/01/24 21:52:47  bkline
+# Rewrite of Jeff's tool to rebuild the client files manifest.
+#
 #----------------------------------------------------------------------
 import cdr, sys, time, socket, os, win32file, pywintypes
 
@@ -90,6 +93,11 @@ def refreshManifest(where):
 </Manifest>
 """ % (createTicket(), createFilelist(files))
     writeManifest(manifestXml.encode('utf-8'), manifestTime)
+    result = cdr.runCommand("D:\\cygwin\\bin\\chmod -R 777 *")
+    if result.code:
+        print "chmod return code: %s" % result.code
+        if result.output:
+            print result.output
 
 if __name__ == "__main__":
     where = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
