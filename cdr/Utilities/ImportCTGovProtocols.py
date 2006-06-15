@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.9 2006-05-18 18:53:49 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.10 2006-06-15 13:58:16 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.9  2006/05/18 18:53:49  bkline
+# Added email report of failures (request #2094).
+#
 # Revision 1.8  2005/09/19 19:23:59  bkline
 # Modified logic to create publishable version even if significant changes
 # are detected.
@@ -457,8 +460,6 @@ for nlmId, cdrId in rows:
                 (nlmId, str(info)))
 if failures:
     recips = getEmailRecipients(cursor, True)
-    print recips
-    recips = ['***REMOVED***']
     body = """\
 CT.gov import failures encountered; see logs for more information:
 
