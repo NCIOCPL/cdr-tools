@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.15 2005-01-24 15:30:52 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.16 2006-08-22 17:22:55 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.15  2005/01/24 15:30:52  bkline
+# Added code to unlock InScopeProtocol documents; changed zip location.
+#
 # Revision 1.14  2005/01/19 15:14:52  bkline
 # Added code to unlock documents into which we insert NCT IDs.
 #
@@ -361,7 +364,16 @@ for line in open('ctgov-dups.txt'):
 if len(sys.argv) > 1:
     name = sys.argv[1]
 else:
-    url  = "http://clinicaltrials.gov/search/condition=cancer?studyxml=true"
+    conditions = ('cancer', 'lymphedema', 'myelodysplastic syndromes',
+                  'neutropenia', 'aspergillosis', 'mucositis')
+    connector = ''
+    url  = ["http://clinicaltrials.gov/search/condition="]
+    for condition in conditions:
+        url.append(connector)
+        url.append(condition.replace(' ', '+'))
+        connector = '+OR+'
+    url.append('?studyxml=true')
+    url = ''.join(url)
     try:
         urlobj = urllib.urlopen(url)
         page   = urlobj.read()
@@ -374,6 +386,7 @@ else:
         zipFile.write(page)
         zipFile.close()
         log("Trials downloaded to %s\n" % name)
+        sys.exit(0)
     except Exception, e:
         msg = "Failure storing downloaded trials: %s" % str(e)
         reportFailure(cursor, msg)
