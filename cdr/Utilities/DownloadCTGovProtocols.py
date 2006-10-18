@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.16 2006-08-22 17:22:55 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.17 2006-10-18 20:49:46 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.16  2006/08/22 17:22:55  bkline
+# Extra conditions plugged into query.
+#
 # Revision 1.15  2005/01/24 15:30:52  bkline
 # Added code to unlock InScopeProtocol documents; changed zip location.
 #
@@ -102,6 +105,8 @@ def normalizeXml(doc):
 # different.
 #----------------------------------------------------------------------
 def compareXml(a, b):
+    if a is None or b is None:
+        return True
     return cmp(normalizeXml(a), normalizeXml(b))
 
 #----------------------------------------------------------------------
@@ -182,6 +187,7 @@ class Doc:
         self.cdrId         = None
         self.disposition   = None
         self.oldXml        = None
+        self.forcedImport  = False
         for node in self.dom.documentElement.childNodes:
             if node.nodeName == "id_info":
                 for child in node.childNodes:
@@ -210,7 +216,7 @@ class Doc:
             row = None
             try:
                 cursor.execute("""\
-            SELECT xml, cdr_id, disposition
+            SELECT xml, cdr_id, disposition, force
               FROM ctgov_import
              WHERE nlm_id = ?""", self.nlmId)
                 row = cursor.fetchone()
@@ -219,7 +225,9 @@ class Doc:
                        % self.nlmId)
                 reportFailure(cursor, msg)
             if row:
-                self.oldXml, self.cdrId, self.disposition = row
+                self.oldXml, self.cdrId, self.disposition, forced = row
+                if forced == 'Y':
+                    self.forcedImport = True
 
 #----------------------------------------------------------------------
 # An object of this class if fed to the constructor for each ModifyDocs.Doc
@@ -284,6 +292,8 @@ class NctIdInserter:
 # us with their own ID.
 #----------------------------------------------------------------------
 class LogWrapper:
+    def __init__(self, cursor):
+        self.cursor = cursor
     def __log(self, what):
         log(what + '\n')
     log = __log
@@ -306,12 +316,20 @@ def alreadyHasNctId(cdrId):
     return rows and rows[0][0] and True or False
 
 #----------------------------------------------------------------------
+# Get the NCT IDs for trials we need to import even if their index
+# terms don't fit the criteria for our search query.
+#----------------------------------------------------------------------
+def getForcedImportIds(cursor):
+    cursor.execute("SELECT nlm_id FROM ctgov_import WHERE force = 'Y'")
+    return [row[0] for row in cursor.fetchall()]
+
+#----------------------------------------------------------------------
 # Seed the table with documents we know to be duplicates.
 #----------------------------------------------------------------------
 ModifyDocs._testMode = False
 conn = cdrdb.connect()
 cursor = conn.cursor()
-logWrapper = LogWrapper()
+logWrapper = LogWrapper(cursor)
 dispNames, dispCodes = loadDispositions(cursor)
 expr = re.compile(r"CDR0*(\d+)\s+(NCT\d+)\s*")
 for line in open('ctgov-dups.txt'):
@@ -367,15 +385,23 @@ else:
     conditions = ('cancer', 'lymphedema', 'myelodysplastic syndromes',
                   'neutropenia', 'aspergillosis', 'mucositis')
     connector = ''
-    url  = ["http://clinicaltrials.gov/search/condition="]
+    url  = "http://clinicaltrials.gov/ct/search"
+    params = ["studyxml=true&term="]
     for condition in conditions:
-        url.append(connector)
-        url.append(condition.replace(' ', '+'))
+        params.append(connector)
+        params.append('(')
+        params.append(condition.replace(' ', '+'))
+        params.append(')+%5BCONDITION%5D')
         connector = '+OR+'
-    url.append('?studyxml=true')
-    url = ''.join(url)
+    for nctId in getForcedImportIds(cursor):
+        params.append(connector)
+        params.append(nctId)
+    params = ''.join(params)
+    #print url
+    #print params
+    #sys.exit(0)
     try:
-        urlobj = urllib.urlopen(url)
+        urlobj = urllib.urlopen(url, params)
         page   = urlobj.read()
     except Exception, e:
         msg = "Failure downloading trials: %s" % str(e)
@@ -386,7 +412,7 @@ else:
         zipFile.write(page)
         zipFile.close()
         log("Trials downloaded to %s\n" % name)
-        sys.exit(0)
+        # sys.exit(0)
     except Exception, e:
         msg = "Failure storing downloaded trials: %s" % str(e)
         reportFailure(cursor, msg)
@@ -398,7 +424,7 @@ except Exception, e:
     msg = "Failure opening %s: %s" % (name, str(e))
     reportFailure(cursor, msg)
 stats      = Stats()
-docsInSet  = {}
+docsInSet  = set()
 logDropped = 1
 if len(sys.argv) > 2:
     logDropped = 0
@@ -415,7 +441,7 @@ for name in nameList:
     # Handle some really unexpected problems.
     #------------------------------------------------------------------
     if logDropped and doc.nlmId:
-        docsInSet[doc.nlmId] = 1
+        docsInSet.add(doc.nlmId)
     if not doc.nlmId:
         log("Skipping document without NLM ID\n")
     elif not doc.title:
@@ -512,7 +538,10 @@ for name in nameList:
     # Process new trials.
     #------------------------------------------------------------------
     else:
-        disp = dispCodes['not yet reviewed']
+        if doc.forcedImport:
+            disp = dispCodes['import requested']
+        else:
+            disp = dispCodes['not yet reviewed']
         try:
             cursor.execute("""\
         INSERT INTO ctgov_import (nlm_id, title, xml, downloaded,
