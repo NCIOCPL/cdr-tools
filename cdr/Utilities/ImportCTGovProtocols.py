@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.10 2006-06-15 13:58:16 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.11 2006-10-18 20:52:10 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.10  2006/06/15 13:58:16  bkline
+# Removed testing code for new email report.
+#
 # Revision 1.9  2006/05/18 18:53:49  bkline
 # Added email report of failures (request #2094).
 #
@@ -363,7 +366,8 @@ cursor.execute("""\
       FROM ctgov_import c
       JOIN ctgov_disposition d
         ON d.id = c.disposition
-     WHERE d.name = 'import requested'""")
+     WHERE d.name = 'import requested'
+       AND c.xml IS NOT NULL""")
 rows = cursor.fetchall()
 cursor.execute("INSERT into ctgov_import_job (dt) VALUES (GETDATE())")
 conn.commit()
