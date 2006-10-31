@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: CheckDtds.py,v 1.8 2006-06-08 22:25:12 bkline Exp $
+# $Id: CheckDtds.py,v 1.9 2006-10-31 19:45:06 bkline Exp $
 #
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.8  2006/06/08 22:25:12  bkline
+# Added code to pack up more doctype info for the client.
+#
 # Revision 1.7  2006/01/31 19:10:03  bkline
 # Modified to use new client files area.
 #
@@ -115,3 +118,4 @@ try:
 except:
     print "saving new %s" % docTypeFileName
     saveDocTypeResponses(docTypeFilePath, docTypeResponses)
+print "*** DON'T FORGET TO RUN RefreshManifest.py IF APPROPRIATE! ***"
