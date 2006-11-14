@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.17 2006-10-18 20:49:46 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.18 2006-11-14 21:46:18 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.17  2006/10/18 20:49:46  bkline
+# Added support for forcing download and import of a specific trial.
+#
 # Revision 1.16  2006/08/22 17:22:55  bkline
 # Extra conditions plugged into query.
 #
@@ -472,9 +475,10 @@ for name in nameList:
     #------------------------------------------------------------------
     # We don't want closed or completed trials.
     #------------------------------------------------------------------
-    elif not doc.cdrId and (not doc.status or
-                            doc.status.upper() not in ("RECRUITING",
-                                                       "NOT YET RECRUITING")):
+    elif (not doc.cdrId and
+          not doc.forcedImport and
+          (not doc.status or doc.status.upper() not in ("NOT YET RECRUITING",
+                                                        "RECRUITING"))):
         log("Skipping %s, which has a status of %s\n" % (doc.nlmId,
                                                          doc.status))
 
