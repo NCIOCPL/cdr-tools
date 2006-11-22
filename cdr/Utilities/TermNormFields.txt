@@ -1,0 +1,25 @@
+##################################################################
+# Config file for NormalizeSpace.py, for normalizing fields in
+# Term documents.
+# Each of the following fields will be passed through the XSLT
+# normalize-space() function.
+# 
+# Note: Free space and # delimited comments are okay in the file
+#
+# $Id: TermNormFields.txt,v 1.1 2006-11-22 03:54:01 ameyer Exp $
+#
+# $Log: not supported by cvs2svn $
+##################################################################
+
+/Term/PreferredName
+/Term/TermType/TermTypeName
+/Term/OtherName/OtherTermName
+/Term/OtherName/OtherNameType
+/Term/OtherName/SourceInformation/ReferenceSource
+/Term/OtherName/SourceInformation/VocabularySource/SourceTermId
+/Term/Definition/DefinitionSource/DefinedTermId
+/Term/MenuInformation/MenuItem/@SortOrder    # This attribute too
+/Term/MenuInformation/MenuItem/DisplayName
+/Term/MenuInformation/MenuItem/EnteredBy
+/Term/SemanticTypeText
+/Term/PdqKey
