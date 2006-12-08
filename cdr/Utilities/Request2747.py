@@ -6,9 +6,12 @@
 #
 # Written for Bugzilla issue #2747.
 #
-# $Id: Request2747.py,v 1.1 2006-12-06 04:55:11 ameyer Exp $
+# $Id: Request2747.py,v 1.2 2006-12-08 02:45:47 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2006/12/06 04:55:11  ameyer
+# Initial version.
+#
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, ModifyDocs, sys
@@ -28,6 +31,10 @@ class Filter:
         """
         conn = cdrdb.connect('CdrGuest')
         cursor = conn.cursor()
+
+        # This correct version confuses SQL Server, which does the
+        #  LIKE scan before the join, taking many minutes instead of
+        #  seconds
         # cursor.execute("""\
         #   SELECT d.id
         #     FROM document d
@@ -37,6 +44,7 @@ class Filter:
         #      AND d.xml LIKE
         #       '%<Insertion%<SpanishTermDefinition%<DefinitionText%estudio%'
         # ORDER BY d.id""", timeout=300)
+        # So I'm hardwiring the doc_type instead - it is a one-off after all
         cursor.execute("""\
           SELECT d.id
             FROM document d
@@ -139,8 +147,8 @@ if __name__ == '__main__':
 
     # Instantiate ModifyDocs job
     job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
-          "Convert InterventionName to InterventionNameLink (request #1208).",
-           testMode=testMode)
+      "Convert three 'bajo estudio' phrases to 'en estudio' (request #2747).",
+      testMode=testMode)
 
     # Turn off all modifications except for Current Working Document
     ModifyDocs.setTransformANY(False)
