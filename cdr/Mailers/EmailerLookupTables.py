@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: EmailerLookupTables.py,v 1.3 2004-11-24 05:50:09 bkline Exp $
+# $Id: EmailerLookupTables.py,v 1.4 2007-01-05 15:26:19 bkline Exp $
 #
 # Creates and saves a serialized copy of the lookup table values for
 # the emailer server.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2004/11/24 05:50:09  bkline
+# Plugged in code to build fresh set of emailer lookup values.
+#
 # Revision 1.2  2004/11/24 05:21:38  bkline
 # Added missing imports; fixed name of argument to pickle call.
 #
@@ -55,7 +58,9 @@ def loadTables():
 #----------------------------------------------------------------------
 # Load up the rows for the protocol site picklist table.
 #----------------------------------------------------------------------
-    tables.append(EmailerProtSites.load())
+    mainProtSiteTable, searchProtSiteTable = EmailerProtSites.load()
+    tables.append(mainProtSiteTable)
+    tables.append(searchProtSiteTable)
 
 #----------------------------------------------------------------------
 # Upload the new values.
@@ -67,6 +72,7 @@ def loadTables():
     cursor.execute("""\
         INSERT INTO lookup_values (pickle, uploaded)
              VALUES (%s, NOW())""", bytes)
+    conn.commit()
     elapsed = time.time() - start
     print "elapsed: %f" % elapsed
 
