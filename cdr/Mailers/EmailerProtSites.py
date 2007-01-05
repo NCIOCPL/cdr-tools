@@ -1,10 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: EmailerProtSites.py,v 1.1 2004-11-23 16:45:36 bkline Exp $
+# $Id: EmailerProtSites.py,v 1.2 2007-01-05 15:25:04 bkline Exp $
 #
 # Creates rows to be inserted into the emailer_prot_site table.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2004/11/23 16:45:36  bkline
+# Nightly scripts for refreshing emailer lookup tables.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys, xml.dom.minidom
 
@@ -41,11 +44,14 @@ class Organization:
         self.name        = None
         self.loc         = None
         self.cipsContact = None
-        self.display     = ""
+        self.displays    = []
         locs             = []
+        otherNames       = []
         for child in node.childNodes:
             if child.nodeName == "Name":
                 self.name = cdr.getTextContent(child)
+            elif child.nodeName == "OtherName":
+                otherNames.append(cdr.getTextContent(child))
             elif child.nodeName == "Location":
                 locs.append(Location(child))
             elif child.nodeName == "CIPSContact":
@@ -59,36 +65,46 @@ class Organization:
         # Don't do this, according to Lakshmi.
         #if locs:
         #    self.loc = locs[0]
-        
-        if self.name:
-            self.display = self.name
-            if self.loc:
-                if self.loc.city:
-                    self.display += u", %s" % self.loc.city
-                if not self.loc.country or self.loc.country.name in ('Canada',
-                                                                     'U.S.A.'):
-                    if self.loc.state and self.loc.state.name:
-                        self.display += u", %s" % self.loc.state.name
-                else:
-                    if self.loc.country and self.loc.country.name:
-                        self.display += u", %s" % self.loc.country.name
+        tail = []
+        if self.loc:
+            if self.loc.city:
+                tail.append(u", %s" % self.loc.city)
+            if not self.loc.country or self.loc.country.name in ('Canada',
+                                                                 'U.S.A.'):
+                if self.loc.state and self.loc.state.name:
+                    tail.append(u", %s" % self.loc.state.name)
+            else:
+                if self.loc.country and self.loc.country.name:
+                    tail.append(u", %s" % self.loc.country.name)
+        tail = u"".join(tail)
+        for name in ([self.name] + otherNames):
+            if name:
+                self.displays.append(name + tail)
                     
 #----------------------------------------------------------------------
 # Extract the column values from the XML document for the site.
 #----------------------------------------------------------------------
-def _getSiteRow(siteXml):
-    dom = xml.dom.minidom.parseString(siteXml)
+def _getSiteRows(siteXml):
+    try:
+        dom = xml.dom.minidom.parseString(siteXml)
+    except:
+        sys.stderr.write("parse failure for %s" % siteXml)
+        return (None, [])
     org = Organization(dom.documentElement)
-    if org.id and org.display:
-        id = org.id
+    if org.id and org.name and org.displays:
+        orgId = org.id
         name = org.name
-        display = org.display
         city = org.loc and org.loc.city or None
         state = org.loc and org.loc.state and org.loc.state.id or None
         country = org.loc and org.loc.country and org.loc.country.id or None
-        return (id, name, city, state, country, display)
+        mainTableRow = (orgId, name, city, state, country, org.displays[0])
+        displayTableRows = []
+        for display in org.displays:
+            displayTableRows.append((orgId, display))
+        return (mainTableRow, displayTableRows)
     else:
-        sys.stderr.write("Missing id or display in %s\n" % siteXml)
+        sys.stderr.write("Missing id or names in %s\n" % siteXml)
+        return (None, [])
 
 #----------------------------------------------------------------------
 # Finds all the participating sites in publishable protocols.
@@ -96,10 +112,11 @@ def _getSiteRow(siteXml):
 # one row for each site.
 #----------------------------------------------------------------------
 def load():
-    sites  = []
-    filter = ['name:Emailer Site Info']
-    conn   = cdrdb.connect('CdrGuest')
-    cursor = conn.cursor()
+    sites    = []
+    displays = []
+    filter   = ['name:Emailer Site Info']
+    conn     = cdrdb.connect('CdrGuest')
+    cursor   = conn.cursor()
     cursor.execute("""
 SELECT DISTINCT q.int_val, MAX(v.num)
            FROM query_term q
@@ -113,15 +130,19 @@ SELECT DISTINCT q.int_val, MAX(v.num)
     rowsDone = 0
     totalRows = len(rows)
     for row in rows:
-        id = row[0]
-        ver = `row[1]`
-        result = cdr.filterDoc('guest', filter, id, docVer = ver)
+        docId, docVer = row
+        result = cdr.filterDoc('guest', filter, docId, docVer = `docVer`)
         if type(result) in (type(""), type(u"")):
             raise Exception(result)
-        siteRow = _getSiteRow(result[0])
-        if siteRow: sites.append(siteRow)
+        if result[0].find("<Name") != -1:
+            mainTableRow, displayTableRows = _getSiteRows(result[0])
+            if mainTableRow:
+                sites.append(mainTableRow)
+            for displayTableRow in displayTableRows:
+                displays.append(displayTableRow)
         rowsDone += 1
         sys.stderr.write("\rProcessed %d of %d organization docs" %
                          (rowsDone, totalRows))
     sys.stderr.write("\n")
-    return ('emailer_prot_site', sites)
+    return (('emailer_prot_site', sites),
+            ('emailer_prot_site_search_string', displays))
