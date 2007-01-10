@@ -6,9 +6,13 @@
 #
 # Written for Bugzilla issue #2747.
 #
-# $Id: Request2747.py,v 1.2 2006-12-08 02:45:47 ameyer Exp $
+# $Id: Request2747.py,v 1.3 2007-01-10 05:51:27 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2006/12/08 02:45:47  ameyer
+# Corrected message written to version table.
+# Added more comments.
+#
 # Revision 1.1  2006/12/06 04:55:11  ameyer
 # Initial version.
 #
@@ -99,36 +103,41 @@ class Transform:
            '/GlossaryTerm/Insertion/SpanishTermDefinition/DefinitionText'>
    <xsl:variable name = "normStr" select = "normalize-space(.)"/>
 
-   <!-- Does it have the text we want to edit? -->
-   <xsl:choose>
+   <!-- Create empty DefinitionText element -->
+   <xsl:copy>
+     <!-- Copy everything except the text -->
+     <xsl:apply-templates select="@*|comment()|processing-instruction()"/>
 
-     <xsl:when  test='contains($normStr, $find1)'>
-       <xsl:value-of select='substring-before($normStr, $find1)'/>
-       <xsl:value-of select='$replace1'/>
-       <xsl:value-of select='substring-after($normStr, $find1)'/>
-     </xsl:when>
+     <!-- Does it have the text we want to edit? -->
+     <xsl:choose>
 
-     <xsl:when  test='contains($normStr, $find2)'>
-       <xsl:value-of select='substring-before($normStr, $find2)'/>
-       <xsl:value-of select='$replace2'/>
-       <xsl:value-of select='substring-after($normStr, $find2)'/>
-     </xsl:when>
+       <xsl:when  test='contains($normStr, $find1)'>
+         <xsl:value-of select='substring-before($normStr, $find1)'/>
+         <xsl:value-of select='$replace1'/>
+         <xsl:value-of select='substring-after($normStr, $find1)'/>
+       </xsl:when>
 
-     <xsl:when  test='contains($normStr, $find3)'>
-       <xsl:value-of select='substring-before($normStr, $find3)'/>
-       <xsl:value-of select='$replace3'/>
-       <xsl:value-of select='substring-after($normStr, $find3)'/>
-     </xsl:when>
+       <xsl:when  test='contains($normStr, $find2)'>
+         <xsl:value-of select='substring-before($normStr, $find2)'/>
+         <xsl:value-of select='$replace2'/>
+         <xsl:value-of select='substring-after($normStr, $find2)'/>
+       </xsl:when>
 
-     <xsl:otherwise>
-       <!-- Copy it to the output record -->
-       <xsl:copy>
-        <xsl:apply-templates  select = "@*|comment()|*|
-                                        processing-instruction()|text()"/>
-       </xsl:copy>
-     </xsl:otherwise>
+       <xsl:when  test='contains($normStr, $find3)'>
+         <xsl:value-of select='substring-before($normStr, $find3)'/>
+         <xsl:value-of select='$replace3'/>
+         <xsl:value-of select='substring-after($normStr, $find3)'/>
+       </xsl:when>
 
-   </xsl:choose>
+       <xsl:otherwise>
+         <!-- Copy existing text, unmodified -->
+         <xsl:apply-templates  select = "text()"/>
+       </xsl:otherwise>
+
+     </xsl:choose>
+
+   </xsl:copy>
+
  </xsl:template>
 </xsl:transform>
 """
@@ -151,8 +160,9 @@ if __name__ == '__main__':
       testMode=testMode)
 
     # Turn off all modifications except for Current Working Document
-    ModifyDocs.setTransformANY(False)
-    ModifyDocs.setTransformPUB(False)
+    job.setTransformANY(False)
+    job.setTransformPUB(False)
+    # job.setMaxDocs(12)
 
     # Global change
     job.run()
