@@ -3,9 +3,15 @@
 #
 # See usage() for parameters.
 #
-# $Id: RevalidateDocs.py,v 1.3 2007-01-26 04:06:52 ameyer Exp $
+# $Id: RevalidateDocs.py,v 1.4 2007-01-26 04:29:27 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2007/01/26 04:06:52  ameyer
+# Added new parameters.
+# Beefed up logging, now always goes to a file.
+# Allow more than one specific doctypes to be requested, or specific ones
+# to be excluded.
+#
 #
 ####################################################################
 
@@ -57,7 +63,7 @@ usage: RevalidateDocs {options} userid password
 ####################################################################
 # Main program
 ####################################################################
-# Set default values for settable options
+# Initialize globals and settable options
 valSchema = 'Y'
 valLinks  = 'Y'
 quiet     = 0
@@ -73,6 +79,7 @@ port      = cdr.DEFAULT_PORT
 userid    = None
 password  = None
 log       = None
+docTypeErrs = {}
 
 # Parse command line
 try:
@@ -187,6 +194,7 @@ log.write("Selected %d documents" % len(rows), stdout=True)
 ####################################################################
 valCount = 0
 errCount = 0
+lastType = None
 for rowDocId, rowDocType in rows:
 
     # Quit if reached requested limit, could even be 0
@@ -207,6 +215,11 @@ for rowDocId, rowDocType in rows:
                    (rowDocType, rowDocId, str(info)), stderr=True)
         sys.exit(1)
 
+    # Initialize errors for new doctype
+    if rowDocType != lastType:
+        docTypeErrs[rowDocType] = 0
+        lastType = rowDocType
+
     # Only look at response if we were not quieted
     if not quiet:
         # Were there errors?
@@ -217,6 +230,10 @@ for rowDocId, rowDocType in rows:
             log.write("%s: %d:\n%s\n---" % (rowDocType, rowDocId, errMsgs))
             errCount += 1
 
+            # Count by doc type
+            if docTypeErrs.has_key(rowDocType):
+                docTypeErrs[rowDocType] += 1
+
         elif verbose:
             # Only output good records if in verbose mode
             log.write("%s: %d:\n" % (rowDocType, rowDocId))
@@ -226,10 +243,16 @@ for rowDocId, rowDocType in rows:
     if valCount % progCount == 0:
         sys.stderr.write ("Validated %d docs\n" % valCount)
 
-# Done processing, add final stats if requested
+# Done processing, add final stats
+docTypeErrStr = "Errors by document type:\n"
+listDocTypes  = docTypeErrs.keys()
+listDocTypes.sort()
+for docType in listDocTypes:
+    docTypeErrStr += "  %6d %s\n" % (docTypeErrs[docType], docType)
+
 log.write("""
 ==========
 Final Totals:
-    %d documents validated
-    %d with errors
-""" % (valCount, errCount))
+  %6d documents validated
+  %6d with errors
+%s""" % (valCount, errCount, docTypeErrStr))
