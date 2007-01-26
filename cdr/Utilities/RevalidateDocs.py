@@ -1,10 +1,21 @@
-"""
-    Validate some or all documents in the database.
+####################################################################
+# Validate some or all documents in the database.
+#
+# See usage() for parameters.
+#
+# $Id: RevalidateDocs.py,v 1.3 2007-01-26 04:06:52 ameyer Exp $
+#
+# $Log: not supported by cvs2svn $
+#
+####################################################################
 
-    See usage() for parameters.
-"""
+import sys, getopt, time, cdr, cdrdb
 
-import sys, getopt, cdr, cdrdb
+# Default is to report after every this many docs
+RPT_COUNT = 1000
+
+# Default log file
+LOGFILE = 'RevalidateDocs.log'
 
 ####################################################################
 # Display usage message and exit
@@ -28,14 +39,19 @@ usage: RevalidateDocs {options} userid password
                        Date last validated will not be set
                        Last validation status will not be set
                        Link tables will not be updated
-  --doctype name    = Only validate docs with doctype = name, else all types
+  --include name    = Only validate docs with doctype = name, else all types
+                       Can use multiple times
+  --exclude name    = Exclude doctype.  Pointless if --doctype used
+                       Can use multiple times
   --maxdocs number  = Stop after validating _number_ documents
   --progress number = Report progress to stderr every _number_ documents
+                       Default = %d
   --outfile filename= Write messages to output file _filename_
-                       If --quiet, --outfile is illegal
+                       Default = "%s" in CDR log directory
+                       If --quiet, only summaries are logged
   --host name       = Name of host computer, else this computer
   --port number     = CDR server transaction port number, else uses default
-""")
+""" % (RPT_COUNT, LOGFILE))
     sys.exit(1)
 
 ####################################################################
@@ -47,21 +63,22 @@ valLinks  = 'Y'
 quiet     = 0
 verbose   = 0
 valOnly   = 'N'
-docType   = None
+inclType  = []
+exclType  = []
 maxCount  = 999999999
-progCount = 999999999
-outFile   = None
+progCount = RPT_COUNT
+outFile   = LOGFILE
 host      = cdr.DEFAULT_HOST
 port      = cdr.DEFAULT_PORT
 userid    = None
 password  = None
+log       = None
 
 # Parse command line
 try:
     (opts, args) = getopt.getopt (sys.argv[1:], "", ('schemaonly', 'linkonly',
-                    'quiet', 'verbose', 'noupdate',
-                    'doctype=', 'maxdocs=', 'progress=', 'outfile=',
-                    'host=', 'port='))
+                    'quiet', 'verbose', 'noupdate', 'include=', 'exclude=',
+                    'maxdocs=', 'progress=', 'outfile=', 'host=', 'port='))
 except getopt.GetoptError, info:
     usage ("Command line error: %s" % str(info))
 
@@ -78,10 +95,10 @@ for (option, optarg) in opts:
         verbose = 1
     elif option == '--noupdate':
         valOnly = 'Y'
-    elif option == '--doctype':
-        if docType:
-            usage ("Sorry, can't specify more than one doctype arg")
-        docType = optarg
+    elif option == '--include':
+        inclType.append(optarg)
+    elif option == '--exclude':
+        exclType.append(optarg)
     elif option == '--maxdocs':
         try:
             maxCount = int(optarg)
@@ -119,18 +136,35 @@ if not session:
 # Verify parms
 if not valLinks and not valSchema:
     usage ("Can't turn off both schema and link validation")
-if outFile and quiet:
-    usage ("If --quiet selected, --outfile is illegal")
 if quiet and verbose:
     usage ("Can't select both --quiet and --verbose")
 if quiet and valOnly == 'Y':
     usage ("Can't select both --quiet and --noupdate")
 
+
 # Construct command to select all records to process
-selCmd = "SELECT d.id, t.name FROM document d, doc_type t " \
-         " WHERE d.doc_type = t.id"
-if docType:
-    selCmd += " AND t.name = '%s'" % docType
+selCmd = "SELECT d.id, t.name FROM document d, doc_type t\n" \
+         " WHERE d.doc_type = t.id\n"
+if len(inclType) > 0:
+    inList = ""
+    for docType in inclType:
+        if len(inList) > 0:
+            inList += ','
+        inList += "'%s'" % docType
+    selCmd += " AND t.name IN (%s)\n" % inList
+if len(exclType) > 0:
+    for docType in exclType:
+        selCmd += " AND t.name <> '%s'\n" % docType
+
+# Open log
+log = cdr.Log(LOGFILE, logTime=False, logPID=False)
+
+# Report to log
+log.write("""
+Revalidating documents on host %s at %s
+Selection query:
+%s
+""" % (host, time.ctime(), selCmd), stdout=True)
 
 # Select everything
 try:
@@ -145,17 +179,8 @@ except Exception, info:
     sys.stderr.write ("Database exception: %s\n" % str(info))
     sys.exit(1)
 
-# Okay so far, setup output file, if requested
-outf = None
-if not quiet:
-    if outFile:
-        try:
-            outf = open (outFile, "w")
-        except IOError, info:
-            usage ("Unable to open: %s" % str(info))
-    else:
-        outf = sys.stdout
-
+# Report num docs we'll process
+log.write("Selected %d documents" % len(rows), stdout=True)
 
 ####################################################################
 # Main loop - Validate each selected document
@@ -174,12 +199,12 @@ for rowDocId, rowDocType in rows:
                            valLinks = valLinks, valSchema = valSchema,
                            validateOnly = valOnly, host = host, port = port)
     except StandardError, info:
-        sys.stderr.write ("Stopped on error, doctype %s doc=%d: %s" % \
-                          (rowDocType, rowDocId, str(info)))
+        log.write("Stopped on error, doctype %s doc=%d: %s" % \
+                   (rowDocType, rowDocId, str(info)), stderr=True)
         sys.exit(1)
     except Exception, info:
-        sys.stderr.write ("Stopped on exception, doctype %s doc=%d: %s" % \
-                          (rowDocType, rowDocId, str(info)))
+        log.write("Stopped on exception, doctype %s doc=%d: %s" % \
+                   (rowDocType, rowDocId, str(info)), stderr=True)
         sys.exit(1)
 
     # Only look at response if we were not quieted
@@ -189,28 +214,22 @@ for rowDocId, rowDocType in rows:
         if len(errMsgs):
 
             # Output info
-            outf.write ("%s: %d:\n%s\n---\n" % (rowDocType, rowDocId, errMsgs))
-
+            log.write("%s: %d:\n%s\n---" % (rowDocType, rowDocId, errMsgs))
             errCount += 1
 
         elif verbose:
             # Only output good records if in verbose mode
-            outf.write ("%s: %d:\n" % (rowDocType, rowDocId))
+            log.write("%s: %d:\n" % (rowDocType, rowDocId))
 
-    # Record and report progress
+    # Record and report progress, not written to log file
     valCount += 1
     if valCount % progCount == 0:
         sys.stderr.write ("Validated %d docs\n" % valCount)
 
 # Done processing, add final stats if requested
-if not quiet:
-    outf.write ("""
+log.write("""
 ==========
 Final Totals:
     %d documents validated
     %d with errors
 """ % (valCount, errCount))
-
-# Cleanup
-if outFile:
-    outf.close()
