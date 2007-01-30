@@ -3,9 +3,12 @@
 #
 # See usage() for parameters.
 #
-# $Id: RevalidateDocs.py,v 1.5 2007-01-30 21:50:13 ameyer Exp $
+# $Id: RevalidateDocs.py,v 1.6 2007-01-30 23:51:06 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2007/01/30 21:50:13  ameyer
+# Added counter for number of docs of each type, displayed at end.
+#
 # Revision 1.4  2007/01/26 04:29:27  ameyer
 # Added summary of errors by doctype.
 #
@@ -94,8 +97,16 @@ except getopt.GetoptError, info:
     usage ("Command line error: %s" % str(info))
 
 # Read options, if any
+argDisplay = ""
 for (option, optarg) in opts:
 
+    # Assemble args for logfile
+    argDisplay += "   %s" % option
+    if optarg:
+        argDisplay += " %s" % optarg
+    argDisplay += "\n"
+
+    # Set options
     if option == '--schemaonly':
         valLinks = 'N'
     elif option == '--linkonly':
@@ -171,11 +182,16 @@ if len(exclType) > 0:
 log = cdr.Log(LOGFILE, logTime=False, logPID=False)
 
 # Report to log
+log.write("Revalidating documents on host %s at %s" % (host, time.ctime()),
+          stdout=True)
+if argDisplay:
+    log.write("\nArguments:")
+    log.write(argDisplay)
+log.write("\nUser = %s" % userid)
 log.write("""
-Revalidating documents on host %s at %s
 Selection query:
 %s
-""" % (host, time.ctime(), selCmd), stdout=True)
+""" % selCmd, stdout=True)
 
 # Select everything
 try:
