@@ -3,9 +3,12 @@
 #
 # See usage() for parameters.
 #
-# $Id: RevalidateDocs.py,v 1.4 2007-01-26 04:29:27 ameyer Exp $
+# $Id: RevalidateDocs.py,v 1.5 2007-01-30 21:50:13 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2007/01/26 04:29:27  ameyer
+# Added summary of errors by doctype.
+#
 # Revision 1.3  2007/01/26 04:06:52  ameyer
 # Added new parameters.
 # Beefed up logging, now always goes to a file.
@@ -80,6 +83,7 @@ userid    = None
 password  = None
 log       = None
 docTypeErrs = {}
+docTypeCount = {}
 
 # Parse command line
 try:
@@ -215,10 +219,14 @@ for rowDocId, rowDocType in rows:
                    (rowDocType, rowDocId, str(info)), stderr=True)
         sys.exit(1)
 
-    # Initialize errors for new doctype
+    # Initialize counters for new doctype
     if rowDocType != lastType:
+        docTypeCount[rowDocType] = 0
         docTypeErrs[rowDocType] = 0
         lastType = rowDocType
+
+    # Count number of docs of this type
+    docTypeCount[rowDocType] += 1
 
     # Only look at response if we were not quieted
     if not quiet:
@@ -244,15 +252,20 @@ for rowDocId, rowDocType in rows:
         sys.stderr.write ("Validated %d docs\n" % valCount)
 
 # Done processing, add final stats
-docTypeErrStr = "Errors by document type:\n"
+docTypesReport = """
+Errors by document type:
+    Docs   Errs Document type
+  ====== ====== ==================
+"""
 listDocTypes  = docTypeErrs.keys()
 listDocTypes.sort()
 for docType in listDocTypes:
-    docTypeErrStr += "  %6d %s\n" % (docTypeErrs[docType], docType)
+    docTypesReport += "  %6d %6d %s\n" % \
+         (docTypeCount[docType], docTypeErrs[docType], docType)
 
 log.write("""
 ==========
 Final Totals:
   %6d documents validated
   %6d with errors
-%s""" % (valCount, errCount, docTypeErrStr))
+%s""" % (valCount, errCount, docTypesReport))
