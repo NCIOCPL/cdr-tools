@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.18 2006-11-14 21:46:18 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.19 2007-02-02 18:30:02 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.18  2006/11/14 21:46:18  bkline
+# Change made in response to Lakshmi's request that we not skip forced
+# import trials, regardless of their status.
+#
 # Revision 1.17  2006/10/18 20:49:46  bkline
 # Added support for forcing download and import of a specific trial.
 #
@@ -287,16 +291,13 @@ class NctIdInserter:
         return result[0]
 
 #----------------------------------------------------------------------
-# Pseudo-job class; only need log() method.  An instance of this
-# class is passed to the constructor for ModifyDocs.Doc objects.
+# Object passed to the saveChanges() method of the Doc object.
 # Logging is passed on to the module-wide function used for all
 # other logging done for this job.  Used for inserting NCT IDs
 # into documents we exported to NLM and which are coming back to
 # us with their own ID.
 #----------------------------------------------------------------------
-class LogWrapper:
-    def __init__(self, cursor):
-        self.cursor = cursor
+class Logger:
     def __log(self, what):
         log(what + '\n')
     log = __log
@@ -332,7 +333,7 @@ def getForcedImportIds(cursor):
 ModifyDocs._testMode = False
 conn = cdrdb.connect()
 cursor = conn.cursor()
-logWrapper = LogWrapper(cursor)
+logger = Logger()
 dispNames, dispCodes = loadDispositions(cursor)
 expr = re.compile(r"CDR0*(\d+)\s+(NCT\d+)\s*")
 for line in open('ctgov-dups.txt'):
@@ -465,7 +466,7 @@ for name in nameList:
                 log("Adding NCT ID %s to CDR%s" % (doc.nlmId, cdrId))
                 inserter = NctIdInserter(doc.nlmId)
                 cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
-                cdrDoc.saveChanges(logWrapper)
+                cdrDoc.saveChanges(cursor, logger)
                 cdr.unlock(session, "CDR%010d" % cdrId)
                 stats.nctAdded += 1
         except Exception, e:
