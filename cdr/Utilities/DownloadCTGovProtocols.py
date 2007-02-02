@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.19 2007-02-02 18:30:02 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.20 2007-02-02 19:31:42 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.19  2007/02/02 18:30:02  bkline
+# Modified to use new signature of ModifyDocs.saveChanges() method.
+#
 # Revision 1.18  2006/11/14 21:46:18  bkline
 # Change made in response to Lakshmi's request that we not skip forced
 # import trials, regardless of their status.
@@ -90,7 +93,7 @@ def log(what):
 def loadDispositions(cursor):
     dispNames = {}
     dispCodes = {}
-    cursor.execute("SELECT id, name FROM ctgov_disposition")
+    cursor.execute("SELECT id, name FROM ctgov_disposition", timeout = 300)
     for row in cursor.fetchall():
         dispNames[row[0]] = row[1]
         dispCodes[row[1]] = row[0]
@@ -131,7 +134,7 @@ def getEmailRecipients(cursor, includeDeveloper = False):
              WHERE g.name = 'CTGov Publishers'
                AND u.expired IS NULL
                AND u.email IS NOT NULL
-               AND u.email <> ''""")
+               AND u.email <> ''""", timeout = 300)
         recips = [row[0] for row in cursor.fetchall()]
         if includeDeveloper and developer not in recips:
             recips.append(developer)
@@ -225,7 +228,7 @@ class Doc:
                 cursor.execute("""\
             SELECT xml, cdr_id, disposition, force
               FROM ctgov_import
-             WHERE nlm_id = ?""", self.nlmId)
+             WHERE nlm_id = ?""", self.nlmId, timeout = 300)
                 row = cursor.fetchone()
             except Exception, e:
                 msg = ("Failure selecting from ctgov_import for %s\n"
@@ -315,7 +318,7 @@ def alreadyHasNctId(cdrId):
          WHERE i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
            AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
            AND t.value = 'ClinicalTrials.gov ID'
-           AND i.doc_id = ?""", cdrId)
+           AND i.doc_id = ?""", cdrId, timeout = 300)
     rows = cursor.fetchall()
     return rows and rows[0][0] and True or False
 
@@ -324,7 +327,8 @@ def alreadyHasNctId(cdrId):
 # terms don't fit the criteria for our search query.
 #----------------------------------------------------------------------
 def getForcedImportIds(cursor):
-    cursor.execute("SELECT nlm_id FROM ctgov_import WHERE force = 'Y'")
+    cursor.execute("SELECT nlm_id FROM ctgov_import WHERE force = 'Y'",
+                   timeout = 300)
     return [row[0] for row in cursor.fetchall()]
 
 #----------------------------------------------------------------------
@@ -344,7 +348,7 @@ for line in open('ctgov-dups.txt'):
         cursor.execute("""\
             SELECT cdr_id, disposition
               FROM ctgov_import
-             WHERE nlm_id = ?""", nlmId)
+             WHERE nlm_id = ?""", nlmId, timeout = 300)
         row = cursor.fetchone()
         if row:
             if row[0] != dispCodes['duplicate']:
@@ -361,7 +365,7 @@ for line in open('ctgov-dups.txt'):
                            comment = 'Marked as duplicate by download job'
                      WHERE nlm_id = ?""", (dispCodes['duplicate'],
                                            cdrId,
-                                           nlmId))
+                                           nlmId), timeout = 300)
                         conn.commit()
                     except:
                         log('Unable to update row for %s/CDR%d\n' %
@@ -373,7 +377,8 @@ for line in open('ctgov-dups.txt'):
                                       comment)
                  VALUES (?, ?, ?, GETDATE(),
                          'Marked as duplicate by download job')""",
-                           (nlmId, cdrId, dispCodes['duplicate']))
+                           (nlmId, cdrId, dispCodes['duplicate']),
+                               timeout = 300)
                 conn.commit()
             except:
                 log('Unable to insert row for %s/CDR%d\n' %
@@ -462,14 +467,19 @@ for name in nameList:
         log("Skipping %s, which has a CDR ID\n" % doc.nlmId)
         stats.pdqCdr += 1
         try:
+            locked = False
             if not alreadyHasNctId(cdrId):
                 log("Adding NCT ID %s to CDR%s" % (doc.nlmId, cdrId))
                 inserter = NctIdInserter(doc.nlmId)
+                locked = True
                 cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
                 cdrDoc.saveChanges(cursor, logger)
                 cdr.unlock(session, "CDR%010d" % cdrId)
+                locked = False
                 stats.nctAdded += 1
         except Exception, e:
+            if locked:
+                cdr.unlock(session, "CDR%010d" % cdrId)
             log("Failure adding NCT ID %s to CDR%s: %s" % (doc.nlmId,
                                                            cdrId, str(e)))
 
@@ -487,7 +497,7 @@ for name in nameList:
         if doc.disposition is not None:
             try:
                 cursor.execute("DELETE ctgov_import WHERE nlm_id = ?",
-                               doc.nlmId)
+                               doc.nlmId, timeout = 300)
                 conn.commit()
                 log("dropped existing row for %s\n" % doc.nlmId)
             except Exception, e:
@@ -531,7 +541,7 @@ for name in nameList:
                             disp,
                             doc.verified,
                             doc.lastChanged,
-                            doc.nlmId))
+                            doc.nlmId), timeout = 300)
             conn.commit()
             stats.updates += 1
             log("Updated %s with disposition %s\n" % (doc.nlmId,
@@ -557,7 +567,7 @@ for name in nameList:
                             doc.xmlFile,
                             disp,
                             doc.verified,
-                            doc.lastChanged))
+                            doc.lastChanged), timeout = 300)
             conn.commit()
             stats.newTrials += 1
             log("Added %s with disposition %s\n" % (doc.nlmId,
@@ -577,7 +587,7 @@ if logDropped:
             self.disposition = disposition
     cursor.execute("""\
         SELECT nlm_id, disposition, cdr_id, dropped
-          FROM ctgov_import""")
+          FROM ctgov_import""", timeout = 300)
     rows = cursor.fetchall()
     for row in rows:
         dispName = dispNames[row[1]]
@@ -590,7 +600,7 @@ if logDropped:
                 cursor.execute("""\
                     UPDATE ctgov_import
                        SET dropped = ?
-                     WHERE nlm_id = ?""", (dropped, row[0]))
+                     WHERE nlm_id = ?""", (dropped, row[0]), timeout = 300)
                 conn.commit()
             except Exception, e:
                 log("Failure setting dropped flag to '%s' for %s: %s\n",
@@ -617,7 +627,7 @@ try:
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                    (when, totals, stats.newTrials, stats.updates,
                     stats.unchanged, stats.pdqCdr, stats.duplicates, 
-                    stats.outOfScope, stats.closed))
+                    stats.outOfScope, stats.closed), timeout = 300)
     conn.commit()
 except Exception, e:
     log("Failure logging download statistics: %s\n" % str(e))
