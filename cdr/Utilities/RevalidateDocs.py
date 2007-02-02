@@ -3,9 +3,12 @@
 #
 # See usage() for parameters.
 #
-# $Id: RevalidateDocs.py,v 1.6 2007-01-30 23:51:06 ameyer Exp $
+# $Id: RevalidateDocs.py,v 1.7 2007-02-02 01:21:14 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.6  2007/01/30 23:51:06  ameyer
+# Added logging of command line parameters.
+#
 # Revision 1.5  2007/01/30 21:50:13  ameyer
 # Added counter for number of docs of each type, displayed at end.
 #
@@ -55,6 +58,7 @@ usage: RevalidateDocs {options} userid password
                        Can use multiple times
   --exclude name    = Exclude doctype.  Pointless if --doctype used
                        Can use multiple times
+  --noblocked       = Do not validate blocked documents
   --maxdocs number  = Stop after validating _number_ documents
   --progress number = Report progress to stderr every _number_ documents
                        Default = %d
@@ -72,11 +76,12 @@ usage: RevalidateDocs {options} userid password
 # Initialize globals and settable options
 valSchema = 'Y'
 valLinks  = 'Y'
-quiet     = 0
-verbose   = 0
+quiet     = False
+verbose   = False
 valOnly   = 'N'
 inclType  = []
 exclType  = []
+noblocked = False
 maxCount  = 999999999
 progCount = RPT_COUNT
 outFile   = LOGFILE
@@ -91,7 +96,8 @@ docTypeCount = {}
 # Parse command line
 try:
     (opts, args) = getopt.getopt (sys.argv[1:], "", ('schemaonly', 'linkonly',
-                    'quiet', 'verbose', 'noupdate', 'include=', 'exclude=',
+                    'quiet', 'verbose', 'noupdate', 'noblocked',
+                    'include=', 'exclude=',
                     'maxdocs=', 'progress=', 'outfile=', 'host=', 'port='))
 except getopt.GetoptError, info:
     usage ("Command line error: %s" % str(info))
@@ -112,15 +118,17 @@ for (option, optarg) in opts:
     elif option == '--linkonly':
         valSchema = 'N'
     elif option == '--quiet':
-        quiet = 1
+        quiet = True
     elif option == '--verbose':
-        verbose = 1
+        verbose = True
     elif option == '--noupdate':
         valOnly = 'Y'
     elif option == '--include':
         inclType.append(optarg)
     elif option == '--exclude':
         exclType.append(optarg)
+    elif option == '--noblocked':
+        noblocked = True
     elif option == '--maxdocs':
         try:
             maxCount = int(optarg)
@@ -167,6 +175,8 @@ if quiet and valOnly == 'Y':
 # Construct command to select all records to process
 selCmd = "SELECT d.id, t.name FROM document d, doc_type t\n" \
          " WHERE d.doc_type = t.id\n"
+
+# Specifically included doc types
 if len(inclType) > 0:
     inList = ""
     for docType in inclType:
@@ -174,9 +184,18 @@ if len(inclType) > 0:
             inList += ','
         inList += "'%s'" % docType
     selCmd += " AND t.name IN (%s)\n" % inList
+
+# Specifically excluded doc types
 if len(exclType) > 0:
     for docType in exclType:
         selCmd += " AND t.name <> '%s'\n" % docType
+
+# Active only
+if noblocked:
+    selCmd += " AND d.active_status <> 'I'\n"
+
+# Presentation order
+selCmd += " ORDER BY t.name, d.id\n"
 
 # Open log
 log = cdr.Log(LOGFILE, logTime=False, logPID=False)
