@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+     $Id: Protocol.xsd,v 1.1 2007-02-22 14:25:37 bkline Exp $
+  -->
+
+<xsd:schema                  xmlns:xsd = 'http://www.w3.org/2001/XMLSchema'>
+
+ <!--
+ ======================================================================
+ Protocol document element.
+ ====================================================================== -->
+ <xsd:element                     name = 'Protocol'
+                                  type = 'ProtocolType'/>
+
+ <xsd:complexType                 name = 'ProtocolType'>
+  <xsd:sequence>
+
+   <xsd:element                   name = 'Protocol_Number'
+                                  type = 'xsd:string'/>
+
+   <xsd:element                   name = 'Protocol_Status'
+                                  type = 'xsd:string'/>
+
+   <!-- Protocol Sites that have unexpired IRB approval -->
+   <xsd:element                   name = 'Site_Registration'
+                                  type = 'Site_Registration_Type'
+                             minOccurs = '0'
+                             maxOccurs = 'unbounded'/>
+  </xsd:sequence>
+
+  <!-- External system database ID for the protocol -->
+  <xsd:attribute                  name = 'esys_db_id'
+                                  type = 'xsd:string'
+                                   use = 'required'/>
+ </xsd:complexType>
+
+ <!--
+ ======================================================================
+ Structure for a participating site.
+ ====================================================================== -->
+ <xsd:complexType                 name = 'Site_Registration_Type'>
+  <xsd:sequence>
+
+   <!-- Natural Key -->
+   <xsd:element                   name = 'CTEP_Institution_Code'
+                                  type = 'xsd:string'/>
+
+   <!-- Name of Organization for site -->
+   <xsd:element                   name = 'Name'
+                                  type = 'xsd:string'/>
+
+   <!-- IRB Approval Date: YYYY-MM-DD -->
+   <xsd:element                   name = 'Registration_Date'
+                                  type = 'xsd:date'/>
+
+   <!-- Status for an individual site. -->
+   <xsd:element                   name = 'Site_Reg_Status'
+                                  type = 'xsd:string'
+                             minOccurs = '0'/>
+
+   <!-- Organization Address -->
+   <xsd:element                   name = 'Address'
+                                  type = 'Address_Type'/>
+
+   <!-- Site can have a PI and a Contact, or just a PI, or just a Contact. -->
+   <xsd:choice>
+    <xsd:sequence>
+     <xsd:element                 name = 'PI'
+                                  type = 'PI_Type'/>
+     <xsd:element                 name = 'Contact'
+                                  type = 'Contact_Type'
+                             minOccurs = '0'/>
+    </xsd:sequence>
+    <xsd:element                  name = 'Contact'
+                                  type = 'Contact_Type'/>
+   </xsd:choice>
+  </xsd:sequence>
+
+  <!-- External system database ID for the participating site organization -->
+  <xsd:attribute                  name = 'esys_db_id'
+                                  type = 'xsd:string'
+                                   use = 'required'/>
+ </xsd:complexType>
+
+ <!--
+ ======================================================================
+  Postal address for an organization.  Note that this definition
+  assumes an address in a country with states or provinces.
+ ====================================================================== -->
+ <xsd:complexType                 name = 'Address_Type'>
+  <xsd:sequence>
+   <xsd:element                   name = 'Street'
+                                  type = 'xsd:string'
+                             minOccurs = '0'
+                             maxOccurs = 'unbounded'/>
+   <xsd:element                   name = 'City'
+                                  type = 'xsd:string'/>
+   <xsd:element                   name = 'State_Province'
+                                  type = 'xsd:string'/>
+   <xsd:element                   name = 'Zip_Postal_Code'
+                                  type = 'xsd:string'
+                             minOccurs = '0'/>
+   <xsd:element                   name = 'Country'
+                                  type = 'xsd:string'/>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <!--
+ ======================================================================
+ Principal Investigator at site.
+ ====================================================================== -->
+ <xsd:complexType                 name = 'PI_Type'>
+  <xsd:sequence>
+
+   <!-- Natural Key. -->
+   <xsd:group                      ref = 'Person_ID_Choice'/>
+
+   <xsd:element                   name = 'Personal_Name'
+                                  type = 'Personal_Name_Type'/>
+
+   <xsd:element                   name = 'Phone'
+                                  type = 'xsd:string'
+                             minOccurs = '0'
+                             maxOccurs = 'unbounded'/>
+  </xsd:sequence>
+
+  <!-- External system database ID for principal investigator -->
+  <xsd:attribute                  name = 'sys_db_id'
+                                  type = 'xsd:string'
+                                   use = 'required'/>
+ </xsd:complexType>
+
+ <!--
+ ======================================================================
+    Natural Key.
+ ====================================================================== -->
+ <xsd:group                       name = 'Person_ID_Choice'>
+  <xsd:choice>
+   <xsd:element                   name = 'CTSU_Person_ID'
+                                  type = 'xsd:string'/>
+   <xsd:element                   name = 'Source_Person_ID'
+                                  type = 'xsd:string'/>
+   <xsd:element                   name = 'PDQ_Person_ID'
+                                  type = 'PDQ_ID_Type'/>
+  </xsd:choice>
+ </xsd:group>
+
+ <!--
+ ======================================================================
+ Patient contact.
+ ====================================================================== -->
+ <xsd:complexType                 name = 'Contact_Type'>
+  <xsd:sequence>
+   <xsd:group                      ref = 'Person_ID_Choice'
+                             minOccurs = '0'/>
+   <xsd:choice>
+    <xsd:element                  name = 'Personal_Name'
+                                  type = 'Personal_Name_Type'/>
+    <xsd:element                  name = 'Contact_Title'
+                                  type = 'xsd:string'/>
+   </xsd:choice>
+   <xsd:element                   name = 'Phone'
+                                  type = 'xsd:string'
+                             minOccurs = '0'
+                             maxOccurs = 'unbounded'/>
+  </xsd:sequence>
+  <xsd:attribute                  name = 'esys_db_id'
+                                  type = 'xsd:string'
+                                   use = 'optional'/>
+ </xsd:complexType>
+
+ <!--
+ ======================================================================
+ Personal name block.  Only the last name is required.
+ ====================================================================== -->
+ <xsd:complexType                 name = 'Personal_Name_Type'>
+  <xsd:sequence>
+   <xsd:element                   name = 'First_Name'
+                                  type = 'xsd:string'
+                             minOccurs = '0'/>
+   <xsd:element                   name = 'Middle_Name'
+                                  type = 'xsd:string'
+                             minOccurs = '0'/>
+   <xsd:element                   name = 'Last_Name'
+                                  type = 'xsd:string'
+                             minOccurs = '0'/>
+   <xsd:element                   name = 'Suffix'
+                                  type = 'xsd:string'
+                             minOccurs = '0'
+                             maxOccurs = 'unbounded'/>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:simpleType                  name = 'PDQ_ID_Type'>
+  <xsd:restriction                base = 'xsd:string'>
+   <xsd:pattern                  value = 'CDR\d+'/>
+  </xsd:restriction>
+ </xsd:simpleType>
+</xsd:schema>
