@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: RefreshManifest.py,v 1.2 2006-06-14 13:18:44 bkline Exp $
+# $Id: RefreshManifest.py,v 1.3 2007-03-13 20:13:20 venglisc Exp $
 #
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2006/06/14 13:18:44  bkline
+# Added code to fix windows permissions.
+#
 # Revision 1.1  2006/01/24 21:52:47  bkline
 # Rewrite of Jeff's tool to rebuild the client files manifest.
 #
@@ -66,7 +69,15 @@ def writeManifest(manifestXml, manifestTime):
     manifestFile = file(cdr.MANIFEST_PATH, 'w')
     manifestFile.write(manifestXml)
     manifestFile.close()
-    timestamp = pywintypes.Time(manifestTime)
+
+    # Need to add a temporary fix by adding one hour to the 
+    # manifestTime due to a bug in pywintypes calculation of 
+    # time.  
+    # This fix will need to be removed at the first weekend
+    # in April (the begin of daylight savings time of earlier
+    # years)
+    # =======================================================
+    timestamp = pywintypes.Time(manifestTime + 60 * 60)
     handle = win32file.CreateFile(cdr.MANIFEST_NAME,
                                   win32file.GENERIC_WRITE, 0, None,
                                   win32file.OPEN_EXISTING, 0, 0)
