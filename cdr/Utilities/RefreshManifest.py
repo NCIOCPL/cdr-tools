@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: RefreshManifest.py,v 1.4 2007-03-13 20:59:55 bkline Exp $
+# $Id: RefreshManifest.py,v 1.5 2007-03-15 21:22:07 bkline Exp $
 #
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2007/03/13 20:59:55  bkline
+# Turned off the kludge for the DST bug.
+#
 # Revision 1.3  2007/03/13 20:13:20  venglisc
 # Included temporary fix for daylight savings time needed due to a bug
 # in the pywintypes.Time() function.
@@ -69,6 +72,32 @@ def createFilelist(files):
 """ % (f.name, f.timestamp)
     return fragmentXml + u" </FileList>"
 
+#----------------------------------------------------------------------
+#      *****  REMOVE THIS KLUDGE WHEN IT'S NO LONGER NEEDED! *****
+#----------------------------------------------------------------------
+def adjustManifestTime(oldTime):
+
+    # Make sure we don't forget to install a permanent fix.
+    localTime = time.localtime()
+    if localTime[0] > 2007 or localTime[1] > 8:
+        sys.stderr.write("""
+      *****************************************************************  
+      ***                                                           ***
+      *** DON'T FORGET TO INSTALL VISUAL STUDIO .NET 2003 HOTFIX!!! ***
+      ***                                                           ***
+      ***        SEE http://support.microsoft.com/kb/932299         ***
+      ***                                                           ***
+      *****************************************************************
+
+""")
+
+    # Once we're past March 2007, revert to normal behavior
+    if localTime[0] > 2007 or localTime[1] > 3:
+        return oldTime
+
+    # Add an extra hour (60 seconds each for 60 minutes)
+    return oldTime + 60 * 60
+
 def writeManifest(manifestXml, manifestTime):
     manifestFile = file(cdr.MANIFEST_PATH, 'w')
     manifestFile.write(manifestXml)
@@ -81,7 +110,7 @@ def writeManifest(manifestXml, manifestTime):
     # in April (the begin of daylight savings time of earlier
     # years)
     # =======================================================
-    timestamp = pywintypes.Time(manifestTime) # turning off kludge + 60 * 60)
+    timestamp = pywintypes.Time(adjustManifestTime(manifestTime))
     handle = win32file.CreateFile(cdr.MANIFEST_NAME,
                                   win32file.GENERIC_WRITE, 0, None,
                                   win32file.OPEN_EXISTING, 0, 0)
