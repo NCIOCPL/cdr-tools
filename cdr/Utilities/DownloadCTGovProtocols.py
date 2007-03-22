@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.20 2007-02-02 19:31:42 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.21 2007-03-22 13:49:01 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.20  2007/02/02 19:31:42  bkline
+# Increased DB timeouts; added code to make sure doc is unlocked
+# after inserting NCT ID.
+#
 # Revision 1.19  2007/02/02 18:30:02  bkline
 # Modified to use new signature of ModifyDocs.saveChanges() method.
 #
@@ -197,6 +201,7 @@ class Doc:
         self.cdrId         = None
         self.disposition   = None
         self.oldXml        = None
+        self.phase         = None
         self.forcedImport  = False
         for node in self.dom.documentElement.childNodes:
             if node.nodeName == "id_info":
@@ -221,6 +226,8 @@ class Doc:
                 self.verified = cdr.getTextContent(node).strip()
             elif node.nodeName == "lastchanged_date":
                 self.lastChanged = cdr.getTextContent(node).strip()
+            elif node.nodeName == "phase":
+                self.phase = cdr.getTextContent(node).strip()
         self.title = self.officialTitle or self.briefTitle
         if self.nlmId:
             row = None
@@ -534,14 +541,16 @@ for name in nameList:
                        disposition = ?,
                        dt = GETDATE(),
                        verified = ?,
-                       changed = ?
+                       changed = ?,
+                       phase = ?
                  WHERE nlm_id = ?""",
                            (doc.title[:255],
                             doc.xmlFile,
                             disp,
                             doc.verified,
                             doc.lastChanged,
-                            doc.nlmId), timeout = 300)
+                            doc.nlmId,
+                            doc.phase), timeout = 300)
             conn.commit()
             stats.updates += 1
             log("Updated %s with disposition %s\n" % (doc.nlmId,
@@ -560,14 +569,15 @@ for name in nameList:
         try:
             cursor.execute("""\
         INSERT INTO ctgov_import (nlm_id, title, xml, downloaded,
-                                  disposition, dt, verified, changed)
-             VALUES (?, ?, ?, GETDATE(), ?, GETDATE(), ?, ?)""",
+                                  disposition, dt, verified, changed, phase)
+             VALUES (?, ?, ?, GETDATE(), ?, GETDATE(), ?, ?, ?)""",
                            (doc.nlmId,
                             doc.title[:255],
                             doc.xmlFile,
                             disp,
                             doc.verified,
-                            doc.lastChanged), timeout = 300)
+                            doc.lastChanged,
+                            doc.phase), timeout = 300)
             conn.commit()
             stats.newTrials += 1
             log("Added %s with disposition %s\n" % (doc.nlmId,
