@@ -76,7 +76,7 @@ class TransformFor3160:
         sId = docObj.id[3:] # remove CDR
         doc_id = int(sId) # convert to int
         docAndDate = DocsAndDates[doc_id]
-        sDate = "%d-%02d-%02d" % (docAndDate.dtCls.year,docAndDate.dtCls.monthdocAndDate.dtCls.month,docAndDate.dtCls.day)
+        sDate = "%d-%02d-%02d" % (docAndDate.dtCls.year,docAndDate.dtCls.month,docAndDate.dtCls.day)
         filter = """\
 <?xml version='1.0' encoding='UTF-8'?>
 
@@ -113,6 +113,6 @@ class TransformFor3160:
 # main portion of script
 job = ModifyDocs.Job("ckidder", "charlie123", FilterFor3160(), TransformFor3160(),
                      "Update DateReceived element (3160)",
-                    testMode=True)
+                    testMode=False)
 job.run()
 
