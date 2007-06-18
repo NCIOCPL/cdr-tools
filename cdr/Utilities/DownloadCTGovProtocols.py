@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.21 2007-03-22 13:49:01 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.22 2007-06-18 20:53:06 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.21  2007/03/22 13:49:01  bkline
+# Added code to set new phase column of ctgov_import table.
+#
 # Revision 1.20  2007/02/02 19:31:42  bkline
 # Increased DB timeouts; added code to make sure doc is unlocked
 # after inserting NCT ID.
@@ -174,6 +177,7 @@ class Stats:
         self.unchanged  = 0
         self.pdqCdr     = 0
         self.nctAdded   = 0
+        self.nctRemoved = 0
         self.duplicates = 0
         self.outOfScope = 0
         self.closed     = 0
@@ -192,6 +196,7 @@ class Doc:
         self.officialTitle = None
         self.briefTitle    = None
         self.nlmId         = None
+        self.obsoleteIds   = []
         self.orgStudyId    = None
         self.title         = None
         self.status        = None
@@ -210,6 +215,10 @@ class Doc:
                         self.orgStudyId = cdr.getTextContent(child).strip()
                     elif child.nodeName == "nct_id":
                         self.nlmId = cdr.getTextContent(child).strip()
+                    elif child.nodeName == 'nct_alias':
+                        obsoleteId = cdr.getTextContent(child).strip()
+                        if obsoleteId:
+                            self.obsoleteIds.append(obsoleteId)
             elif node.nodeName == "brief_title":
                 self.briefTitle = cdr.getTextContent(node).strip()
             elif node.nodeName == "official_title":
@@ -247,15 +256,28 @@ class Doc:
                     self.forcedImport = True
 
 #----------------------------------------------------------------------
-# An object of this class if fed to the constructor for each ModifyDocs.Doc
+# An object of this class is fed to the constructor for each ModifyDocs.Doc
 # object, used to insert the NCT ID into existing CDR documents which
 # we've exported to NLM, and which are coming back to us with their ID.
 #----------------------------------------------------------------------
 class NctIdInserter:
-    def __init__(self, nctId):
-        self.nctId = nctId
+    def __init__(self, newId, obsoleteIds):
+        assert (newId or obsoleteIds), "NctIdInserter: no NCT IDs to adjust"
+        self.newId       = newId
+        self.obsoleteIds = obsoleteIds
     def run(self, docObj):
-        filt = """\
+        """
+        Modify the XML document passed by inserting an OtherID element
+        for the new NCT ID (if present) and/or dropping any obsolete NCT
+        IDs identified.
+        
+        Pre-condition:
+            Caller will have determined that at least one of self.newId
+            or self.obsoleteIds is present, and that if self.newId is present
+            the document does not already have that ID, and that any of
+            the obsolete IDs specified are actually present in the document.
+        """
+        filt = ["""\
 <?xml version='1.0' encoding='UTF-8'?>
 
 <xsl:transform                version = '1.0' 
@@ -276,24 +298,51 @@ class NctIdInserter:
   </xsl:copy>
  </xsl:template>
 
- <!-- Add NCT ID if not already present. -->
+"""]
+
+        # Pop in new ID if we have one.
+        if self.newId:
+            filt.append("""\
  <xsl:template                  match = 'ProtocolIDs'>
   <xsl:copy>
    <xsl:apply-templates        select = '@*|node()|comment()|
                                          processing-instruction()'/>
-   <xsl:if                       test = 'not(OtherID
-                                         [IDType = "ClinicalTrials.gov ID"])'>
-    <OtherID>
-     <IDType>ClinicalTrials.gov ID</IDType>
-     <IDString>%s</IDString>
-    </OtherID>
-   </xsl:if>
+   <OtherID>
+    <IDType>ClinicalTrials.gov ID</IDType>
+    <IDString>%s</IDString>
+   </OtherID>
   </xsl:copy>
  </xsl:template>
+
+""" % self.newId)
+
+        # Drop any obsolete IDs if there are any.
+        if self.obsoleteIds:
+            ids = self.obsoleteIds
+            idTests = " or ".join([('(IDString = "%s")' % i) for i in ids])
+            test = 'not((IDType = "ClinicalTrials.gov ID") and (%s))' % idTests
+            filt.append("""\
+ <xsl:template                  match = 'OtherID'>
+  <xsl:if                        test = '%s'>
+   <xsl:copy>
+    <xsl:apply-templates       select = '@*|node()|comment()|
+                                         processing-instruction()'/>
+   </xsl:copy>
+  </xsl:if>
+ </xsl:template>
+
+ """ % test)
+
+        # Finish the filter document.
+        filt.append("""\
 </xsl:transform>
-""" % self.nctId
-        if type(filt) == type(u""):
+""")
+        filt = "".join(filt)
+        if type(filt) == unicode:
             filt = filt.encode('utf-8')
+        f = open('d:/tmp/nctid-filters.txt', 'a')
+        f.write(filt)
+        f.close()
         result = cdr.filterDoc('guest', filt, doc = docObj.xml, inline = 1)
         if type(result) in (type(""), type(u"")):
             sys.stderr.write("%s: %s\n" % (docObj.id, result))
@@ -315,7 +364,7 @@ class Logger:
 #----------------------------------------------------------------------
 # Determine whether a CDR document already has the NCT ID.
 #----------------------------------------------------------------------
-def alreadyHasNctId(cdrId):
+def getNctIds(cdrId):
     cursor.execute("""\
         SELECT i.value
           FROM query_term i
@@ -326,8 +375,7 @@ def alreadyHasNctId(cdrId):
            AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
            AND t.value = 'ClinicalTrials.gov ID'
            AND i.doc_id = ?""", cdrId, timeout = 300)
-    rows = cursor.fetchall()
-    return rows and rows[0][0] and True or False
+    return set([row[0] for row in cursor.fetchall()])
 
 #----------------------------------------------------------------------
 # Get the NCT IDs for trials we need to import even if their index
@@ -475,20 +523,34 @@ for name in nameList:
         stats.pdqCdr += 1
         try:
             locked = False
-            if not alreadyHasNctId(cdrId):
-                log("Adding NCT ID %s to CDR%s" % (doc.nlmId, cdrId))
-                inserter = NctIdInserter(doc.nlmId)
+            nctIds = getNctIds(cdrId)
+
+            # See if we need to insert the current NCT ID.
+            nctIdToInsert = None
+            if doc.nlmId not in nctIds:
+                log("Inserting NCT ID %s into CDR%s\n" % (doc.nlmId, cdrId))
+                nctIdToInsert = doc.nlmId
+                stats.nctAdded += 1
+
+            # Request #3250: remove obsolete NCT IDs.
+            nctIdsToRemove = []
+            for obsoleteId in doc.obsoleteIds:
+                if obsoleteId in nctIds:
+                    log("Removing NCT ID %s from CDR%s\n" % (obsoleteId,
+                                                             cdrId))
+                    nctIdsToRemove.append(obsoleteId)
+                    stats.nctRemoved += 1
+            if nctIdToInsert or nctIdsToRemove:
+                inserter = NctIdInserter(nctIdToInsert, nctIdsToRemove)
                 locked = True
                 cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
                 cdrDoc.saveChanges(cursor, logger)
                 cdr.unlock(session, "CDR%010d" % cdrId)
                 locked = False
-                stats.nctAdded += 1
         except Exception, e:
             if locked:
                 cdr.unlock(session, "CDR%010d" % cdrId)
-            log("Failure adding NCT ID %s to CDR%s: %s" % (doc.nlmId,
-                                                           cdrId, str(e)))
+            log("Failure adjusting NCT IDs in CDR%s: %s" % (cdrId, str(e)))
 
     #------------------------------------------------------------------
     # We don't want closed or completed trials.
@@ -549,8 +611,8 @@ for name in nameList:
                             disp,
                             doc.verified,
                             doc.lastChanged,
-                            doc.nlmId,
-                            doc.phase), timeout = 300)
+                            doc.phase,
+                            doc.nlmId), timeout = 300)
             conn.commit()
             stats.updates += 1
             log("Updated %s with disposition %s\n" % (doc.nlmId,
@@ -629,6 +691,7 @@ log("Skipped out of scope trials: %5d\n" % stats.outOfScope)
 log("      Skipped closed trials: %5d\n" % stats.closed)
 log("               Total trials: %5d\n" % totals)
 log("   Added NCT IDs for trials: %5d\n" % stats.nctAdded)
+log("Removed NCT IDs from trials: %5d\n" % stats.nctRemoved)
 try:
     cursor.execute("""\
         INSERT INTO ctgov_download_stats (dt, total_trials, new_trials,
@@ -658,10 +721,11 @@ if recips:
    Skipped closed and completed trials: %5d
                           Total trials: %5d
               Added NCT IDs for trials: %5d
+           Removed NCT IDs from trials: %5d
 
 """ % (stats.newTrials, stats.updates, stats.unchanged, stats.pdqCdr, 
        stats.duplicates, stats.outOfScope, stats.closed, totals,
-       stats.nctAdded)    
+       stats.nctAdded, stats.nctRemoved)
     if droppedDocs:
         keys = droppedDocs.keys()
         keys.sort()
