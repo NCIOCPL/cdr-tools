@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.22 2007-06-18 20:53:06 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.23 2007-06-21 19:53:51 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.22  2007/06/18 20:53:06  bkline
+# Added code to remove obsolete NCTIDs (see request #3250).
+#
 # Revision 1.21  2007/03/22 13:49:01  bkline
 # Added code to set new phase column of ctgov_import table.
 #
@@ -517,7 +520,7 @@ for name in nameList:
     # Skip documents they got from us in the first place.
     # Request #1374: pick up the NCT IDs for these documents.
     #------------------------------------------------------------------
-    elif not doc.cdrId and doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
+    elif doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
         cdrId = cdr.exNormalize(doc.orgStudyId)[1]
         log("Skipping %s, which has a CDR ID\n" % doc.nlmId)
         stats.pdqCdr += 1
