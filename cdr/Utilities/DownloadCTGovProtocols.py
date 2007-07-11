@@ -1,8 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.23 2007-06-21 19:53:51 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.24 2007-07-11 20:23:46 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.23  2007/06/21 19:53:51  bkline
+# Changed test for detecting documents CT.gov got from us to also include
+# trials we used to get from them but have been replaced by our own
+# InScopeProtocol documents (see discussion in issue #3324).
+#
 # Revision 1.22  2007/06/18 20:53:06  bkline
 # Added code to remove obsolete NCTIDs (see request #3250).
 #
@@ -187,6 +192,42 @@ class Stats:
     def totals(self):
         return (self.newTrials + self.updates + self.unchanged + self.pdqCdr +
                 self.duplicates + self.outOfScope + self.closed)
+
+#----------------------------------------------------------------------
+# Objects for a document with too many NCT IDs.
+#----------------------------------------------------------------------
+idProblems = []
+class IdProblem:
+    def __init__(self, cdrId, nctIds, nctIdToInsert, nctIdsToRemove):
+        self.cdrId = cdrId
+        self.nctIds = nctIds
+        self.nctIdToInsert = nctIdToInsert
+        self.nctIdsToRemove = nctIdsToRemove
+        plural = len(nctIds) > 1 and u"s" or ""
+        if nctIdToInsert:
+            desc = (u"CDR%d: got new ID %s from NLM; doc already has ID%s %s"
+                    % (cdrId, plural, u"; ".join(nctIds)))
+        else:
+            desc = u"CDR%d: too many NCT IDs: %s" % (cdrId, u"; ".join(nctIds))
+        if nctIdsToRemove:
+            desc += (u"; even after removing %s doc will have multiple IDs"
+                     % u" & ".join(nctIdsToRemove))
+        self.description = desc.encode('utf-8')
+                                 
+#----------------------------------------------------------------------
+# Check to see if we'll end up with too many NCT Ids; see comment #13
+# by Lakshmi in request #3250.
+#----------------------------------------------------------------------
+def findIdProblem(cdrId, nctIds, nctIdToInsert, nctIdsToRemove):
+    idCount = 0
+    for nctId in nctIds:
+        if nctId not in nctIdsToRemove:
+            idCount += 1
+    if nctIdToInsert and nctIdToInsert not in nctIdsToRemove:
+        idCount += 1
+    if idCount > 1:
+        return IdProblem(cdrId, nctIds, nctIdToInsert, nctIdsToRemove)
+    return None
 
 #----------------------------------------------------------------------
 # Object representing interesting components of a CTGov trial document.
@@ -543,7 +584,14 @@ for name in nameList:
                                                              cdrId))
                     nctIdsToRemove.append(obsoleteId)
                     stats.nctRemoved += 1
-            if nctIdToInsert or nctIdsToRemove:
+
+            # See comment #13 of request #3250.
+            idProblem = findIdProblem(cdrId, nctIds, nctIdToInsert,
+                                      nctIdsToRemove)
+            if idProblem:
+                log(idProblem.description)
+                idProblems.append(idProblem)
+            elif nctIdToInsert or nctIdsToRemove:
                 inserter = NctIdInserter(nctIdToInsert, nctIdsToRemove)
                 locked = True
                 cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
@@ -695,6 +743,7 @@ log("      Skipped closed trials: %5d\n" % stats.closed)
 log("               Total trials: %5d\n" % totals)
 log("   Added NCT IDs for trials: %5d\n" % stats.nctAdded)
 log("Removed NCT IDs from trials: %5d\n" % stats.nctRemoved)
+log("   NCT ID problems detected: %5d\n" % len(idProblems))
 try:
     cursor.execute("""\
         INSERT INTO ctgov_download_stats (dt, total_trials, new_trials,
@@ -725,10 +774,11 @@ if recips:
                           Total trials: %5d
               Added NCT IDs for trials: %5d
            Removed NCT IDs from trials: %5d
+              NCT ID problems detected: %5d
 
 """ % (stats.newTrials, stats.updates, stats.unchanged, stats.pdqCdr, 
        stats.duplicates, stats.outOfScope, stats.closed, totals,
-       stats.nctAdded, stats.nctRemoved)
+       stats.nctAdded, stats.nctRemoved, len(idProblems))
     if droppedDocs:
         keys = droppedDocs.keys()
         keys.sort()
@@ -742,6 +792,8 @@ Trial %s [disposition '%s'] (imported as CDR%d) dropped by NLM.
                 body += """\
 Trial %s [disposition %s] dropped by NLM.
 """ % (droppedDoc.nlmId, droppedDoc.disposition)
+    for idProblem in idProblems:
+        body += idProblem.description + "\n"
     sendReport(recips, subject, body)
     log("Mailed download stats to %s\n" % str(recips))
 else:
