@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-     $Id: Trial.xsd,v 1.1 2007-08-23 13:52:14 bkline Exp $
+     $Id: Trial.xsd,v 1.2 2007-08-23 13:54:10 bkline Exp $
   -->
 
 <xsd:schema                  xmlns:xsd = 'http://www.w3.org/2001/XMLSchema'>
@@ -94,7 +94,7 @@
 
   <!-- External system database ID for the protocol -->
   <xsd:attribute                  name = 'id'
-                                  type = 'xsd:string'
+                                  type = 'xsd:integer'
                                    use = 'required'/>
  </xsd:complexType>
 
@@ -212,7 +212,7 @@
   <xsd:simpleContent>
    <xsd:extension                 base = 'xsd:string'>
     <xsd:attribute                name = 'id'
-                                  type = 'xsd:string'
+                                  type = 'xsd:integer'
                                    use = 'optional'/>
    </xsd:extension>
   </xsd:simpleContent>
@@ -258,7 +258,7 @@
                              minOccurs = '0'/>
   </xsd:sequence>
   <xsd:attribute                  name = 'id'
-                                  type = 'xsd:string'
+                                  type = 'xsd:integer'
                                    use = 'optional'/>
  </xsd:complexType>
  <xsd:complexType                 name = 'Address'>
@@ -314,7 +314,7 @@
                              minOccurs = '0'/>
   </xsd:sequence>
   <xsd:attribute                  name = 'id'
-                                  type = 'xsd:string'
+                                  type = 'xsd:integer'
                                    use = 'optional'/>
  </xsd:complexType>
  <xsd:simpleType                  name = 'ProtocolPersonRole'>
@@ -390,7 +390,7 @@
                              minOccurs = '0'/>
   </xsd:sequence>
   <xsd:attribute                  name = 'id'
-                                  type = 'xsd:string'
+                                  type = 'xsd:integer'
                                    use = 'optional'/>
   <xsd:attribute                  name = 'Participating'
                                   type = 'YN'
@@ -412,8 +412,8 @@
    <xsd:element                   name = 'AttachmentType'
                                   type = 'AttachmentType'/>
 
-   <!-- Useful if format cannot be deduced from (e.g.,
-        'application/wordperfect' -->
+   <!-- Useful if format cannot be deduced from suffix (e.g.,
+        'application/wordperfect') -->
    <xsd:element                   name = 'MimeType'
                                   type = 'xsd:string'
                              minOccurs = '0'/>
@@ -422,7 +422,7 @@
   <!-- Identifier used for retrieval of the attachment (unique
        across all trials) -->
   <xsd:attribute                  name = 'id'
-                                  type = 'xsd:string'
+                                  type = 'xsd:integer'
                                    use = 'optional'/>
  </xsd:complexType>
  <xsd:simpleType                  name = 'AttachmentType'>
