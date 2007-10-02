@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-     $Id: Trial.xsd,v 1.2 2007-08-23 13:54:10 bkline Exp $
+     $Id: Trial.xsd,v 1.3 2007-10-02 13:19:05 bkline Exp $
   -->
 
 <xsd:schema                  xmlns:xsd = 'http://www.w3.org/2001/XMLSchema'>
@@ -77,12 +77,6 @@
    <xsd:element                   name = 'ContactInfo'
                                   type = 'ContactInfo'
                              minOccurs = '0'/>
-
-   <!-- Participating protocol sites -->
-   <xsd:element                   name = 'Site'
-                                  type = 'Site'
-                             minOccurs = '0'
-                             maxOccurs = 'unbounded'/>
 
    <!-- Auxiliary documents to be sent separately -->
    <xsd:element                   name = 'Attachment'
@@ -238,6 +232,9 @@
  ====================================================================== -->
  <xsd:complexType                 name = 'LeadOrg'>
   <xsd:sequence>
+   <xsd:element                   name = 'CTEPInstitutionCode'
+                                  type = 'xsd:string'/>
+                             minOccurs = '0'/>
    <xsd:element                   name = 'Name'
                                   type = 'xsd:string'/>
    <xsd:element                   name = 'Address'
@@ -303,6 +300,9 @@
  ====================================================================== -->
  <xsd:complexType                 name = 'Person'>
   <xsd:sequence>
+   <xsd:element                   name = 'CTSUPersonID'
+                                  type = 'xsd:string'/>
+                             minOccurs = '0'/>
    <xsd:element                   name = 'Role'
                                   type = 'ProtocolPersonRole'/>
    <xsd:element                   name = 'PersonalName'
@@ -359,42 +359,6 @@
                                   type = 'xsd:string'
                              minOccurs = '0'/>
   </xsd:sequence>
- </xsd:complexType>
-
- <!--
- ======================================================================
- Participating protocol sites.
- ====================================================================== -->
- <xsd:complexType                 name = 'Site'>
-  <xsd:sequence>
-   <xsd:element                   name = 'Name'
-                                  type = 'xsd:string'/>
-   <xsd:element                   name = 'City'
-                                  type = 'xsd:string'/>
-   <xsd:element                   name = 'State'
-                                  type = 'xsd:string'
-                             minOccurs = '0'/>
-   <xsd:element                   name = 'Country'
-                                  type = 'xsd:string'/>
-   <xsd:element                   name = 'Contact'
-                                  type = 'xsd:string'/>
-   <xsd:element                   name = 'Role'
-                                  type = 'ProtocolPersonRole'/>
-   <xsd:element                   name = 'Phone'
-                                  type = 'Phone'/>
-   <xsd:element                   name = 'Email'
-                                  type = 'xsd:string'
-                             minOccurs = '0'/>
-   <xsd:element                   name = 'Comment'
-                                  type = 'xsd:string'
-                             minOccurs = '0'/>
-  </xsd:sequence>
-  <xsd:attribute                  name = 'id'
-                                  type = 'xsd:integer'
-                                   use = 'optional'/>
-  <xsd:attribute                  name = 'Participating'
-                                  type = 'YN'
-                                   use = 'optional'/>
  </xsd:complexType>
 
  <!--
