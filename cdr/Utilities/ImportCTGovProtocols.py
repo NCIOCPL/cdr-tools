@@ -1,8 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.11 2006-10-18 20:52:10 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.12 2007-10-18 19:29:50 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.11  2006/10/18 20:52:10  bkline
+# Modified selection query to avoid importing trials for which we have
+# no XML (they're in the table only to force download of the XML in
+# the next download job).
+#
 # Revision 1.10  2006/06/15 13:58:16  bkline
 # Removed testing code for new email report.
 #
@@ -374,101 +379,110 @@ conn.commit()
 cursor.execute("SELECT @@IDENTITY")
 job = cursor.fetchone()[0]
 failures = []
-for nlmId, cdrId in rows:
-    print nlmId, cdrId
-    flags.clear()
-    cursor.execute("SELECT xml FROM ctgov_import WHERE nlm_id = ?", nlmId)
-    doc = cursor.fetchone()[0]
-    parms = [['newDoc', cdrId and 'N' or 'Y']]
-    resp = cdr.filterDoc('guest', ['name:Import CTGovProtocol'], doc = doc,
-                         parm = parms)
-    if type(resp) in (type(""), type(u"")):
-        failures.append("Failure converting %s" % nlmId)
-        log("Failure converting %s" % nlmId, resp)
-        continue
+try:
+    for nlmId, cdrId in rows:
+        print nlmId, cdrId
+        flags.clear()
+        cursor.execute("SELECT xml FROM ctgov_import WHERE nlm_id = ?", nlmId)
+        doc = cursor.fetchone()[0]
+        parms = [['newDoc', cdrId and 'N' or 'Y']]
+        resp = cdr.filterDoc('guest', ['name:Import CTGovProtocol'], doc = doc,
+                             parm = parms)
+        if type(resp) in (type(""), type(u"")):
+            failures.append("Failure converting %s" % nlmId)
+            log("Failure converting %s" % nlmId, resp)
+            continue
 
-    doc = parseParas(resp[0])
-    doc = fixPdqSponsorship(doc)
+        doc = parseParas(resp[0])
+        doc = fixPdqSponsorship(doc)
 
-    #------------------------------------------------------------------
-    # Add new doc.
-    #------------------------------------------------------------------
-    if not cdrId:
-        flags.isNew = 'Y'
-        comment = ('ImportCTGovProtocols: '
-                   'Adding imported CTGovProtocol document')
-        resp = cdr.addDoc(session, doc = """\
-<CdrDoc Type='CTGovProtocol'>
- <CdrDocCtl>
-  <DocComment>%s</DocComment>
- </CdrDocCtl>
- <CdrDocXml><![CDATA[%s]]></CdrDocXml>
-</CdrDoc>
-""" % (comment, doc.encode('utf-8')), showWarnings = 1,
-                          reason = comment, ver = "Y", val = "N",
-                          verPublishable = 'N')
-        if not resp[0]:
-            log("Failure adding %s" % nlmId, resp[1])
-            failures.append("Failure adding %s" % nlmId)
+        #------------------------------------------------------------------
+        # Add new doc.
+        #------------------------------------------------------------------
+        if not cdrId:
+            flags.isNew = 'Y'
+            comment = ('ImportCTGovProtocols: '
+                       'Adding imported CTGovProtocol document')
+            resp = cdr.addDoc(session, doc = """\
+    <CdrDoc Type='CTGovProtocol'>
+     <CdrDocCtl>
+      <DocComment>%s</DocComment>
+     </CdrDocCtl>
+     <CdrDocXml><![CDATA[%s]]></CdrDocXml>
+    </CdrDoc>
+    """ % (comment, doc.encode('utf-8')), showWarnings = 1,
+                              reason = comment, ver = "Y", val = "N",
+                              verPublishable = 'N')
+            if not resp[0]:
+                log("Failure adding %s" % nlmId, resp[1])
+                failures.append("Failure adding %s" % nlmId)
+            else:
+                cdr.unlock(session, resp[0],
+                           reason = 'ImportCTGovProtocols: '
+                                    'Unlocking imported CTGovProtocol doc')
+                digits = re.sub(r'[^\d]', '', resp[0])
+                cdrId = int(digits)
+                cursor.execute("""\
+                UPDATE ctgov_import
+                   SET disposition = ?,
+                       dt = GETDATE(),
+                       cdr_id = ?
+                 WHERE nlm_id = ?""", (importedDisposition, cdrId, nlmId))
+                conn.commit()
+                log("Added %s as %s" % (nlmId, resp[0]))
+
+        #------------------------------------------------------------------
+        # Merge changes into existing doc.
+        #------------------------------------------------------------------
         else:
-            cdr.unlock(session, resp[0],
-                       reason = 'ImportCTGovProtocols: '
-                                'Unlocking imported CTGovProtocol doc')
-            digits = re.sub(r'[^\d]', '', resp[0])
-            cdrId = int(digits)
-            cursor.execute("""\
-            UPDATE ctgov_import
-               SET disposition = ?,
-                   dt = GETDATE(),
-                   cdr_id = ?
-             WHERE nlm_id = ?""", (importedDisposition, cdrId, nlmId))
-            conn.commit()
-            log("Added %s as %s" % (nlmId, resp[0]))
-
-    #------------------------------------------------------------------
-    # Merge changes into existing doc.
-    #------------------------------------------------------------------
-    else:
-        try:
-            mergeChanges("CDR%d" % cdrId, doc.encode('utf-8'), flags)
-            cursor.execute("""\
-            UPDATE ctgov_import
-               SET disposition = ?,
-                   dt = GETDATE()
-             WHERE nlm_id = ?""", (importedDisposition, nlmId))
-            conn.commit()
-        except Exception, info:
-            failures.append("Failure merging changes for %s into %s" %
-                            (nlmId, cdrId))
-            log("Failure merging changes for %s into %s: %s" %
-                (nlmId, cdrId, str(info)), tback = (flags.locked == 0))
-            #raise
+            try:
+                mergeChanges("CDR%d" % cdrId, doc.encode('utf-8'), flags)
+                cursor.execute("""\
+                UPDATE ctgov_import
+                   SET disposition = ?,
+                       dt = GETDATE()
+                 WHERE nlm_id = ?""", (importedDisposition, nlmId))
+                conn.commit()
+            except Exception, info:
+                failures.append("Failure merging changes for %s into %s" %
+                                (nlmId, cdrId))
+                log("Failure merging changes for %s into %s: %s" %
+                    (nlmId, cdrId, str(info)), tback = (flags.locked == 0))
+                #raise
+            if not flags.locked:
+                cdr.unlock(session, "CDR%d" % cdrId,
+                           reason = 'ImportCTGovProtocols: '
+                                    'Unlocking updated CTGovProtocol doc')
+                log("Updated CDR%d from %s" % (cdrId, nlmId))
         if not flags.locked:
-            cdr.unlock(session, "CDR%d" % cdrId,
-                       reason = 'ImportCTGovProtocols: '
-                                'Unlocking updated CTGovProtocol doc')
-            log("Updated CDR%d from %s" % (cdrId, nlmId))
-    if not flags.locked:
-        try:
-            cursor.execute("""\
- INSERT INTO ctgov_import_event(job, nlm_id, new, needs_review, pub_version)
-      VALUES (?, ?, ?, ?, ?)""", (job,
-                                  nlmId,
-                                  flags.isNew,
-                                  flags.needsReview,
-                                  flags.pubVersionCreated))
-            conn.commit()
-        except Exception, info:
-            failures.append("Failure recording import event for %s" % nlmId)
-            log("Failure recording import event for %s: %s" %
-                (nlmId, str(info)))
-if failures:
-    recips = getEmailRecipients(cursor, True)
-    body = """\
-CT.gov import failures encountered; see logs for more information:
+            try:
+                cursor.execute("""\
+     INSERT INTO ctgov_import_event(job, nlm_id, new, needs_review,
+                                    pub_version)
+          VALUES (?, ?, ?, ?, ?)""", (job,
+                                      nlmId,
+                                      flags.isNew,
+                                      flags.needsReview,
+                                      flags.pubVersionCreated))
+                conn.commit()
+            except Exception, info:
+                failures.append("Failure recording import event for %s" %
+                                nlmId)
+                log("Failure recording import event for %s: %s" %
+                    (nlmId, str(info)))
+except Exception, e:
+    failures.append("Job interrupted: %s" % e)
+    log("Job interrupted: %s" % e)
+try:
+    if failures:
+        recips = getEmailRecipients(cursor, True)
+        body = """\
+    CT.gov import failures encountered; see logs for more information:
 
-%s
-""" % "\n".join(failures)
-    subject = "CT.gov import failures"
-    sender = "cdr@%s" % cdrcgi.WEBSERVER
-    cdr.sendMail(sender, recips, subject, body)
+    %s
+    """ % "\n".join(failures)
+        subject = "CT.gov import failures"
+        sender = "cdr@%s" % cdrcgi.WEBSERVER
+        cdr.sendMail(sender, recips, subject, body)
+except Exception, e:
+    log("Failure sending report: %s" % e)
