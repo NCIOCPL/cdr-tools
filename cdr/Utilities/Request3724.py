@@ -3,9 +3,12 @@
 # using the earliest 'Active' Current or Previous OrgStatus
 # StatusDate found in the document.
 #
-# $Id: Request3724.py,v 1.1 2007-11-06 16:35:05 ameyer Exp $
+# $Id: Request3724.py,v 1.2 2007-11-13 22:52:00 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2007/11/06 16:35:05  ameyer
+# Initial version.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, ModifyDocs, sys
 
@@ -139,7 +142,7 @@ if __name__ == '__main__':
 
     # Instantiate ModifyDocs job
     job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
-      "Global add of StartDate to NLM exportable protocols.  Request 3680.",
+      "Global add of StartDate to NLM exportable protocols.  Request 3724.",
       testMode=testMode)
 
     # Debug
