@@ -1,5 +1,5 @@
 /*
- * $Id: DummyWebServer.cpp,v 1.1 2008-01-05 00:45:21 bkline Exp $
+ * $Id: DummyWebServer.cpp,v 1.2 2008-01-05 05:14:29 bkline Exp $
  *
  * Test program to catch and log HTTP requests.  This is a very crude
  * implementation: everything is handled in a single thread, and we
@@ -7,13 +7,37 @@
  * if there is a body to the request.  Listens on port 80 unless a
  * command-line argument is given to override the default.
  *
- * cl /EHsc DummyWebServer.cpp wsock32.lib
+ * Microsoft:
+ *     cl /EHsc /DMS_WIN=yes DummyWebServer.cpp wsock32.lib
+ *
+ * Non-Microsoft:
+ *     g++ -o DummyWebServer DummyWebServer.cpp
  *
  * $Log: not supported by cvs2svn $
+ * Revision 1.1  2008/01/05 00:45:21  bkline
+ * Tool for examining requests from HTTP clients.
  */
 
-// System headers.
+// Windows-specific cruft.
+#ifdef MS_WIN
 #include <winsock.h>
+static void cleanup() { WSACleanup(); }
+static WSAData wsadata;
+#define SLEEP() Sleep(500)
+#ifndef socklen_t
+#define socklen_t int
+#endif
+#else
+#define SLEEP() sleep(1)
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#ifndef SOCKET_ERROR
+#define SOCKET_ERROR -1
+#endif
+#endif
+
+// System headers.
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
@@ -29,7 +53,6 @@ struct Header {
 
 // Local constants, functions.
 const short DEFAULT_PORT = 80;
-static void cleanup(void);
 static bool readHeader(int, Header&);
 static std::string readPayload(int, int);
 static std::string makeFilename(int);
@@ -41,7 +64,6 @@ static void sendResponse(int);
  */
 main(int ac, char **av)
 {
-    WSAData             wsadata;
     int                 sock;
     struct sockaddr_in  addr;
     short               port = DEFAULT_PORT;
@@ -52,6 +74,7 @@ main(int ac, char **av)
         port = atoi(av[1]);
 
     // Windows needs special code to initialize its socket library.
+#ifdef MS_WIN
     if (WSAStartup(0x0101, &wsadata) != 0) {
         unsigned long wsaError = WSAGetLastError();
         std::cerr << "WSAStartup() WSA error " << wsaError << '\n';
@@ -59,13 +82,12 @@ main(int ac, char **av)
     }
     atexit(cleanup);
     std::cout << "initialized...\n";
+#endif
 
     // Create the socket.
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
-        unsigned long wsaError = (unsigned long)WSAGetLastError();
         perror("socket");
-        std::cerr << "socket() WSA error: " << wsaError << '\n';
         return EXIT_FAILURE;
     }
     std::cout << "socket created...\n";
@@ -75,18 +97,14 @@ main(int ac, char **av)
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(sock, (struct sockaddr *)&addr, sizeof addr) == SOCKET_ERROR) {
-        unsigned long wsaError = (unsigned long)WSAGetLastError();
         perror("bind");
-        std::cerr << "bind() WSA error: " << wsaError << '\n';
         return EXIT_FAILURE;
     }
     std::cout << "bound...\n";
 
     // Accept one connection at a time.
     if (listen(sock, 1) == SOCKET_ERROR) {
-        unsigned long wsaError = (unsigned long)WSAGetLastError();
         perror("listen");
-        std::cerr << "listen() WSA error: " << wsaError << '\n';
         return EXIT_FAILURE;
     }
     std::cout << "listening...\n";
@@ -94,13 +112,11 @@ main(int ac, char **av)
     // Loop until a signal stops us.
     while (true) {
         struct sockaddr_in client_addr;
-        int len = sizeof client_addr;
+        socklen_t len = sizeof client_addr;
         memset(&client_addr, 0, sizeof client_addr);
         int fd = accept(sock, (struct sockaddr *)&client_addr, &len);
         if (fd < 0) {
-            unsigned long wsaError = (unsigned long)WSAGetLastError();
             perror("accept");
-            std::cerr << "accept() WSA error: " << wsaError << '\n';
             return EXIT_FAILURE;
         }
 
@@ -136,7 +152,11 @@ main(int ac, char **av)
         }
         fclose(fp);
         sendResponse(fd);
+#ifdef MS_WIN
         closesocket(fd);
+#else
+        close(fd);
+#endif
     }
     return EXIT_SUCCESS;
 }
@@ -144,10 +164,6 @@ main(int ac, char **av)
 /**
  * Clean up winsock resources.
  */
-static void cleanup() {
-    std::cerr << "stopping\n";
-    WSACleanup();
-}
 
 /*
  * Read the request body.
@@ -168,7 +184,7 @@ static std::string readPayload(int fd, int requested) {
             throw "readPayload failure";
         else if (nRead == 0) {
             if (canSleep) {
-                Sleep(500);
+                SLEEP();
                 canSleep = false;
             }
             else
