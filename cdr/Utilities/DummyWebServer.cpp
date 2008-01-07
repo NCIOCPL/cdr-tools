@@ -1,5 +1,5 @@
 /*
- * $Id: DummyWebServer.cpp,v 1.2 2008-01-05 05:14:29 bkline Exp $
+ * $Id: DummyWebServer.cpp,v 1.3 2008-01-07 15:58:47 bkline Exp $
  *
  * Test program to catch and log HTTP requests.  This is a very crude
  * implementation: everything is handled in a single thread, and we
@@ -14,6 +14,9 @@
  *     g++ -o DummyWebServer DummyWebServer.cpp
  *
  * $Log: not supported by cvs2svn $
+ * Revision 1.2  2008/01/05 05:14:29  bkline
+ * Cross-platform version.
+ *
  * Revision 1.1  2008/01/05 00:45:21  bkline
  * Tool for examining requests from HTTP clients.
  */
@@ -147,8 +150,10 @@ main(int ac, char **av)
         // If there's a body, read and log that, too.
         if (length > 0) {
             std::string payload = readPayload(fd, length);
-            fwrite(payload.c_str(), 1, payload.length(), fp);
-            std::cout << "read payload successfully" << std::endl;
+            if (payload.size() == length)
+                std::cout << "read payload successfully" << std::endl;
+            if (!payload.empty())
+                fwrite(payload.c_str(), 1, payload.size(), fp);
         }
         fclose(fp);
         sendResponse(fd);
@@ -161,37 +166,50 @@ main(int ac, char **av)
     return EXIT_SUCCESS;
 }
 
-/**
- * Clean up winsock resources.
- */
-
 /*
  * Read the request body.
  */
 static std::string readPayload(int fd, int requested) {
-
+    TIMEVAL tv = { 5, 0 };
+    fd_set fdSet;
+    fdSet.fd_count = 1;
+    fdSet.fd_array[0] = fd;
     char* buf = new char[requested + 1];
     memset(buf, 0, requested + 1);
     
     // Keep reading until we have all the bytes, an error occurs, or we give
     // up after getting no bytes, sleeping for awhile, and then trying again.
     size_t totalRead = 0;
-    bool canSleep = true;
+    bool canSleep = false; // true;
     while (totalRead < requested) {
+        int rc = select(fd, &fdSet, NULL, NULL, &tv);
+        if (rc != 1) {
+            std::cerr << "readPayload(): received only "
+                      << totalRead << " bytes\n";
+            break;
+        }
         size_t bytesLeft = requested - totalRead;
         int nRead = recv(fd, buf + totalRead, bytesLeft, 0);
-        if (nRead < 0)
-            throw "readPayload failure";
+        if (nRead < 0) {
+            perror("recv");
+            break;
+        }
         else if (nRead == 0) {
             if (canSleep) {
                 SLEEP();
                 canSleep = false;
             }
-            else
-                throw "readPayload didn't get all the bytes";
+            else {
+                std::cerr << "readPayload(): received "
+                          << totalRead << " bytes\n";
+                break;
+            }
         }
+        std::cout << "recv got " << nRead << " bytes" << std::endl;
+#if 0
         else
             canSleep = true;
+#endif
         totalRead += nRead;
     }
     std::string payload = buf;
@@ -204,7 +222,9 @@ static std::string readPayload(int fd, int requested) {
  * or "Request line" by the RFC) we'll get METHOD REQUEST-URI HTTP-VERSION
  * (e.g., "POST /GateKeeper/GateKeeper.asmx HTTP/1.1" or "GET /index.html
  * HTTP/1.1").  All the other headers will be in the form NAME: VALUE CR NL.
- * After the last header line we'll get an empty line (just CR NL).
+ * After the last header line we'll get an empty line (just CR NL).  When
+ * that happens, we return false (which is how the caller knows we're
+ * done collecting the headers).  Until then, we return true.
  */
 static bool readHeader(int fd, Header& header) {
     header.line = "";
