@@ -1,5 +1,5 @@
 /*
- * $Id: DummyWebServer.cpp,v 1.3 2008-01-07 15:58:47 bkline Exp $
+ * $Id: DummyWebServer.cpp,v 1.4 2008-01-07 16:31:49 bkline Exp $
  *
  * Test program to catch and log HTTP requests.  This is a very crude
  * implementation: everything is handled in a single thread, and we
@@ -14,6 +14,9 @@
  *     g++ -o DummyWebServer DummyWebServer.cpp
  *
  * $Log: not supported by cvs2svn $
+ * Revision 1.3  2008/01/07 15:58:47  bkline
+ * Allowed capture of incomplete payload.
+ *
  * Revision 1.2  2008/01/05 05:14:29  bkline
  * Cross-platform version.
  *
@@ -170,10 +173,10 @@ main(int ac, char **av)
  * Read the request body.
  */
 static std::string readPayload(int fd, int requested) {
-    TIMEVAL tv = { 5, 0 };
+    struct timeval tv = { 5, 0 };
     fd_set fdSet;
-    fdSet.fd_count = 1;
-    fdSet.fd_array[0] = fd;
+    FD_ZERO(&fdSet);
+    FD_SET(fd, &fdSet);
     char* buf = new char[requested + 1];
     memset(buf, 0, requested + 1);
     
@@ -182,7 +185,7 @@ static std::string readPayload(int fd, int requested) {
     size_t totalRead = 0;
     bool canSleep = false; // true;
     while (totalRead < requested) {
-        int rc = select(fd, &fdSet, NULL, NULL, &tv);
+        int rc = select(1, &fdSet, NULL, NULL, &tv);
         if (rc != 1) {
             std::cerr << "readPayload(): received only "
                       << totalRead << " bytes\n";
