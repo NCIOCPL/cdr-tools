@@ -1,5 +1,5 @@
 /*
- * $Id: DummyWebServer.cpp,v 1.4 2008-01-07 16:31:49 bkline Exp $
+ * $Id: DummyWebServer.cpp,v 1.5 2008-01-07 17:07:12 bkline Exp $
  *
  * Test program to catch and log HTTP requests.  This is a very crude
  * implementation: everything is handled in a single thread, and we
@@ -14,6 +14,9 @@
  *     g++ -o DummyWebServer DummyWebServer.cpp
  *
  * $Log: not supported by cvs2svn $
+ * Revision 1.4  2008/01/07 16:31:49  bkline
+ * Made select() code portable.
+ *
  * Revision 1.3  2008/01/07 15:58:47  bkline
  * Allowed capture of incomplete payload.
  *
@@ -29,15 +32,15 @@
 #include <winsock.h>
 static void cleanup() { WSACleanup(); }
 static WSAData wsadata;
-#define SLEEP() Sleep(500)
+#define CLOSE_SOCK(fd) closesocket(fd)
 #ifndef socklen_t
 #define socklen_t int
 #endif
 #else
-#define SLEEP() sleep(1)
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#define CLOSE_SOCK(fd) close(fd)
 #ifndef SOCKET_ERROR
 #define SOCKET_ERROR -1
 #endif
@@ -137,11 +140,19 @@ main(int ac, char **av)
         // of the payload body.
         Header header;
         int length = 0;
-        while (readHeader(fd, header)) {
-            if (header.name == "CONTENT-LENGTH")
-                length = atoi(header.value.c_str());
-            fwrite(header.line.c_str(), 1, header.line.length(), fp);
-            fflush(fp);
+        try {
+            while (readHeader(fd, header)) {
+                if (header.name == "CONTENT-LENGTH")
+                    length = atoi(header.value.c_str());
+                fwrite(header.line.c_str(), 1, header.line.length(), fp);
+                fflush(fp);
+            }
+        }
+        catch (...) {
+            std::cerr << "unable to read complete header line\n";
+            fclose(fp);
+            CLOSE_SOCK(fd);
+            continue;
         }
         if (!header.line.empty()) {
             fwrite(header.line.c_str(), 1, header.line.length(), fp);
@@ -160,11 +171,7 @@ main(int ac, char **av)
         }
         fclose(fp);
         sendResponse(fd);
-#ifdef MS_WIN
-        closesocket(fd);
-#else
-        close(fd);
-#endif
+        CLOSE_SOCK(fd);
     }
     return EXIT_SUCCESS;
 }
@@ -173,19 +180,22 @@ main(int ac, char **av)
  * Read the request body.
  */
 static std::string readPayload(int fd, int requested) {
-    struct timeval tv = { 5, 0 };
-    fd_set fdSet;
-    FD_ZERO(&fdSet);
-    FD_SET(fd, &fdSet);
+
+    // Prepare a buffer to hold the bytes we read.
     char* buf = new char[requested + 1];
     memset(buf, 0, requested + 1);
-    
+
     // Keep reading until we have all the bytes, an error occurs, or we give
-    // up after getting no bytes, sleeping for awhile, and then trying again.
+    // up after getting no bytes.
     size_t totalRead = 0;
-    bool canSleep = false; // true;
     while (totalRead < requested) {
-        int rc = select(1, &fdSet, NULL, NULL, &tv);
+
+        // Give the client a few seconds to get the next bytes to us.
+        struct timeval tv = { 5, 0 };
+        fd_set fdSet;
+        FD_ZERO(&fdSet);
+        FD_SET(fd, &fdSet);
+        int rc = select(FD_SETSIZE, &fdSet, NULL, NULL, &tv);
         if (rc != 1) {
             std::cerr << "readPayload(): received only "
                       << totalRead << " bytes\n";
@@ -198,21 +208,11 @@ static std::string readPayload(int fd, int requested) {
             break;
         }
         else if (nRead == 0) {
-            if (canSleep) {
-                SLEEP();
-                canSleep = false;
-            }
-            else {
-                std::cerr << "readPayload(): received "
-                          << totalRead << " bytes\n";
-                break;
-            }
+            std::cerr << "readPayload(): received "
+                      << totalRead << " bytes\n";
+            break;
         }
         std::cout << "recv got " << nRead << " bytes" << std::endl;
-#if 0
-        else
-            canSleep = true;
-#endif
         totalRead += nRead;
     }
     std::string payload = buf;
