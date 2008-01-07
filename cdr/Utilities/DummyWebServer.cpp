@@ -1,5 +1,5 @@
 /*
- * $Id: DummyWebServer.cpp,v 1.5 2008-01-07 17:07:12 bkline Exp $
+ * $Id: DummyWebServer.cpp,v 1.6 2008-01-07 23:05:54 bkline Exp $
  *
  * Test program to catch and log HTTP requests.  This is a very crude
  * implementation: everything is handled in a single thread, and we
@@ -14,6 +14,10 @@
  *     g++ -o DummyWebServer DummyWebServer.cpp
  *
  * $Log: not supported by cvs2svn $
+ * Revision 1.5  2008/01/07 17:07:12  bkline
+ * Make sure we log headers even if an exception is thrown because
+ * of an incomplete header line.
+ *
  * Revision 1.4  2008/01/07 16:31:49  bkline
  * Made select() code portable.
  *
@@ -66,6 +70,7 @@ static bool readHeader(int, Header&);
 static std::string readPayload(int, int);
 static std::string makeFilename(int);
 static void sendResponse(int);
+static int readSocket(int, char*, int);
 
 /**
  * Creates a socket and listens for connections on it.  Runs until stopped
@@ -176,6 +181,23 @@ main(int ac, char **av)
     return EXIT_SUCCESS;
 }
 
+static int readSocket(int fd, char* buf, int requested, int timeout = 0) {
+
+    // Wait a few seconds if necessary (and the caller agrees).
+    struct timeval tv = { timeout, 0 };
+    fd_set fdSet;
+    FD_ZERO(&fdSet);
+    FD_SET(fd, &fdSet);
+    int rc = select(FD_SETSIZE, &fdSet, NULL, NULL, &tv);
+
+    // Nothing more available to read?
+    if (rc < 1)
+        return 0;
+
+    // Get the bytes.
+    return recv(fd, buf, requested, 0);
+}
+
 /*
  * Read the request body.
  */
@@ -190,29 +212,15 @@ static std::string readPayload(int fd, int requested) {
     size_t totalRead = 0;
     while (totalRead < requested) {
 
-        // Give the client a few seconds to get the next bytes to us.
-        struct timeval tv = { 5, 0 };
-        fd_set fdSet;
-        FD_ZERO(&fdSet);
-        FD_SET(fd, &fdSet);
-        int rc = select(FD_SETSIZE, &fdSet, NULL, NULL, &tv);
-        if (rc != 1) {
-            std::cerr << "readPayload(): received only "
-                      << totalRead << " bytes\n";
-            break;
-        }
         size_t bytesLeft = requested - totalRead;
-        int nRead = recv(fd, buf + totalRead, bytesLeft, 0);
+        int nRead = readSocket(fd, buf + totalRead, bytesLeft, 3);
         if (nRead < 0) {
             perror("recv");
             break;
         }
-        else if (nRead == 0) {
-            std::cerr << "readPayload(): received "
-                      << totalRead << " bytes\n";
+        else if (nRead == 0)
             break;
-        }
-        std::cout << "recv got " << nRead << " bytes" << std::endl;
+        std::cout << "read " << nRead << " bytes" << std::endl;
         totalRead += nRead;
     }
     std::string payload = buf;
@@ -236,7 +244,7 @@ static bool readHeader(int fd, Header& header) {
     char c = '\0';
     bool empty = true;
     while (c != '\n') {
-        int nRead = recv(fd, &c, 1, 0);
+        int nRead = readSocket(fd, &c, 1, 2);
         if (nRead != 1)
             throw "readHeader(): end of header line not found";
         if (!isspace(c))
