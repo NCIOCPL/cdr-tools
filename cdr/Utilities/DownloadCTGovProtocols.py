@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.24 2007-07-11 20:23:46 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.25 2008-01-09 22:27:16 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.24  2007/07/11 20:23:46  bkline
+# Modified to detect and report problems with too many NCT IDs.
+#
 # Revision 1.23  2007/06/21 19:53:51  bkline
 # Changed test for detecting documents CT.gov got from us to also include
 # trials we used to get from them but have been replaced by our own
@@ -494,7 +497,9 @@ else:
                   'neutropenia', 'aspergillosis', 'mucositis')
     connector = ''
     url  = "http://clinicaltrials.gov/ct/search"
-    params = ["studyxml=true&term="]
+    url  = "http://clinicaltrials.gov/ct2/results"
+    #url  = "http://mahler.nci.nih.gov:6789/ct2/results"
+    params = ["term="]
     for condition in conditions:
         params.append(connector)
         params.append('(')
@@ -504,12 +509,16 @@ else:
     for nctId in getForcedImportIds(cursor):
         params.append(connector)
         params.append(nctId)
+    params.append('&studyxml=true')
     params = ''.join(params)
     #print url
     #print params
     #sys.exit(0)
     try:
-        urlobj = urllib.urlopen(url, params)
+        #urlobj = urllib.urlopen(url, params)
+        url = "%s?%s" % (url, params)
+        print url
+        urlobj = urllib.urlopen(url)
         page   = urlobj.read()
     except Exception, e:
         msg = "Failure downloading trials: %s" % str(e)
