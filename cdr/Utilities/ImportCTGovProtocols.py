@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.12 2007-10-18 19:29:50 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.13 2008-01-22 18:42:05 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.12  2007/10/18 19:29:50  bkline
+# Enhanced exception handling.
+#
 # Revision 1.11  2006/10/18 20:52:10  bkline
 # Modified selection query to avoid importing trials for which we have
 # no XML (they're in the table only to force download of the XML in
@@ -83,7 +86,8 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
             self.para = u""
         else:
             if name == 'OverallStatus':
-                print "STATUS: ", self.status
+                if TESTING:
+                    print "STATUS: ", self.status
                 if self.status.upper().strip() in ("WITHDRAWN", "TERMINATED"):
                     self.flags.terminated = 1
                 self.inStatus = 0
@@ -235,7 +239,8 @@ def mergeChanges(cdrId, newDoc, flags):
 
     # New requirement (#1172): special handling for terminated protocols.
     if flags.terminated:
-        print "handling terminated doc"
+        if TESTING:
+            print "handling terminated doc"
         comment  = 'ImportCTGovProtocols: versioning terminated protocol'
         response = cdr.repDoc(session, doc = newCwd, ver = 'Y',
                               verPublishable = 'N',
@@ -274,7 +279,9 @@ def mergeChanges(cdrId, newDoc, flags):
 #----------------------------------------------------------------------
 # Plug in PDQ sponsorship information if appropriate.
 #----------------------------------------------------------------------
+NIH_INSTITUTE = "NIH INSTITUTE, CENTER, OR DIVISION"
 pdqSponsorshipMap = {
+    "NATIONAL CANCER INSTITUTE"                                       :"NCI",
     "NATIONAL CENTER FOR COMPLEMENTARY AND ALTERNATIVE MEDICINE"      :"NCCAM",
     "NATIONAL HEART, LUNG, AND BLOOOD INSTITUTE"                      :"NHLBI",
     "NATIONAL INSTITUTE OF ALLERGY AND INFECTIOUS DISEASES"           :"NIAID",
@@ -295,63 +302,86 @@ pdqSponsorshipMap = {
     "WARREN GRANT MAGNUSON CLINICAL CENTER"                       :"NIH WGMCC"
     }
 def fixPdqSponsorship(doc):
-    pdqSponsorship = ""
-    docType = None
+    pdqSponsorship = set()
     match = spPatt.search(doc)
     if match:
-        digits = re.sub(r"[^\d]", "", match.group(1))
-        if digits:
-            docId  = int(digits)
-            cursor.execute("""\
-                SELECT t.name
-                  FROM doc_type t
-                  JOIN document d
-                    ON d.doc_type = t.id
-                 WHERE d.id = ?""", docId)
-            rows = cursor.fetchall()
-            if rows:
-                docType = rows[0][0]
+        cdrIds = match.group(1).strip('|').split('|')
+        if TESTING and cdrIds:
+            print nlmId, "sponsorship IDs:", cdrIds
+        for org in cdrIds:
+            if org == 'Other':
+                pdqSponsorship.add("Other")
+                continue
+            collaboratorOrSponsorIndicator, cdrId = org.split('=')
+            collaborator = collaboratorOrSponsorIndicator == 'C'
+            digits = re.sub(r"[^\d]", "", cdrId)
+            if digits:
+                docId = int(digits)
                 cursor.execute("""\
-                    SELECT value
-                      FROM query_term
-                     WHERE path = '/Organization/OrganizationType'
-                       AND doc_id = ?""", docId)
+                    SELECT t.name
+                      FROM doc_type t
+                      JOIN document d
+                        ON d.doc_type = t.id
+                     WHERE d.id = ?""", docId)
                 rows = cursor.fetchall()
-            if docType == "Person":
-                pdqSponsorship = "Other"
-            elif docType and rows:
-                orgType = rows[0][0].strip().upper()
-                print "orgType: %s" % orgType
-                if orgType == "PHARMACEUTICAL/BIOMEDICAL":
-                    pdqSponsorship = "Pharmaceutical/Industry"
-                elif orgType == "NCI INSTITUTE, DIVISION, OR OFFICE":
-                    pdqSponsorship = "NCI"
-                elif orgType == "NIH INSTITUTE, CENTER, OR DIVISION":
-                    pdqSponsorship = "Other"
+                docType = rows and rows[0][0] or None
+                if docType == "Person":
+                    if not collaborator:
+                        pdqSponsorship.add("Other")
+                elif docType == 'Organization':
                     cursor.execute("""\
-                    SELECT value
-                      FROM query_term
-                     WHERE path = '/Organization/OrganizationNameInformation'
-                                + '/OfficialName/Name'
-                       AND doc_id = ?""", docId)
+                        SELECT value
+                          FROM query_term
+                         WHERE path = '/Organization/OrganizationType'
+                           AND doc_id = ?""", docId)
                     rows = cursor.fetchall()
-                    if rows:
-                        orgName = rows[0][0].strip().upper()
-                        print "orgName: %s" % orgName
-                        if pdqSponsorshipMap.has_key(orgName):
-                            pdqSponsorship = pdqSponsorshipMap[orgName]
-                else:
-                    pdqSponsorship = "Other"
-    if pdqSponsorship:
-        pdqSponsorship = ("<PDQSponsorship>%s</PDQSponsorship>" %
-                          pdqSponsorship)
-        print pdqSponsorship
-        return spPatt.sub(pdqSponsorship, doc)
-    return doc
+                    orgType = rows and rows[0][0].strip().upper() or None
+                    if collaborator and orgType != NIH_INSTITUTE:
+                        continue
+                    if orgType == "PHARMACEUTICAL/BIOMEDICAL":
+                        pdqSponsorship.add("Pharmaceutical/Industry")
+                    elif orgType == NIH_INSTITUTE:
+                        sponsorship = "Other"
+                        cursor.execute("""\
+                            SELECT value
+                              FROM query_term
+                             WHERE path = '/Organization'
+                                        + '/OrganizationNameInformation'
+                                        + '/OfficialName/Name'
+                               AND doc_id = ?""", docId)
+                        rows = cursor.fetchall()
+                        if rows:
+                            orgName = rows[0][0].strip().upper()
+                            if orgName in pdqSponsorshipMap:
+                                sponsorship = pdqSponsorshipMap[orgName]
+                        if collaborator:
+                            if sponsorship == "NCI":
+                                pdqSponsorship.add(sponsorship)
+                        else:
+                            pdqSponsorship.add(sponsorship)
+                    else:
+                        pdqSponsorship.add("Other")
+                elif not collaborator:
+                    pdqSponsorship.add("Other")
+            elif not collaborator:
+                pdqSponsorship.add("Other")
+    sponsorshipVals = list(pdqSponsorship)
+    sponsorshipVals.sort()
+    if 'Other' in pdqSponsorship:
+        sponsorshipVals.remove('Other')
+        sponsorshipVals.append('Other')
+    if not sponsorshipVals:
+        sponsorshipVals = ['Other']
+    sponsorshipElems = ["<PDQSponsorship>%s</PDQSponsorship>" % val
+                        for val in sponsorshipVals]
+    if TESTING and sponsorshipElems:
+        print sponsorshipElems
+    return spPatt.sub("\n".join(sponsorshipElems), doc)
 
 #----------------------------------------------------------------------
 # Module-scoped data.
 #----------------------------------------------------------------------
+TESTING = len(sys.argv) > 1 and sys.argv[1].upper().startswith('TEST')
 LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovImport.log"
 flags   = Flags()
 parser  = CTGovHandler(flags)
@@ -381,7 +411,8 @@ job = cursor.fetchone()[0]
 failures = []
 try:
     for nlmId, cdrId in rows:
-        print nlmId, cdrId
+        if TESTING:
+            print nlmId, cdrId
         flags.clear()
         cursor.execute("SELECT xml FROM ctgov_import WHERE nlm_id = ?", nlmId)
         doc = cursor.fetchone()[0]
@@ -472,7 +503,9 @@ try:
                     (nlmId, str(info)))
 except Exception, e:
     failures.append("Job interrupted: %s" % e)
-    log("Job interrupted: %s" % e)
+    log("Job interrupted: %s" % e, tback = True)
+if TESTING:
+    sys.exit(0)
 try:
     if failures:
         recips = getEmailRecipients(cursor, True)
