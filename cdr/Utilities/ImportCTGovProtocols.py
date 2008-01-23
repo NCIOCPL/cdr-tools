@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.13 2008-01-22 18:42:05 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.14 2008-01-23 04:28:24 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.13  2008/01/22 18:42:05  bkline
+# Changed sponsorship to allow multiple occurrences; made test output
+# conditional.
+#
 # Revision 1.12  2007/10/18 19:29:50  bkline
 # Enhanced exception handling.
 #
@@ -186,7 +190,7 @@ def extractDocSubset(cdrId, docVer = None):
 def hasMajorDiffs(cdrId, version, newSubset):
     oldSubset = extractDocSubset(cdrId, version)
     return newSubset != oldSubset
-    
+
 def mergeVersion(newDoc, cdrId, docObject, docVer):
     element  = ""
     response = cdr.getDoc('guest', cdrId, version = docVer)
@@ -227,6 +231,10 @@ def mergeChanges(cdrId, newDoc, flags):
     lastAny, lastPub, isChanged = cdr.lastVersions(session, cdrId)
     newCwd   = mergeVersion(newDoc, cdrId, docObject, "Current")
 
+    # We only need to save the newCwd once
+    # This flag says that we haven't saved it at all yet
+    savedNewCwd = False
+
     # Save the old CWD as a version if appropriate.
     if isChanged == 'Y':
         comment = 'ImportCTGovProtocols: preserving current working doc'
@@ -247,6 +255,7 @@ def mergeChanges(cdrId, newDoc, flags):
                               reason = comment, comment = comment,
                               showWarnings = 1, activeStatus = 'I')
         checkResponse(response)
+        savedNewCwd = True
 
     # Has a publishable version ever been saved for this document?
     elif lastPub != -1:
@@ -254,7 +263,13 @@ def mergeChanges(cdrId, newDoc, flags):
         # If the differences are not significant, create a new pub. ver.
         if hasMajorDiffs(cdrId, lastPub, newSubset):
             flags.needsReview = 'Y'
-        newPubVer = mergeVersion(newDoc, cdrId, docObject, lastPub)
+
+        # If the old CWD and the last publishable version are identical
+        #   then the newCWD and newPubVer should also be the same
+        if not isChanged and lastAny == lastPub:
+            newPubVer = newCwd
+        else:
+            newPubVer = mergeVersion(newDoc, cdrId, docObject, lastPub)
         comment = 'ImportCTGovProtocols: creating new publishable version'
         response = cdr.repDoc(session, doc = newPubVer, ver = 'Y',
                               verPublishable = 'Y', val = 'Y',
@@ -265,16 +280,24 @@ def mergeChanges(cdrId, newDoc, flags):
         if errs:
             cdr.logwrite("%s: %s" % (cdrId, errs[0]), LOGFILE)
 
+        # If the newCwd and the newPubVer are the same, we've saved both
+        if newCwd == newPubVer:
+            # They were the same.  Our new CWD was, effectively, saved
+            savedNewCwd = True
+
     elif hasMajorDiffs(cdrId, None, newSubset):
         flags.needsReview = 'Y'
-        
-    # Create a new CWD from the one we found updated with NLM's changes.
-    comment  = 'ImportCTGovProtocols: creating new CWD'
-    response = cdr.repDoc(session, doc = newCwd,
-                          reason = comment, comment = comment,
-                          showWarnings = 1,
-                          activeStatus = flags.terminated and 'I' or None)
-    checkResponse(response)
+
+    # Saving a modified publishable version, or a terminal version
+    #   also created a new CWD.
+    # Otherwise, store a new CWD from the old one updated with NLM's changes.
+    if not savedNewCwd:
+        comment  = 'ImportCTGovProtocols: creating new CWD'
+        response = cdr.repDoc(session, doc = newCwd,
+                              reason = comment, comment = comment,
+                              showWarnings = 1,
+                              activeStatus = flags.terminated and 'I' or None)
+        checkResponse(response)
 
 #----------------------------------------------------------------------
 # Plug in PDQ sponsorship information if appropriate.
