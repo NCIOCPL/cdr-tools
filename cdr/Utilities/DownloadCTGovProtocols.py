@@ -1,8 +1,15 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.25 2008-01-09 22:27:16 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.26 2008-01-24 15:02:51 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.25  2008/01/09 22:27:16  bkline
+# Changes make to work around breakage caused by unannounced changes to
+# NLM's service.  Will restore to using POST when Nick tells us support
+# for it has been restore.  Moved "studyxml=true" parameter to the end
+# so that if this fails because we exceed a length limitation, the
+# failure will not be silent.
+#
 # Revision 1.24  2007/07/11 20:23:46  bkline
 # Modified to detect and report problems with too many NCT IDs.
 #
@@ -238,7 +245,7 @@ def findIdProblem(cdrId, nctIds, nctIdToInsert, nctIdsToRemove):
 class Doc:
     def __init__(self, xmlFile, name):
         self.name          = name
-        self.xmlFile       = xmlFile
+        self.xmlFile       = unicode(xmlFile, 'utf-8')
         self.dom           = xml.dom.minidom.parseString(xmlFile)
         self.officialTitle = None
         self.briefTitle    = None

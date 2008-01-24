@@ -1,8 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.14 2008-01-23 04:28:24 ameyer Exp $
+# $Id: ImportCTGovProtocols.py,v 1.15 2008-01-24 15:02:51 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.14  2008/01/23 04:28:24  ameyer
+# Eliminated saving of a new current working version in those cases
+# where a prior save created a CWD that would be identical to the one
+# that was going to be saved.
+#
 # Revision 1.13  2008/01/22 18:42:05  bkline
 # Changed sponsorship to allow multiple occurrences; made test output
 # conditional.
@@ -438,7 +443,7 @@ try:
             print nlmId, cdrId
         flags.clear()
         cursor.execute("SELECT xml FROM ctgov_import WHERE nlm_id = ?", nlmId)
-        doc = cursor.fetchone()[0]
+        doc = cursor.fetchone()[0].encode('utf-8')
         parms = [['newDoc', cdrId and 'N' or 'Y']]
         resp = cdr.filterDoc('guest', ['name:Import CTGovProtocol'], doc = doc,
                              parm = parms)
