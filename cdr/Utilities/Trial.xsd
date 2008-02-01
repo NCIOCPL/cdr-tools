@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-     $Id: Trial.xsd,v 1.3 2007-10-02 13:19:05 bkline Exp $
+     $Id: Trial.xsd,v 1.4 2008-02-01 16:59:59 bkline Exp $
   -->
 
 <xsd:schema                  xmlns:xsd = 'http://www.w3.org/2001/XMLSchema'>
@@ -51,7 +51,12 @@
 
    <!-- Date the trial became (or will become) active (YYYY-MM-DD) -->
    <xsd:element                   name = 'StartDate'
-                                  type = 'StartDate'/>
+                                  type = 'TrialAdminDate'/>
+
+   <!-- See legal definition (YYYY-MM-DD) -->
+   <xsd:element                   name = 'CompletionDate'
+                                  type = 'TrialAdminDate'
+                             minOccurs = '0'/>
 
    <!-- Information on funding and industry sponsorship -->
    <xsd:element                   name = 'FundingInfo'
@@ -139,16 +144,16 @@
  ======================================================================
  Current overall status for the protocol.
  ====================================================================== -->
- <xsd:complexType                 name = 'StartDate'>
+ <xsd:complexType                 name = 'TrialAdminDate'>
   <xsd:simpleContent>
    <xsd:extension                 base = 'xsd:date'>
     <xsd:attribute                name = 'DateType'
-                                  type = 'StartDateType'
+                                  type = 'TrialAdminDateType'
                                    use = 'optional'/>
    </xsd:extension>
   </xsd:simpleContent>
  </xsd:complexType>
- <xsd:simpleType                  name = 'StartDateType'>
+ <xsd:simpleType                  name = 'TrialAdminDateType'>
   <xsd:restriction                base = 'xsd:string'>
    <xsd:enumeration              value = 'Actual'/>
    <xsd:enumeration              value = 'Estimated'/>
