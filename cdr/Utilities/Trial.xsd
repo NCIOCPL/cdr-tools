@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-     $Id: Trial.xsd,v 1.4 2008-02-01 16:59:59 bkline Exp $
+     $Id: Trial.xsd,v 1.5 2008-02-13 14:47:45 bkline Exp $
   -->
 
 <xsd:schema                  xmlns:xsd = 'http://www.w3.org/2001/XMLSchema'>
@@ -238,7 +238,7 @@
  <xsd:complexType                 name = 'LeadOrg'>
   <xsd:sequence>
    <xsd:element                   name = 'CTEPInstitutionCode'
-                                  type = 'xsd:string'/>
+                                  type = 'xsd:string'
                              minOccurs = '0'/>
    <xsd:element                   name = 'Name'
                                   type = 'xsd:string'/>
@@ -306,7 +306,7 @@
  <xsd:complexType                 name = 'Person'>
   <xsd:sequence>
    <xsd:element                   name = 'CTSUPersonID'
-                                  type = 'xsd:string'/>
+                                  type = 'xsd:string'
                              minOccurs = '0'/>
    <xsd:element                   name = 'Role'
                                   type = 'ProtocolPersonRole'/>
