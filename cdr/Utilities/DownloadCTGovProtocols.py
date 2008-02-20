@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.26 2008-01-24 15:02:51 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.27 2008-02-20 18:35:45 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.26  2008/01/24 15:02:51  bkline
+# Fixed handling of utf-8 characters.
+#
 # Revision 1.25  2008/01/09 22:27:16  bkline
 # Changes make to work around breakage caused by unannounced changes to
 # NLM's service.  Will restore to using POST when Nick tells us support
@@ -123,6 +126,58 @@ def loadDispositions(cursor):
         dispNames[row[0]] = row[1]
         dispCodes[row[1]] = row[0]
     return [dispNames, dispCodes]
+
+#----------------------------------------------------------------------
+# Collect the CDR and NCT IDs of trials in the Oncore database.
+#----------------------------------------------------------------------
+def getOncoreNctIds():
+    url = "http://%s/u/oncore-id-mappings" % cdr.emailerHost()
+    ids = {}
+    try:
+        urlobj = urllib.urlopen(url)
+        page   = urlobj.read()
+        dom    = xml.dom.minidom.parseString(page)
+        for node in dom.documentElement.childNodes:
+            if node.nodeName == 'Trial':
+                cdrId = node.getAttribute('PdqID')
+                nctId = node.getAttribute('NctID') or u''
+                if cdrId:
+                    ids[int(cdrId)] = nctId
+        log("loaded NCT IDs for %d Oncore trials" % len(ids))
+    except Exception, e:
+        log("failure loading Oncore NCT IDs: %s" % e)
+    return ids
+
+#----------------------------------------------------------------------
+# Send the Oncore server any new NCT IDs we got.
+#----------------------------------------------------------------------
+def postNctIdsToOncore(newIds):
+    try:
+        payload = [u"""\
+<?xml version='1.0' encoding='utf-8' ?>
+<NewNCTIds>
+"""]
+        for cdrId in newIds:
+            nctId = newIds[cdrId]
+            log("posting NCT ID '%s' to Oncore server for CDR%s" %
+                (cdrId, nctId))
+            payload.append(u"""\
+ <Trial CdrId='%s' NctId='%s'/>
+""" % (cdrId, newIds[cdrId]))
+        payload.append(u"""\
+</NewNCTIds>
+""")
+        payload = u"".join(payload).encode('utf-8')
+        app = "/u/post-oncore-nct-ids"
+        import httplib
+        conn = httplib.HTTPConnection(cdr.emailerHost())
+        conn.request("POST", app, payload)
+        response = conn.getresponse()
+        if response.status != httplib.OK:
+            log("failure posting new Oncore NCT IDs: code=%s reason=%s" %
+                (response.status, response.reason))
+    except Exception, e:
+        log("failure posting new Oncore NCT IDs: %s" % e)
 
 #----------------------------------------------------------------------
 # Prepare a CTGovProtocol document for comparison with another version.
@@ -448,6 +503,8 @@ conn = cdrdb.connect()
 cursor = conn.cursor()
 logger = Logger()
 dispNames, dispCodes = loadDispositions(cursor)
+oldOncoreNctIds = getOncoreNctIds()
+newOncoreNctIds = {}
 expr = re.compile(r"CDR0*(\d+)\s+(NCT\d+)\s*")
 for line in open('ctgov-dups.txt'):
     match = expr.match(line)
@@ -579,6 +636,8 @@ for name in nameList:
     #------------------------------------------------------------------
     elif doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
         cdrId = cdr.exNormalize(doc.orgStudyId)[1]
+        if cdrId in oldOncoreNctIds and oldOncoreNctIds[cdrId] != doc.nlmId:
+            newOncoreNctIds[cdrId] = doc.nlmId
         log("Skipping %s, which has a CDR ID\n" % doc.nlmId)
         stats.pdqCdr += 1
         try:
@@ -713,6 +772,12 @@ for name in nameList:
                                                     dispNames[disp]))
         except Exception, info:
             log("Failure importing %s: %s\n" % (doc.nlmId, str(info)))
+
+#----------------------------------------------------------------------
+# Send the Oncore server any new NCT IDs we've collected.
+#----------------------------------------------------------------------
+if newOncoreNctIds:
+    postNctIdsToOncore(newOncoreNctIds)
 
 #----------------------------------------------------------------------
 # Find out which trials are no longer being sent by NLM.
