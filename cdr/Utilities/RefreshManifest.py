@@ -1,11 +1,15 @@
 #----------------------------------------------------------------------
 #
-# $Id: RefreshManifest.py,v 1.6 2007-09-12 21:49:45 bkline Exp $
+# $Id: RefreshManifest.py,v 1.7 2008-03-04 21:12:26 bkline Exp $
 #
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.6  2007/09/12 21:49:45  bkline
+# Extended workaround for Microsoft Y2K7 bug.  Will need to do it again
+# in the spring of 2008.
+#
 # Revision 1.5  2007/03/15 21:22:07  bkline
 # Installed workaround for DST 2007 bug in Microsoft runtime libraries.
 #
@@ -81,8 +85,8 @@ def createFilelist(files):
 def adjustManifestTime(oldTime):
 
     # Make sure we don't forget to install a permanent fix.
-    localTime = time.localtime()
-    if localTime[0] > 2007 and localTime[1] > 2:
+    localTime = tuple(time.localtime())
+    if localTime > (2009, 2, 15):
         sys.stderr.write("""
       *****************************************************************  
       ***                                                           ***
@@ -93,30 +97,25 @@ def adjustManifestTime(oldTime):
       *****************************************************************
 
 """)
-
-    # Original workaround for spring 2007; we may use similar code
-    # in the spring of 2008 if Microsoft still hasn't released a
-    # service pack for VS.Net2003 which includes the patch.
-    # Once we're past March 2007, revert to normal behavior
-    #if localTime[0] > 2007 or localTime[1] > 3:
-    #    return oldTime
-
-    # Add an extra hour (60 seconds each for 60 minutes)
-    #return oldTime + 60 * 60
+    if localTime > (2009, 3, 8):
+        raise Exception("YOU FORGOT TO INSTALL THE PATCH!!!")
 
     # If Microsoft thinks it's daylight saving time, we're safe.
     if localTime[8] == 1:
         return oldTime
 
-    # If we're gone past 2 a.m. 2007-11-04, then Microsoft is correct
-    # in its belief that we've returned to standard time.
-    if tuple(localTime) >= (2007, 11, 4, 2):
+    # We actually switch to DST in the middle of the night of 2008-03-09.
+    if localTime < (2008, 3, 9, 3):
         return oldTime
 
-    # Microsoft thinks we're back to standard time because we've
-    # gone past 2 a.m. of the last Sunday in October, but Congress
-    # moved the switch to a week later, so we need to add an hour,
-    # because we're still in daylight saving time territory.
+    # If we've gone past 2 a.m. 2008-11-02, then Microsoft is correct
+    # in its belief that we've returned to standard time.
+    if tuple(localTime) >= (2008, 11, 2, 2):
+        return oldTime
+
+    # Microsoft thinks we're on standard time, but Congress has tacked
+    # on several weeks of additional daylight saving time in the spring,
+    # and another week at the end in the fall.
     return oldTime + 60 * 60
     
 def writeManifest(manifestXml, manifestTime):
