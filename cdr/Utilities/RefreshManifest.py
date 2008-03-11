@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: RefreshManifest.py,v 1.7 2008-03-04 21:12:26 bkline Exp $
+# $Id: RefreshManifest.py,v 1.8 2008-03-11 20:46:05 bkline Exp $
 #
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.7  2008/03/04 21:12:26  bkline
+# Extended workaround to Microsoft's Y2K7 bug for 2008.
+#
 # Revision 1.6  2007/09/12 21:49:45  bkline
 # Extended workaround for Microsoft Y2K7 bug.  Will need to do it again
 # in the spring of 2008.
@@ -79,58 +82,12 @@ def createFilelist(files):
 """ % (f.name, f.timestamp)
     return fragmentXml + u" </FileList>"
 
-#----------------------------------------------------------------------
-#      *****  REMOVE THIS KLUDGE WHEN IT'S NO LONGER NEEDED! *****
-#----------------------------------------------------------------------
-def adjustManifestTime(oldTime):
-
-    # Make sure we don't forget to install a permanent fix.
-    localTime = tuple(time.localtime())
-    if localTime > (2009, 2, 15):
-        sys.stderr.write("""
-      *****************************************************************  
-      ***                                                           ***
-      *** DON'T FORGET TO INSTALL VISUAL STUDIO .NET 2003 HOTFIX!!! ***
-      ***                                                           ***
-      ***        SEE http://support.microsoft.com/kb/932299         ***
-      ***                                                           ***
-      *****************************************************************
-
-""")
-    if localTime > (2009, 3, 8):
-        raise Exception("YOU FORGOT TO INSTALL THE PATCH!!!")
-
-    # If Microsoft thinks it's daylight saving time, we're safe.
-    if localTime[8] == 1:
-        return oldTime
-
-    # We actually switch to DST in the middle of the night of 2008-03-09.
-    if localTime < (2008, 3, 9, 3):
-        return oldTime
-
-    # If we've gone past 2 a.m. 2008-11-02, then Microsoft is correct
-    # in its belief that we've returned to standard time.
-    if tuple(localTime) >= (2008, 11, 2, 2):
-        return oldTime
-
-    # Microsoft thinks we're on standard time, but Congress has tacked
-    # on several weeks of additional daylight saving time in the spring,
-    # and another week at the end in the fall.
-    return oldTime + 60 * 60
-    
 def writeManifest(manifestXml, manifestTime):
     manifestFile = file(cdr.MANIFEST_PATH, 'w')
     manifestFile.write(manifestXml)
     manifestFile.close()
 
-    # Need to add a temporary fix by adding one hour to the 
-    # manifestTime due to a bug in pywintypes calculation of 
-    # time.  
-    # This fix will need to be removed at the first weekend
-    # in April (the begin of daylight savings time of earlier
-    # years)
-    # =======================================================
-    timestamp = pywintypes.Time(adjustManifestTime(manifestTime))
+    timestamp = pywintypes.Time(manifestTime)
     handle = win32file.CreateFile(cdr.MANIFEST_NAME,
                                   win32file.GENERIC_WRITE, 0, None,
                                   win32file.OPEN_EXISTING, 0, 0)
