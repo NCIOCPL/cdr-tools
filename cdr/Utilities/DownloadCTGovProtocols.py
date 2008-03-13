@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.27 2008-02-20 18:35:45 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.28 2008-03-13 20:54:48 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.27  2008/02/20 18:35:45  bkline
+# Added code to collect new NCT IDs for Oncore documents.
+#
 # Revision 1.26  2008/01/24 15:02:51  bkline
 # Fixed handling of utf-8 characters.
 #
@@ -142,6 +145,7 @@ def getOncoreNctIds():
                 cdrId = node.getAttribute('PdqID')
                 nctId = node.getAttribute('NctID') or u''
                 if cdrId:
+                    cdrId = re.sub("[^0-9]", "", cdrId)
                     ids[int(cdrId)] = nctId
         log("loaded NCT IDs for %d Oncore trials" % len(ids))
     except Exception, e:
