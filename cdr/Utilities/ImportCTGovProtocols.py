@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.15 2008-01-24 15:02:51 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.16 2008-03-27 14:48:00 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.15  2008/01/24 15:02:51  bkline
+# Fixed handling of utf-8 characters.
+#
 # Revision 1.14  2008/01/23 04:28:24  ameyer
 # Eliminated saving of a new current working version in those cases
 # where a prior save created a CWD that would be identical to the one
@@ -196,22 +199,20 @@ def hasMajorDiffs(cdrId, version, newSubset):
     oldSubset = extractDocSubset(cdrId, version)
     return newSubset != oldSubset
 
+def preserveElement(tagName, newXml, dom):
+    elems = dom.getElementsByTagName(tagName)
+    oldXml = elems and elems[0].toxml() or u""
+    placeholder = "@@%s@@" % tagName
+    return newXml.replace(placeholder, oldXml.encode('utf-8'))
+
 def mergeVersion(newDoc, cdrId, docObject, docVer):
-    element  = ""
-    response = cdr.getDoc('guest', cdrId, version = docVer)
-    errors   = cdr.getErrors(response, errorsExpected = 0, asSequence = 1)
-    if errors:
+    response = cdr.getDoc('guest', cdrId, version = docVer, getObject = True)
+    if type(response) in (str, unicode):
+        errors = cdr.getErrors(response, errorsExpected = 0, asSequence = 1)
         raise Exception(errors)
-    startTag = "<PDQIndexing"
-    endTag   = "</PDQIndexing>"
-    begin    = response.find(startTag)
-    while begin != -1 and response[begin + len(startTag)] not in "> \n\r\t":
-        begin = response.find(startTag, begin + 1)
-    if begin != -1:
-        end = response.find(endTag, begin)
-        if end != -1:
-            element = response[begin:end + len(endTag)]
-    docObject.xml = newDoc.replace('@@PDQIndexing@@', element)
+    dom = xml.dom.minidom.parseString(response.xml)
+    newDoc = preserveElement('PDQIndexing', newDoc, dom)
+    newDoc = preserveElement('ProtocolProcessingDetails', newDoc, dom)
     return str(docObject)
 
 def mergeChanges(cdrId, newDoc, flags):
