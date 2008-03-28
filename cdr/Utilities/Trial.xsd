@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-     $Id: Trial.xsd,v 1.5 2008-02-13 14:47:45 bkline Exp $
+     $Id: Trial.xsd,v 1.6 2008-03-28 16:36:35 bkline Exp $
   -->
 
 <xsd:schema                  xmlns:xsd = 'http://www.w3.org/2001/XMLSchema'>
@@ -42,6 +42,11 @@
    <xsd:element                   name = 'ProtocolPhase'
                                   type = 'ProtocolPhase'
                              maxOccurs = '2'/>
+
+   <!-- Added by RMK at request of KAE 2008-03-28 -->
+   <xsd:element                   name = 'ExpectedEnrollment'
+                                  type = 'xsd:integer'
+                             minOccurs = '0'/>
 
    <!-- Current protocol status & date (YYYY-MM-DD) status became effective -->
    <xsd:element                   name = 'ProtocolStatus'
