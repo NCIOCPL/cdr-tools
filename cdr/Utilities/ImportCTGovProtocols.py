@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.16 2008-03-27 14:48:00 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.17 2008-04-17 15:15:54 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.16  2008/03/27 14:48:00  bkline
+# Modifications for request #3949 (preserve protocol processing details
+# block).
+#
 # Revision 1.15  2008/01/24 15:02:51  bkline
 # Fixed handling of utf-8 characters.
 #
@@ -312,23 +316,29 @@ NIH_INSTITUTE = "NIH INSTITUTE, CENTER, OR DIVISION"
 pdqSponsorshipMap = {
     "NATIONAL CANCER INSTITUTE"                                       :"NCI",
     "NATIONAL CENTER FOR COMPLEMENTARY AND ALTERNATIVE MEDICINE"      :"NCCAM",
-    "NATIONAL HEART, LUNG, AND BLOOOD INSTITUTE"                      :"NHLBI",
+    "NATIONAL HEART, LUNG, AND BLOOD INSTITUTE"                       :"NHLBI",
     "NATIONAL INSTITUTE OF ALLERGY AND INFECTIOUS DISEASES"           :"NIAID",
     "NATIONAL INSTITUTE OF ARTHRITIS AND MUSCULOSKELETAL DISEASES"    :"NIAMS",
+    "NATIONAL INSTITUTE OF ARTHRITIS AND MUSCULOSKELETAL AND SKIN DISEASES"
+                                                                      :"NIAMS",
     "NATIONAL INSTITUTE OF DENTAL AND CRANIOFACIAL RESEARCH"          :"NIDCR",
     "NATIONAL INSTITUTE OF DIABETES AND DIGESTIVE AND KIDNEY DISEASES":"NIDDK",
     "NATIONAL INSTITUTE OF NEUROLOGICAL DISORDERS AND STROKE"         :"NINDS",
     "NATIONAL EYE INSTITUTE"                                          :"NEI",
     "NATIONAL INSTITUTE ON AGING"                                     :"NIA",
+    "NATIONAL INSTITUTE ON AGING - BETHESDA"                          :"NIA",
     "NATIONAL INSTITUTE OF CHILD HEALTH AND HUMAN DEVELOPMENT"        :"NICHD",
     "NATIONAL INSTITUTE ON DEAFNESS AND OTHER COMMUNICATION DISORDERS":"NIDCD",
     "NATIONAL INSTITUTE OF ENVIRONMENTAL HEALTH SCIENCES"             :"NIEHS",
     "NATIONAL CENTER FOR RESEARCH RESOURCES"                          :"NCRR",
+    "NIH - NATIONAL CENTER FOR RESEARCH RESOURCES"                    :"NCRR",
     "NATIONAL HUMAN GENOME RESEARCH INSTITUTE"                        :"NHGRI",
+    "NHGRI - CLINICAL GENETHERAPY BRANCH"                             :"NHGRI",
     "NATIONAL INSTITUTE OF MENTAL HEALTH"                             :"NIMH",
     "NATIONAL INSTITUTE OF GENERAL MEDICAL SCIENCES"                  :"NIGMS",
     "NATIONAL INSTITUTE OF NURSING RESEARCH"                          :"NINR",
-    "WARREN GRANT MAGNUSON CLINICAL CENTER"                       :"NIH WGMCC"
+    "WARREN GRANT MAGNUSON CLINICAL CENTER"                       :"NIH WGMCC",
+    "NIH - WARREN GRANT MAGNUSON CLINICAL CENTER"                 :"NIH WGMCC"
     }
 def fixPdqSponsorship(doc):
     pdqSponsorship = set()
