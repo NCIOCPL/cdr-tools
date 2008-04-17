@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.17 2008-04-17 15:15:54 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.18 2008-04-17 15:23:23 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.17  2008/04/17 15:15:54  bkline
+# Sponsorship Mapping changes requested by Sheri (#4026).
+#
 # Revision 1.16  2008/03/27 14:48:00  bkline
 # Modifications for request #3949 (preserve protocol processing details
 # block).
@@ -333,7 +336,7 @@ pdqSponsorshipMap = {
     "NATIONAL CENTER FOR RESEARCH RESOURCES"                          :"NCRR",
     "NIH - NATIONAL CENTER FOR RESEARCH RESOURCES"                    :"NCRR",
     "NATIONAL HUMAN GENOME RESEARCH INSTITUTE"                        :"NHGRI",
-    "NHGRI - CLINICAL GENETHERAPY BRANCH"                             :"NHGRI",
+    #"NHGRI - CLINICAL GENETHERAPY BRANCH"                             :"NHGRI",
     "NATIONAL INSTITUTE OF MENTAL HEALTH"                             :"NIMH",
     "NATIONAL INSTITUTE OF GENERAL MEDICAL SCIENCES"                  :"NIGMS",
     "NATIONAL INSTITUTE OF NURSING RESEARCH"                          :"NINR",
