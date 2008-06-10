@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.28 2008-03-13 20:54:48 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.29 2008-06-10 19:48:43 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.28  2008/03/13 20:54:48  bkline
+# Normalized CDR ID (stripping out non-digits) in getOncoreNctIds().
+#
 # Revision 1.27  2008/02/20 18:35:45  bkline
 # Added code to collect new NCT IDs for Oncore documents.
 #
@@ -500,6 +503,28 @@ def getForcedImportIds(cursor):
     return [row[0] for row in cursor.fetchall()]
 
 #----------------------------------------------------------------------
+# Request #4132 from Lakshmi:
+# If a CTGOV trial has one or more <nct_alias> elements, we need to
+# check if we have records in the CDR for any of those nct_alias numbers.
+# If we do, we need to block the record(s) and add a comment :
+# "Trial blocked because it is a duplicate of NCT xxxxxx"
+# where NCT xxxxx is the NCTID of the trial in which the <nct_alias> is
+# found.
+#----------------------------------------------------------------------
+def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
+    comment = u"Trial blocked because it is a duplicate of %s" % nlmId
+    for obsoleteId in obsoleteIds:
+        cursor.execute("""\
+            SELECT DISTINCT q.doc_id
+              FROM query_term q
+              JOIN active_doc a
+                ON a.id = q.doc_id
+             WHERE q.path = '/CTGovProtocol/IDInfo/NCTID'
+               AND q.value = ?""", obsoleteId, timeout = 300)
+        for row in cursor.fetchall():
+            cdr.setDocStatus(session, row[0], 'I', comment = comment)
+
+#----------------------------------------------------------------------
 # Seed the table with documents we know to be duplicates.
 #----------------------------------------------------------------------
 ModifyDocs._testMode = False
@@ -621,6 +646,12 @@ for name in nameList:
     wanted = 0
     xmlFile = file.read(name)
     doc = Doc(xmlFile, name)
+
+    #------------------------------------------------------------------
+    # Added for enhancement request #4132.
+    #------------------------------------------------------------------
+    if doc.obsoleteIds and doc.nlmId:
+        blockObsoleteCtgovDocs(doc.obsoleteIds, cursor, session, doc.nlmId)
 
     #------------------------------------------------------------------
     # Handle some really unexpected problems.
