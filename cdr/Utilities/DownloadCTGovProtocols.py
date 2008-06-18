@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.29 2008-06-10 19:48:43 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.30 2008-06-18 16:31:56 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.29  2008/06/10 19:48:43  bkline
+# Added code to block obsolete CT.gov documents.
+#
 # Revision 1.28  2008/03/13 20:54:48  bkline
 # Normalized CDR ID (stripping out non-digits) in getOncoreNctIds().
 #
@@ -104,7 +107,7 @@
 #
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
-import socket, ModifyDocs
+import socket, ModifyDocs, glob
 
 LOGFILE   = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
 developer = '***REMOVED***' # for error reports
@@ -498,6 +501,8 @@ def getNctIds(cdrId):
 # terms don't fit the criteria for our search query.
 #----------------------------------------------------------------------
 def getForcedImportIds(cursor):
+    conn = cdrdb.connect('CdrGuest', dataSource = 'bach.nci.nih.gov')
+    cursor = conn.cursor()
     cursor.execute("SELECT nlm_id FROM ctgov_import WHERE force = 'Y'",
                    timeout = 300)
     return [row[0] for row in cursor.fetchall()]
@@ -579,6 +584,32 @@ for line in open('ctgov-dups.txt'):
                 log('Unable to insert row for %s/CDR%d\n' %
                     (nlmId, cdrId))
 
+def getForcedDocs(params, counter, cursor):
+    params.append('&studyxml=true')
+    params = ''.join(params)
+    #print params
+    name = "force-set-%d.zip" % counter
+    #print name
+    try:
+        #urlobj = urllib.urlopen(url, params)
+        urlobj = urllib.urlopen("%s?%s" % (url, params))
+        page   = urlobj.read()
+    except Exception, e:
+        msg = "Failure downloading %s: %s" % (name, str(e))
+        reportFailure(cursor, msg)
+    try:
+        fp = open(name, "wb")
+        fp.write(page)
+        fp.close()
+        log("%s downloaded\n" % name)
+    except Exception, e:
+        msg = "Failure storing %s: %s" % (name, str(e))
+        reportFailure(cursor, msg)
+    result = cdr.runCommand("unzip -o %s" % name)
+    if result.code:
+        msg = "Failure unpacking %s: %s" % (name, result.output)
+        reportFailure(cursor, msg)
+
 #----------------------------------------------------------------------
 # Decide whether we're really downloading or working from an existing
 # archive.
@@ -586,47 +617,85 @@ for line in open('ctgov-dups.txt'):
 if len(sys.argv) > 1:
     name = sys.argv[1]
 else:
+    now = time.strftime("%Y%m%d%H%M%S")
+    curdir = os.getcwd()
+    basedir = os.path.join(curdir, "CTGovDownloads")
+    workdir = os.path.join(basedir, "work-%s" % now)
+    os.makedirs(workdir)
+    os.chdir(workdir)
+    log("workdir is '%s'\n" % workdir)
     conditions = ('cancer', 'lymphedema', 'myelodysplastic syndromes',
                   'neutropenia', 'aspergillosis', 'mucositis')
     connector = ''
+    params = ["term="]
     url  = "http://clinicaltrials.gov/ct/search"
     url  = "http://clinicaltrials.gov/ct2/results"
-    #url  = "http://mahler.nci.nih.gov:6789/ct2/results"
-    params = ["term="]
     for condition in conditions:
         params.append(connector)
         params.append('(')
         params.append(condition.replace(' ', '+'))
         params.append(')+%5BCONDITION%5D')
         connector = '+OR+'
-    for nctId in getForcedImportIds(cursor):
-        params.append(connector)
-        params.append(nctId)
     params.append('&studyxml=true')
     params = ''.join(params)
-    #print url
     #print params
-    #sys.exit(0)
     try:
-        #urlobj = urllib.urlopen(url, params)
-        url = "%s?%s" % (url, params)
-        print url
-        urlobj = urllib.urlopen(url)
+        # POST is broken again: NLM ignores the 'studyxml' paramater
+        # when they get a POST request.
+        # urlobj = urllib.urlopen(url, params) # POST request
+        urlobj = urllib.urlopen("%s?%s" % (url, params)) # GET request
         page   = urlobj.read()
     except Exception, e:
-        msg = "Failure downloading trials: %s" % str(e)
+        msg = "Failure downloading core set: %s" % str(e)
         reportFailure(cursor, msg)
-    name = time.strftime("CTGovDownloads/CTGovDownload-%Y%m%d%H%M%S.zip")
     try:
-        zipFile = open(name, "wb")
-        zipFile.write(page)
-        zipFile.close()
-        log("Trials downloaded to %s\n" % name)
-        # sys.exit(0)
+        fp = open("core-set.zip", "wb")
+        fp.write(page)
+        fp.close()
+        log("core set downloaded\n")
     except Exception, e:
         msg = "Failure storing downloaded trials: %s" % str(e)
         reportFailure(cursor, msg)
-when       = time.strftime("%Y-%m-%d")
+    result = cdr.runCommand("unzip -o core-set.zip")
+    if result.code:
+        msg = "Failure unpacking core set: %s" % result.output
+        reportFailure(cursor, msg)
+    downloaded = set([n[:-4].upper() for n in glob.glob("*.xml")])
+    connector = ''
+    params = ["term="]
+    forcedIds = getForcedImportIds(cursor)
+    counter = 1
+    for nctId in forcedIds:
+        if nctId.upper() not in downloaded:
+            params.append(connector)
+            params.append(nctId)
+            downloaded.add(nctId.upper())
+            connector = '+OR+'
+
+            # Don't ask for more than 10 forced documents at a time
+            # (NLM has imposed arbitrary limits on our queries because
+            # they're unwilling to do the work to determine that
+            # we're not a hacker).
+            if (len(params) / 2) > 10:
+                getForcedDocs(params, counter, cursor)
+                counter += 1
+                connector = ''
+                params = ["term="]
+
+    # Take care of any leftover 'force' documents.
+    if len(params) > 1:
+        getForcedDocs(params, counter, cursor)
+    name = "CTGovDownload-%s.zip" % now
+    result = cdr.runCommand("zip ../%s *.xml" % name)
+    if result.code:
+        msg = "Failure repacking trials: %s" % result.output
+        reportFailure(cursor, msg)
+    os.chdir(curdir)
+    name = "CTGovDownloads/%s" % name
+    log("full set in '%s'\n" % name)
+    #print name
+    #sys.exit(0)
+when = time.strftime("%Y-%m-%d")
 try:
     file     = zipfile.ZipFile(name)
     nameList = file.namelist()
@@ -649,9 +718,10 @@ for name in nameList:
 
     #------------------------------------------------------------------
     # Added for enhancement request #4132.
+    # Turned off while the requirements get settled.
     #------------------------------------------------------------------
-    if doc.obsoleteIds and doc.nlmId:
-        blockObsoleteCtgovDocs(doc.obsoleteIds, cursor, session, doc.nlmId)
+    #if doc.obsoleteIds and doc.nlmId:
+    #    blockObsoleteCtgovDocs(doc.obsoleteIds, cursor, session, doc.nlmId)
 
     #------------------------------------------------------------------
     # Handle some really unexpected problems.
