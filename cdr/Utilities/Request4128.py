@@ -1,14 +1,17 @@
 #----------------------------------------------------------------------
-# Global change to add RegulatoryInfo elements to InScopeProtocols
+# Global change to add RegulatoryInformation elements to InScopeProtocols
 # using data extracted from an Excel spreadsheet passed on the
 # command line.
 #
 # Data is added only if there is none in the document already.  If
 # data exists in the document, it takes precedence over the spreadsheet.
 #
-# $Id: Request4128.py,v 1.1 2008-06-24 20:09:25 ameyer Exp $
+# $Id: Request4128.py,v 1.2 2008-06-27 02:14:52 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2008/06/24 20:09:25  ameyer
+# Initial version.
+#
 #
 #----------------------------------------------------------------------
 import cdr, ExcelReader, ModifyDocs, sys
@@ -80,7 +83,7 @@ class FilterTransform:
         Transform one doc, passing parameters from the spreadsheet to
         the filter.
 
-        If the doc already has RegulatoryInfo, the filter returns
+        If the doc already has RegulatoryInformation, the filter returns
         a message to that effect.  We then hand back the unmodified
         before filtering doc to ModifyDocs, which will notice that
         it is unchanged and not store it.
@@ -117,7 +120,7 @@ class FilterTransform:
  </xsl:template>
 
  <!-- If new field already exists, abort this record -->
- <xsl:template match='/InScopeProtocol/RegulatoryInfo'>
+ <xsl:template match='/InScopeProtocol/RegulatoryInformation'>
    <xsl:message terminate='yes'>%s</xsl:message>
  </xsl:template>
 
@@ -177,7 +180,7 @@ class FilterTransform:
 
  <!-- Add a RegulatoryInformation element with data passed in + defaults -->
  <xsl:template name='addRegulatoryInfo'>
-   <xsl:element name='RegulatoryInfo'>
+   <xsl:element name='RegulatoryInformation'>
      <xsl:element name='FDARegulated'>
        <xsl:value-of select='$fdaRegulated'/>
      </xsl:element>
@@ -251,7 +254,7 @@ if __name__ == '__main__':
       testMode=testMode)
 
     # Debug
-    # job.setMaxDocs(6)
+    # job.setMaxDocs(10)
 
     # Global change
     job.run()
