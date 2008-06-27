@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# One off change to coalesce six different SemanticType values into
+# One off change to coalesce seven different SemanticType values into
 # one.  Only the cdr:ref attributes to the semantic type term
 # documents need to be changed.
 #
@@ -15,8 +15,11 @@
 # New type that replaces them:
 #    256087 - Intervention or procedure
 #
-# $Id: Request3680.py,v 1.1 2007-10-19 04:15:44 ameyer Exp $
+# $Id: Request3680.py,v 1.2 2008-06-27 02:12:00 ameyer Exp $
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2007/10/19 04:15:44  ameyer
+# Initial version.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, ModifyDocs, sys
 
@@ -27,11 +30,11 @@ class Filter:
     def getDocIds(self):
         """
         Selects all doc ids from query_term_pub that have one of the
-        six SemanticTypes of interest.
+        seven SemanticTypes of interest.
 
         A check of Bach showed that all entries in the query_term
-        table with one of the six types also existed in the query_term_pub
-        table with one of the six types.  However there were three
+        table with one of the seven types also existed in the query_term_pub
+        table with one of the seven types.  However there were three
         entries in query_term_pub that were not in query_term.
 
         I checked them manually.  All had been edited to refer to the
@@ -60,7 +63,6 @@ class Transform:
     def run(self, docObj):
 
         xsl = """<?xml version='1.0' encoding='UTF-8'?>
-
 <xsl:transform  version = '1.0'
                 xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                 xmlns:cdr = 'cips.nci.nih.gov/cdr'>
@@ -80,19 +82,41 @@ class Transform:
  <!-- Node of interest -->
  <xsl:template             match = '/Term/SemanticType'>
 
-   <!-- Create new, empty element -->
-   <xsl:copy>
-     <!-- Copy any PdqKey attribute -->
-     <xsl:if                test = '@PdqKey'>
-       <xsl:copy-of select='@PdqKey'/>
-     </xsl:if>
+   <!-- Is it one of the types we transform? -->
+   <xsl:choose>
+     <xsl:when              test = '@cdr:ref = "CDR0000539747" or
+                                    @cdr:ref = "CDR0000256159" or
+                                    @cdr:ref = "CDR0000256160" or
+                                    @cdr:ref = "CDR0000256161" or
+                                    @cdr:ref = "CDR0000256162" or
+                                    @cdr:ref = "CDR0000256163" or
+                                    @cdr:ref = "CDR0000482272"'>
+       <!-- Replace with new one, but only if this is the first
+            matching node -->
+       <xsl:if            test = "not(preceding-sibling::SemanticType[
+                                      @cdr:ref = 'CDR0000539747' or
+                                      @cdr:ref = 'CDR0000256159' or
+                                      @cdr:ref = 'CDR0000256160' or
+                                      @cdr:ref = 'CDR0000256161' or
+                                      @cdr:ref = 'CDR0000256162' or
+                                      @cdr:ref = 'CDR0000256163' or
+                                      @cdr:ref = 'CDR0000482272'])">
 
-     <!-- Replace cdr:ref with new one -->
-     <xsl:attribute name='cdr:ref'>CDR00000256087</xsl:attribute>
+         <!-- Create new, empty element -->
+         <xsl:copy>
+           <!-- Replace cdr:ref with new one
+                Don't copy PdqKey, it's no longer relevant -->
+           <xsl:attribute name='cdr:ref'>CDR0000256087</xsl:attribute>
 
-     <!-- Denormalized text isn't required, but let's do it anyway -->
-     <xsl:text>Intervention/procedure</xsl:text>
-   </xsl:copy>
+           <!-- Denormalized text isn't required, but let's do it anyway -->
+           <xsl:text>Intervention/procedure</xsl:text>
+         </xsl:copy>
+       </xsl:if>
+     </xsl:when>
+     <xsl:otherwise>
+       <xsl:copy-of       select = '.'/>
+     </xsl:otherwise>
+   </xsl:choose>
  </xsl:template>
 </xsl:transform>
 """
@@ -116,13 +140,11 @@ if __name__ == '__main__':
 
     # Instantiate ModifyDocs job
     job = ModifyDocs.Job(sys.argv[1], sys.argv[2], Filter(), Transform(),
-      "Global replace 6 different SemanticTypes with 1 - Request 3680.",
+      "Global replace 7 different SemanticTypes with 1 - Request 3680.",
       testMode=testMode)
 
-    # Turn off all modifications except for Current Working Document
-    job.setTransformANY(False)
-    job.setTransformPUB(False)
-    # job.setMaxDocs(2)
+    # Debug
+    # job.setMaxDocs(3)
 
     # Global change
     job.run()
