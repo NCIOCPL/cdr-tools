@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.30 2008-06-18 16:31:56 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.31 2008-07-21 12:45:16 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.30  2008/06/18 16:31:56  bkline
+# Added workaround for lame limitations in CT.gov service; suppressed
+# new code to block 'alias' documents.
+#
 # Revision 1.29  2008/06/10 19:48:43  bkline
 # Added code to block obsolete CT.gov documents.
 #
@@ -517,8 +521,20 @@ def getForcedImportIds(cursor):
 # found.
 #----------------------------------------------------------------------
 def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
-    comment = u"Trial blocked because it is a duplicate of %s" % nlmId
+
+    # [Kim, 2008-06-17] Don't do this if the original isn't in the CDR.
+    cursor.execute("""\
+        SELECT COUNT(*)
+          FROM query_term
+         WHERE path = '/CTGovProtocol/IDInfo/NCTID'
+           AND value = ?""", nlmId)
+    if cursor.fetchall()[0][0] < 1:
+        return
+    
+    comment = (u"Trial blocked because it is a duplicate of %s"
+               % nlmId).encode('utf-8')
     for obsoleteId in obsoleteIds:
+        # log("looking for obsolete trial '%s'" % obsoleteId)
         cursor.execute("""\
             SELECT DISTINCT q.doc_id
               FROM query_term q
@@ -527,7 +543,23 @@ def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
              WHERE q.path = '/CTGovProtocol/IDInfo/NCTID'
                AND q.value = ?""", obsoleteId, timeout = 300)
         for row in cursor.fetchall():
-            cdr.setDocStatus(session, row[0], 'I', comment = comment)
+            
+            # [Kim, 2008-06-17] Create a new version and put comment there.
+            # cdr.setDocStatus(session, row[0], 'I', comment = comment)
+            doc = cdr.getDoc(session, row[0], 'Y')
+            err = cdr.checkErr(doc)
+            if err:
+                log("getDoc(CDR%s): %s" % (row[0], err))
+            else:
+                response = cdr.repDoc(session, doc = doc, comment = comment,
+                                      checkIn = 'Y', reason = comment,
+                                      ver = 'Y', activeStatus = 'I',
+                                      verPublishable = 'N')
+                err = cdr.checkErr(response)
+                if err:
+                    log("repDoc(CDR%s): %s" % (row[0], err))
+                else:
+                    log("blocked alias CDR%s (%s)" % (row[0], obsoleteId))
 
 #----------------------------------------------------------------------
 # Seed the table with documents we know to be duplicates.
@@ -720,8 +752,8 @@ for name in nameList:
     # Added for enhancement request #4132.
     # Turned off while the requirements get settled.
     #------------------------------------------------------------------
-    #if doc.obsoleteIds and doc.nlmId:
-    #    blockObsoleteCtgovDocs(doc.obsoleteIds, cursor, session, doc.nlmId)
+    if doc.obsoleteIds and doc.nlmId:
+        blockObsoleteCtgovDocs(doc.obsoleteIds, cursor, session, doc.nlmId)
 
     #------------------------------------------------------------------
     # Handle some really unexpected problems.
