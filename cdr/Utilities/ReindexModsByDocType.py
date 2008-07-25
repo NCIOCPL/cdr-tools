@@ -4,8 +4,11 @@
 #
 # A version of ReindexByDocType.py
 #
-# $Id: ReindexModsByDocType.py,v 1.1 2008-07-25 00:58:41 ameyer Exp $
+# $Id: ReindexModsByDocType.py,v 1.2 2008-07-25 04:45:18 ameyer Exp $
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2008/07/25 00:58:41  ameyer
+# Initial version.
+#
 #----------------------------------------------------------
 
 import cdr, cdrdb, sys, time
@@ -35,7 +38,10 @@ cursor.execute("""\
             ON d.id = a.document
           JOIN doc_type t
             ON d.doc_type = t.id
+          JOIN action act
+            ON a.action = act.id
          WHERE t.name = '%s'
+           AND act.name IN ('ADD DOCUMENT', 'MODIFY DOCUMENT')
            AND a.dt > GETDATE() - %s
       ORDER BY d.id""" % (docType, daysBack))
 rows = cursor.fetchall()
