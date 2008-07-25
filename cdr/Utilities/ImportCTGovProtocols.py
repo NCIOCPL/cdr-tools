@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.18 2008-04-17 15:23:23 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.19 2008-07-25 15:28:47 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.18  2008/04/17 15:23:23  bkline
+# Blocked out mapping for ""NHGRI - CLINICAL GENETHERAPY BRANCH" at
+# Kim's request (#4026).
+#
 # Revision 1.17  2008/04/17 15:15:54  bkline
 # Sponsorship Mapping changes requested by Sheri (#4026).
 #
@@ -207,12 +211,61 @@ def hasMajorDiffs(cdrId, version, newSubset):
     return newSubset != oldSubset
 
 def preserveElement(tagName, newXml, dom):
+    """
+    Extract a specified node from the DOM tree for a CDR document
+    and insert the serialized form of that node into the string
+    for a CTGovProtocol document, replacing the placeholder inserted
+    by the 'Import CT.gov Protocol' filter.
+
+    Pass:
+        tagName    - unqualified element name for the node to
+                     extract from the DOM for the CDR document;
+                     there will be at most one occurrence of
+                     the node
+        newXml     - string representation of a CTGovProtocol
+                     document, containing a placeholder of the
+                     form '@@' + tagName + '@@' which will be
+                     replaced with the serialized form of the
+                     node we're looking for if we find it, or
+                     with an empty string if the node is not
+                     present; the string is encoded as utf-8
+        dom        - object representing the CDR document from
+                     which we will extract the node to be
+                     preserved
+
+    Return:
+        Modified utf-8 string representing the CTGovProtocol
+        document with information from a previous version of
+        the corresponding CDR document inserted.
+    """
     elems = dom.getElementsByTagName(tagName)
     oldXml = elems and elems[0].toxml() or u""
     placeholder = "@@%s@@" % tagName
     return newXml.replace(placeholder, oldXml.encode('utf-8'))
 
 def mergeVersion(newDoc, cdrId, docObject, docVer):
+    """
+    Merge information added by CIAT in a previous copy of the CDR document
+    into the new document we just got from NLM.
+
+    Pass:
+        newDoc     - new document received from NLM, after being run
+                     through the XSL/T filter 'Import CT.gov Protocol'
+        cdrId      - identifier for our own document
+        docObject  - object which will be capable of serializing itself
+                     into the form ready for passing into the CdrRepDoc
+                     command, after we have modified the newDoc string
+                     to restore the PDQ information created by CIAT
+                     and plugged that modified string into this object
+                     as the 'xml' attribute
+        docVer     - version of the CDR document from which we will
+                     retrieve the PDQ information to preserve
+
+    Return:
+        Serialized CdrDoc object, ready to be passed to the CdrRepDoc
+        command (encoded as utf-8).
+    """
+    
     response = cdr.getDoc('guest', cdrId, version = docVer, getObject = True)
     if type(response) in (str, unicode):
         errors = cdr.getErrors(response, errorsExpected = 0, asSequence = 1)
@@ -220,6 +273,7 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
     dom = xml.dom.minidom.parseString(response.xml)
     newDoc = preserveElement('PDQIndexing', newDoc, dom)
     newDoc = preserveElement('ProtocolProcessingDetails', newDoc, dom)
+    docObject.xml = newDoc
     return str(docObject)
 
 def mergeChanges(cdrId, newDoc, flags):
