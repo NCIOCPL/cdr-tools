@@ -1,3 +1,10 @@
+#----------------------------------------------------------
+# Reindex all documents of a given doctype.
+#
+# $Id: ReindexByDocType.py,v 1.5 2008-09-02 22:21:16 ameyer Exp $
+#
+# $Log: not supported by cvs2svn $
+#----------------------------------------------------------
 import cdr, cdrdb, sys, time
 
 if len(sys.argv) < 4:
@@ -29,7 +36,9 @@ for row in rows:
     resp = cdr.reindex('guest', row[0], host, port)
     if resp: print resp
 
-    # Pause every 50 docs (to avoid swallowing the machine? swamping sshd?)
+    # Pause every 100 docs (to avoid swallowing the machine? swamping sshd?)
+    # We had a problem at one time that this fixed - though it's probably
+    #   not needed any more
     count += 1
     if count % 50 == 0:
         time.sleep(1)
