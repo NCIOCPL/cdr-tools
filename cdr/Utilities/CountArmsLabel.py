@@ -1,11 +1,15 @@
 #----------------------------------------------------------------------
 #
-# $Id: CountArmsLabel.py,v 1.3 2008-06-09 21:26:22 venglisc Exp $
+# $Id: CountArmsLabel.py,v 1.4 2008-09-26 14:38:04 venglisc Exp $
 #
 # Count the number of files in the CTGovExport directory that have
 # Arms information (identified by the existence of the arms_grou_label).
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2008/06/09 21:26:22  venglisc
+# Per request from LG I've added a section to only display trials that are
+# new on the report since the last report ran.
+#
 # Revision 1.2  2008/06/04 18:15:12  venglisc
 # Included the CDR-IDs of the arm trials; sending message to recipients
 # who are member of a group DL.
@@ -19,13 +23,18 @@ import subprocess, os, sys, cdr, time, glob, getopt, socket
 
 OUTPUTBASE         = cdr.BASEDIR + "/Output/NLMExport"
 UTIL               = os.path.join("d:\\cdr", "Utilities")
+TMP                = os.path.join("d:\\cdr", "tmp")
 FILEBASE           = "ArmsCount"
 LOGFILE            = "%s.log" % FILEBASE
 jobTime            = time.localtime(time.time())
 dateStamp          = time.strftime("%Y%m%d%H%M%S", jobTime)
+elements           = {"is_fda_regulated":[],
+                      "is_section_801":[],
+                      "delayed_posting":[]}
 
 testMode   = None
 fullUpdate = None
+pubDir     = None
 
 
 # ------------------------------------------------------------
@@ -37,12 +46,12 @@ def parseArgs(args):
 
     global testMode
     global fullUpdate
-    global refresh
+    global pubDir
     global l
 
     try:
-        longopts = ["testmode", "livemode"]
-        opts, args = getopt.getopt(args[1:], "tl", longopts)
+        longopts = ["testmode", "livemode", "directory"]
+        opts, args = getopt.getopt(args[1:], "tld:", longopts)
     except getopt.GetoptError, e:
         usage(args)
 
@@ -57,6 +66,9 @@ def parseArgs(args):
         elif o in ("-l", "--livemode"):
             testMode = False
             l.write("running in LIVE mode")
+        elif o in ("-d", "--directory"):
+            pubDir = a
+            l.write("using directory %s" % pubDir)
 
     if len(args) > 0:
         usage(args)
@@ -81,6 +93,9 @@ options:
     -l, --livemode
            run in LIVE mode
 
+    -d, --directory
+           specify latest weekly publishing directory name
+
 """ % sys.argv[0].split('\\')[-1])
     sys.exit(1)
 
@@ -91,12 +106,12 @@ options:
 # ------------------------------------------------------------
 def getNewTrials(allTrials = []):
     newTrials = []
-    os.chdir('d:\\cdr\\tmp')
+    os.chdir(TMP)
     oldFile = glob.glob('ArmsCount*.txt')
 
     oldFile.sort()
     filename = oldFile[-2:-1][0]
-    l.write("Comparing to: ", filename, stdout = True)
+    l.write("Comparing to: %s" % filename, stdout = True)
 
     f3 = open("%s" % filename)
     oldTrials = f3.readlines()
@@ -110,6 +125,42 @@ def getNewTrials(allTrials = []):
             newTrials.append(trial)
 
     return (newTrials, filename)
+
+
+# ------------------------------------------------------------
+# There are a few yes/no elements that the users would like to
+# receive a count for.
+# ------------------------------------------------------------
+def checkElements():
+
+    # Count the total of all elements
+    # -------------------------------
+    for element in elements.keys():
+        p1 = subprocess.Popen(["grep", "-l", element, "CDR*"],
+                              stdout = subprocess.PIPE)
+        p2 = subprocess.Popen(["wc", "-l"], 
+                              stdin  = p1.stdout,
+                              stdout = subprocess.PIPE)
+        p3 = subprocess.Popen(["gawk", "{print $1}"],
+                              stdin  = p2.stdout,
+                              stdout = subprocess.PIPE)
+        elements[element].append(p3.communicate()[0])
+
+    # Count the number of documents with 'yes' in the element name
+    # ------------------------------------------------------------
+    for element in elements.keys():
+        p1 = subprocess.Popen(["grep", "-l", element + ">yes", "CDR*"],
+                              stdout = subprocess.PIPE)
+        p2 = subprocess.Popen(["wc", "-l"], 
+                              stdin  = p1.stdout,
+                              stdout = subprocess.PIPE)
+        p3 = subprocess.Popen(["gawk", "{print $1}"],
+                              stdin  = p2.stdout,
+                              stdout = subprocess.PIPE)
+        elements[element].append(p3.communicate()[0])
+
+    return elements
+
 
 # ------------------------------------------------------------
 # *** Main ***
@@ -127,9 +178,12 @@ parseArgs(sys.argv)
 # Finding the latest directory created for the NLMExport
 # ------------------------------------------------------
 os.chdir(OUTPUTBASE)
-lastDirs = glob.glob('2008*')
-lastDirs.sort()
-lastDir = lastDirs[-1:][0]
+if not pubDir:
+    lastDirs = glob.glob('2008*')
+    lastDirs.sort()
+    lastDir = lastDirs[-1:][0]
+else:
+    lastDir = pubDir
 
 # Finding the studies with ArmsGroups info and write to file
 # ----------------------------------------------------------
@@ -138,15 +192,35 @@ if testMode:
 else:
     filename = '%s%s.txt' % (FILEBASE, dateStamp)
 
-f1 = open("d:\\cdr\\tmp\\%s" % filename, 'w')
+f1 = open("%s\\%s" % (TMP, filename), 'w')
 os.chdir(lastDir)
 rcode = subprocess.call(["grep", "-l", "arm_group_label", "CDR*"], 
                         stdout = f1)
 f1.close()
 
+
+# Create the report to count the FDA required elements
+# -----------------------------------------------------
+l.write('Counting protocols with FDA elements', stdout = True)
+countFiles = checkElements()
+l.write('Result:\n%s' % str(countFiles),       stdout = True)
+
+fdaStatReport = """\
+Element           Total  yes    no
+----------------- ----- ----- -----
+"""
+
+for element in elements.keys():
+    fdaStatReport += "%16s:   %d    %d     %d\n" % (element, 
+                                                    int(elements[element][0]), 
+                                                    int(elements[element][1]),
+                                                    int(elements[element][0]) -
+                                                    int(elements[element][1]))
+
+
 # Read the file created and count the number of records
 # -----------------------------------------------------
-f2 = open("d:\\cdr\\tmp\\%s" % filename)
+f2 = open("%s\\%s" % (TMP, filename))
 armLines = f2.readlines()
 f2.close()
 
@@ -156,13 +230,11 @@ newTrials, file = getNewTrials(armLines)
 
 # Print the result
 # ----------------
-l.write('Result for directory:',           stdout = True)
-l.write('  %s/%s' % (OUTPUTBASE, lastDir), stdout = True)
-l.write('  %d studies with Arm/Group information' % len(armLines), 
-                                           stdout = True)
-l.write('  %s/%s' % (OUTPUTBASE, file), stdout = True)
-l.write('  %d new studies with Arm/Group information' % len(newTrials), 
-                                           stdout = True)
+l.write('Result for directory:')
+l.write('  %s/%s' % (OUTPUTBASE, lastDir))
+l.write('  %d studies with Arm/Group information' % len(armLines))
+l.write('  %s/%s' % (TMP, file))
+l.write('  %d new studies with Arm/Group information' % len(newTrials))
 
 # Setting up email message to be send to users
 # --------------------------------------------
@@ -172,18 +244,26 @@ sender   = '***REMOVED***'
 subject  = '%s: List of NLM Studies with ArmsOrGroups' % machine.upper()
 body     = """\nResult for Directory:
   %s/%s
+
   %d studies with Arm/Group information
   %d new studies with Arm/Group information
   (Comparing to file %s)
   
-List of "new" Studies
-=====================
+
+Counting documents by field
+===========================
 %s
 
 
-List of all Studies
-===================
+List of "new" Arm/Group Studies
+===============================
+%s
+
+
+List of all Arm/Group Studies
+=============================
 %s""" % (OUTPUTBASE, lastDir, len(armLines), len(newTrials), file, 
+           fdaStatReport,
            "".join(id for id in newTrials),
            "".join(id for id in armLines))
 
