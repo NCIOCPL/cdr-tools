@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ConvertGlossaryDocs.py,v 1.1 2008-08-25 16:00:30 bkline Exp $
+# $Id: ConvertGlossaryDocs.py,v 1.2 2008-10-02 12:23:15 bkline Exp $
 #
 # Issue 3723:
 # We need the data in the current Glossary document to be converted for the
@@ -10,6 +10,10 @@
 # Information about the data conversion has been discussed in issue 3120.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2008/08/25 16:00:30  bkline
+# Program to create GlossaryTermConcept and GlossaryTermName documents
+# from the GlossaryTerm documents.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, xml.dom.minidom, cPickle, sys, getopt, time, difflib, re, os
 import cgi
@@ -20,6 +24,38 @@ DEF_KEYS = ("EP", "EH", "SP", "SH")
 PH_NAME = u"<PlaceHolder name='TERMNAME'/>"
 PH_CAPPEDNAME = u". <PlaceHolder name='CAPPEDTERMNAME'/>"
 DEBUGGING = False
+
+def stripFragmentIds(docXml):
+    xsltFilter = """\
+<?xml version='1.0' encoding='UTF-8'?>
+
+<xsl:transform                version = '1.0' 
+                            xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
+                            xmlns:cdr = 'cips.nci.nih.gov/cdr'>
+
+ <xsl:output                   method = 'xml'/>
+
+ <!--
+ =======================================================================
+ Copy most things straight through.
+ ======================================================================= -->
+ <xsl:template                  match = '@*|node()|comment()|
+                                         processing-instruction()'>
+  <xsl:copy>
+   <xsl:apply-templates        select = '@*|node()|comment()|
+                                         processing-instruction()'/>
+  </xsl:copy>
+ </xsl:template>
+
+ <!-- These we don't want. -->
+ <xsl:template                  match = '@cdr:id'/>
+
+</xsl:transform>
+"""
+    result  = cdr.filterDoc('guest', xsltFilter, doc = docXml, inline = True)
+    if type(result) in (str, unicode):
+        raise Exception(result)
+    return result[0]
 
 def fix(me):
     if not me:
@@ -235,9 +271,12 @@ options:
 class GlossaryTerm:
     @staticmethod
     def mapStatus(s):
-        if s == 'Pending':
-            return 'New pending'
-        return s
+        return {
+            'Pending'                     : 'New pending',
+            'Translation approved'        : 'Approved',
+            'Translation pending'         : 'New pending',
+            'Translation revision pending': 'Revision pending'
+        }.get(s, s)
 
     def makeNameDoc(self, concept):
         docXml = [u"""\
@@ -246,7 +285,7 @@ class GlossaryTerm:
 """]
         if self.englishTermName:
             docXml.append(u"""\
- <TermName language='en'>
+ <TermName>
   <TermNameString>%s</TermNameString>
 """ % fix(self.englishTermName))
             if self.pron:
@@ -261,24 +300,25 @@ class GlossaryTerm:
                 docXml.append(u"""\
   <TermNameSource>%s</TermNameSource>
 """ % fix(self.source))
-            if self.termStatus:
-                docXml.append(u"""\
-  <TermNameStatus>%s</TermNameStatus>
-""" % GlossaryTerm.mapStatus(self.termStatus))
-            if self.statusDate:
-                docXml.append(u"""\
-  <TermNameStatusDate>%s</TermNameStatusDate>
-""" % self.statusDate)
             docXml.append(u"""\
  </TermName>
 """)
+        if self.termStatus:
+            docXml.append(u"""\
+ <TermNameStatus>%s</TermNameStatus>
+""" % GlossaryTerm.mapStatus(self.termStatus))
+        if self.statusDate:
+            docXml.append(u"""\
+ <TermNameStatusDate>%s</TermNameStatusDate>
+""" % self.statusDate)
         if self.spanishTermName:
             docXml.append(u"""\
- <TermName language='es'>
+ <TranslatedName language='es'>
   <TermNameString>%s</TermNameString>
+  <TranslatedNameStatus>Approved</TranslatedNameStatus>
 """ % fix(self.spanishTermName))
             docXml.append(u"""\
- </TermName>
+ </TranslatedName>
 """)
         docXml.append(u"""\
  <GlossaryTermConcept cdr:ref='CDR%010d'/>
@@ -335,8 +375,8 @@ class GlossaryTerm:
                 SELECT xml
                   FROM document
                  WHERE id = ?""", docId)
-        docXml = cursor.fetchall()[0][0]
-        dom = xml.dom.minidom.parseString(docXml.encode('utf-8'))
+        docXml = stripFragmentIds(cursor.fetchall()[0][0].encode('utf-8'))
+        dom = xml.dom.minidom.parseString(docXml)
         for node in dom.documentElement.childNodes:
             if node.nodeName == 'TermName':
                 if self.englishTermName:
@@ -349,7 +389,11 @@ class GlossaryTerm:
             elif node.nodeName == 'TermPronunciation':
                 if self.pron:
                     raise Exception("multiple term pronunciations")
-                self.pron = cdr.getTextContent(node)
+                pron = cdr.getTextContent(node).strip()
+                if pron and pron[0] == '(' and pron[-1] == ')':
+                    pron = pron[1:-1]
+                if pron:
+                    self.pron = pron
             elif node.nodeName == 'PronunciationResource':
                 self.pronRes.append(cdr.getTextContent(node))
             elif node.nodeName == 'TermDefinition':
@@ -512,11 +556,13 @@ class MergedDefinition:
         if self.language == 'E':
             dtag = u'TermDefinition'
             rtag = u'DefinitionResource'
+            attr = u''
         else:
-            dtag = u'SpanishTermDefinition'
+            dtag = u'TranslatedTermDefinition'
             rtag = u'TranslationResource'
-        xmlText = [u"<%s><DefinitionText>%s</DefinitionText>" % (dtag,
-                                                                 self.text)]
+            attr = u" language='es'"
+        xmlText = [u"<%s%s><DefinitionText>%s</DefinitionText>" % (dtag, attr,
+                                                                   self.text)]
         for r in self.resources:
             xmlText.append(u"<%s>%s</%s>" % (rtag, fix(r), rtag))
         for m in self.mediaLinks:
@@ -527,8 +573,10 @@ class MergedDefinition:
                        (self.audience == 'H' and u"Health professional" or
                         u"Patient"))
         if self.status:
-            xmlText.append(u"<DefinitionStatus>%s</DefinitionStatus>" %
-                           self.status)
+            tagFront = self.language == 'E' and "Definition" or "Translated"
+            status = GlossaryTerm.mapStatus(self.status)
+            xmlText.append(u"<%sStatus>%s</%sStatus>" %
+                           (tagFront, status, tagFront))
         for c in self.comments:
             xmlText.append(c)
         if self.lastMod:
