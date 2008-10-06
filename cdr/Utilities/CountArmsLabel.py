@@ -1,11 +1,15 @@
 #----------------------------------------------------------------------
 #
-# $Id: CountArmsLabel.py,v 1.4 2008-09-26 14:38:04 venglisc Exp $
+# $Id: CountArmsLabel.py,v 1.5 2008-10-06 20:07:53 venglisc Exp $
 #
 # Count the number of files in the CTGovExport directory that have
 # Arms information (identified by the existence of the arms_grou_label).
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.4  2008/09/26 14:38:04  venglisc
+# Added new option to specify directory, added new function to get a count
+# of FDA required elements.
+#
 # Revision 1.3  2008/06/09 21:26:22  venglisc
 # Per request from LG I've added a section to only display trials that are
 # new on the report since the last report ran.
@@ -206,16 +210,16 @@ countFiles = checkElements()
 l.write('Result:\n%s' % str(countFiles),       stdout = True)
 
 fdaStatReport = """\
-Element           Total  yes    no
+Element           Total   yes    no
 ----------------- ----- ----- -----
 """
 
 for element in elements.keys():
-    fdaStatReport += "%16s:   %d    %d     %d\n" % (element, 
-                                                    int(elements[element][0]), 
-                                                    int(elements[element][1]),
-                                                    int(elements[element][0]) -
-                                                    int(elements[element][1]))
+    fdaStatReport += "%16s: %5d %5d %5d\n" % (element, 
+                                              int(elements[element][0]), 
+                                              int(elements[element][1]),
+                                              int(elements[element][0]) -
+                                                int(elements[element][1]))
 
 
 # Read the file created and count the number of records
