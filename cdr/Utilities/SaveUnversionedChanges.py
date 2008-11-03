@@ -1,11 +1,15 @@
 #----------------------------------------------------------------------
 #
-# $Id: SaveUnversionedChanges.py,v 1.3 2008-11-03 15:53:29 bkline Exp $
+# $Id: SaveUnversionedChanges.py,v 1.4 2008-11-03 17:06:43 bkline Exp $
 #
 # Save changes which haven't been versioned as a new version for a
 # given CDR document type.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2008/11/03 15:53:29  bkline
+# Added call to log number of documents to be processed for which no
+# version has yet been created at all.
+#
 # Revision 1.2  2008/11/03 15:46:15  bkline
 # Added missing docType string interpolation in last SQL query.
 #
@@ -63,7 +67,7 @@ def versionChanges(session, docId):
 # Processing starts here with setup.
 #----------------------------------------------------------------------
 if len(sys.argv) < 4:
-    sys.stderr.write("usage: %s cdr-uid cdr-pwd doc-type-name\n" % sys.argv[0])
+    sys.stderr.write("usage: %s uid pwd doctype\n" % sys.argv[0])
     sys.exit(1)
 session = cdr.login(sys.argv[1], sys.argv[2])
 errors = cdr.checkErr(session)
