@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: SaveUnversionedChanges.py,v 1.1 2008-10-31 19:18:18 bkline Exp $
+# $Id: SaveUnversionedChanges.py,v 1.2 2008-11-03 15:46:15 bkline Exp $
 #
 # Save changes which haven't been versioned as a new version for a
 # given CDR document type.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2008/10/31 19:18:18  bkline
+# Command-line utility for saving unversioned changes in CDR documents.
+#
 #----------------------------------------------------------------------
 import cdr, cdrdb, re, sys
 
@@ -152,7 +155,7 @@ cursor.execute("""\
       JOIN doc_type t
         ON t.id = d.doc_type
      WHERE t.name = '%s'
-       AND d.id NOT IN (SELECT id FROM #lastver)""", timeout = 300)
+       AND d.id NOT IN (SELECT id FROM #lastver)""" % docType, timeout = 300)
 docIds = [row[0] for row in cursor.fetchall()]
 for docId in docIds:
     if versionChanges(session, docId):
