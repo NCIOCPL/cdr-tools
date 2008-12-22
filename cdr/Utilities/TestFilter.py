@@ -3,15 +3,31 @@
 #
 # Run without args for usage info.
 #
-# $Id: TestFilter.py,v 1.2 2008-12-19 03:49:40 ameyer Exp $
+# $Id: TestFilter.py,v 1.3 2008-12-22 16:23:51 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2008/12/19 03:49:40  ameyer
+# Added file options for doc and filter.
+#
 # Revision 1.1  2008/12/19 03:16:09  ameyer
 # Initial version.
 #
 ###########################################################
 
 import sys, getopt, cdr
+
+# For nicely indented output
+INDENT_FILTER = """<?xml version="1.0"?>
+<xsl:transform version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+
+<xsl:strip-space elements="*"/>
+<xsl:output indent="yes"/>
+<xsl:template match="/">
+ <xsl:copy-of select = "."/>
+</xsl:template>
+
+</xsl:transform>
+"""
 
 def getFileContent(fname):
     """
@@ -35,9 +51,12 @@ def getFileContent(fname):
 
 
 # Options
-fullOutput = True
-opts, args = getopt.getopt(sys.argv[1:], "p")
+fullOutput   = True
+indentOutput = False
+opts, args = getopt.getopt(sys.argv[1:], "ip")
 for opt in opts:
+    if opt[0] == '-i':
+        indentOutput = True
     if opt[0] == '-p':
         fullOutput = False
 
@@ -47,6 +66,7 @@ if len(args) < 2:
 usage: TestFilter.py {opts} Doc Filter {"parm=data..." {"parm=data ..."} ...}
 
  Options:
+   -i = Indent output document (pretty print).
    -p = Plain output, just the filtered document, no banners or messages.
 
  Arguments:
@@ -117,6 +137,16 @@ resp = cdr.filterDoc(session, filter=filter, docId=docId, doc=doc,
 if type(resp) in (type(""), type(u"")):
     sys.stderr.write("Error response:\n  %s" % resp)
     sys.exit(1)
+
+(xml, msgs) = resp
+
+# If pretty printing with indentation
+if indentOutput:
+    resp = cdr.filterDoc(session, filter=INDENT_FILTER, doc=xml, inline=True)
+if type(resp) in (type(""), type(u"")):
+    sys.stderr.write("Unable to indent output:\n  %s\n--- continuing:\n" % resp)
+else:
+    xml = resp[0]
 
 # Output to stdout
 if fullOutput:
