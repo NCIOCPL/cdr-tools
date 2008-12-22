@@ -3,9 +3,12 @@
 #
 # Run without args for usage info.
 #
-# $Id: TestFilter.py,v 1.3 2008-12-22 16:23:51 ameyer Exp $
+# $Id: TestFilter.py,v 1.4 2008-12-22 16:49:41 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.3  2008/12/22 16:23:51  ameyer
+# Added indentation option.
+#
 # Revision 1.2  2008/12/19 03:49:40  ameyer
 # Added file options for doc and filter.
 #
@@ -14,7 +17,7 @@
 #
 ###########################################################
 
-import sys, getopt, cdr
+import sys, getopt, time, cdr
 
 # For nicely indented output
 INDENT_FILTER = """<?xml version="1.0"?>
@@ -131,8 +134,10 @@ while argx < len(args):
 
 # Filter doc
 session = cdr.login("CdrGuest", "never.0n-$undaY")
+startClock = time.clock()
 resp = cdr.filterDoc(session, filter=filter, docId=docId, doc=doc,
                      inline=inline, parm=parms)
+stopClock = time.clock()
 
 if type(resp) in (type(""), type(u"")):
     sys.stderr.write("Error response:\n  %s" % resp)
@@ -151,7 +156,7 @@ else:
 # Output to stdout
 if fullOutput:
     print ("""
-RESPONSE FROM HOST:
+RESPONSE FROM HOST:  cdr.filterDoc time = %f seconds
 DOCUMENT
 ----------------------------------
 %s
@@ -161,7 +166,7 @@ MESSAGES
 ----------------------------------
 %s
 ----------------------------------
-""" % (resp))
+""" % (stopClock - startClock, xml, msgs))
 
 else:
     print (resp[0])
