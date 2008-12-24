@@ -3,9 +3,12 @@
 #
 # Run without args for usage info.
 #
-# $Id: TestFilter.py,v 1.5 2008-12-23 20:15:52 ameyer Exp $
+# $Id: TestFilter.py,v 1.6 2008-12-24 02:23:51 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2008/12/23 20:15:52  ameyer
+# Added XSLT trace logging courtesy of Oliver Becker.
+#
 # Revision 1.4  2008/12/22 16:49:41  ameyer
 # Added elapsed time in primary call to cdr.filterDoc().
 #
@@ -359,9 +362,9 @@ else:
 inline = False
 filter = args[1]
 try:
-    filterId = int(filter)
+    int(filter)
 except ValueError:
-    # Filter specified as a string.
+    # Filter was not specified as a document ID.
     # It may be a filename or a "name:" or "set:" CDR identifier
     if filter.startswith("file:"):
         filter = getFileContent(filter[5:])
@@ -374,9 +377,6 @@ except ValueError:
     else:
         sys.stderr.write('Filter identifier "%s" not recognized' % filter)
         sys.exit(1)
-else:
-    # Number passed as integer
-    filter = filterId
 
 # Session id for access to server filtering
 session = cdr.login("CdrGuest", "never.0n-$undaY")
@@ -442,6 +442,10 @@ while argx < len(args):
     parms.append(args[argx].split('='))
     argx += 1
 
+# Filter identifier strings should be in list format for cdr.filterDoc()
+if not inline:
+    filter = [filter,]
+
 # Filter doc
 startClock = time.clock()
 resp = cdr.filterDoc(session, filter=filter, docId=docId, doc=doc,
@@ -454,8 +458,7 @@ if type(resp) in (type(""), type(u"")):
 
 (xml, msgs) = resp
 
-# If we're tracing, remove the Sablotron constant strings that are
-#   just noise for our purposes
+# If we're tracing, compact the messages a bit
 if traceDbg:
     msgs = stripMsgNoise(msgs)
 
