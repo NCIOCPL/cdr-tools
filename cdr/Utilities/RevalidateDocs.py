@@ -3,9 +3,13 @@
 #
 # See usage() for parameters.
 #
-# $Id: RevalidateDocs.py,v 1.7 2007-02-02 01:21:14 ameyer Exp $
+# $Id: RevalidateDocs.py,v 1.8 2008-12-31 02:43:41 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.7  2007/02/02 01:21:14  ameyer
+# Added --noblocked option.
+# Ordered output by doctype name, cdr id.
+#
 # Revision 1.6  2007/01/30 23:51:06  ameyer
 # Added logging of command line parameters.
 #
@@ -63,7 +67,8 @@ usage: RevalidateDocs {options} userid password
   --progress number = Report progress to stderr every _number_ documents
                        Default = %d
   --outfile filename= Write messages to output file _filename_
-                       Default = "%s" in CDR log directory
+                       in CDR log directory.
+                       Default = "%s"
                        If --quiet, only summaries are logged
   --host name       = Name of host computer, else this computer
   --port number     = CDR server transaction port number, else uses default
@@ -198,7 +203,7 @@ if noblocked:
 selCmd += " ORDER BY t.name, d.id\n"
 
 # Open log
-log = cdr.Log(LOGFILE, logTime=False, logPID=False)
+log = cdr.Log(outFile, logTime=False, logPID=False)
 
 # Report to log
 log.write("Revalidating documents on host %s at %s" % (host, time.ctime()),
