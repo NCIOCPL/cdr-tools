@@ -1,11 +1,14 @@
 #----------------------------------------------------------------------
 #
-# $Id: CountArmsLabel.py,v 1.5 2008-10-06 20:07:53 venglisc Exp $
+# $Id: CountArmsLabel.py,v 1.6 2009-01-21 19:59:09 venglisc Exp $
 #
 # Count the number of files in the CTGovExport directory that have
 # Arms information (identified by the existence of the arms_grou_label).
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.5  2008/10/06 20:07:53  venglisc
+# Changed output formatting. (Bug 4123)
+#
 # Revision 1.4  2008/09/26 14:38:04  venglisc
 # Added new option to specify directory, added new function to get a count
 # of FDA required elements.
@@ -183,7 +186,14 @@ parseArgs(sys.argv)
 # ------------------------------------------------------
 os.chdir(OUTPUTBASE)
 if not pubDir:
-    lastDirs = glob.glob('2008*')
+    # We're comparing to last weeks output, so we need to set the 
+    # year appropriately during the first week of a year.
+    # -----------------------------------------------------------
+    now  = time.time()
+    last = now - (6 * 24 * 60 * 60)
+    lastWeeksYear = time.strftime("%Y", time.localtime(last))
+
+    lastDirs = glob.glob(lastWeeksYear + '*')
     lastDirs.sort()
     lastDir = lastDirs[-1:][0]
 else:
