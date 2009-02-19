@@ -1,5 +1,8 @@
 # ************************************************************************
+# $Id: UpdateSchemas.py,v 1.4 2009-02-19 16:19:09 venglisc Exp $
 # Program to replace a schema file with its version in the CDR database.
+#
+# $Log: not supported by cvs2svn $
 # ************************************************************************
 import cdr, sys, glob
 
