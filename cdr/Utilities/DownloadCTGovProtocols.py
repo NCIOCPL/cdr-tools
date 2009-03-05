@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.31 2008-07-21 12:45:16 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.32 2009-03-05 21:35:29 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.31  2008/07/21 12:45:16  bkline
+# Implementation of revised requirements for request #4132.
+#
 # Revision 1.30  2008/06/18 16:31:56  bkline
 # Added workaround for lame limitations in CT.gov service; suppressed
 # new code to block 'alias' documents.
@@ -321,6 +324,7 @@ class Doc:
         self.nlmId         = None
         self.obsoleteIds   = []
         self.orgStudyId    = None
+        self.orgStudyCdrId = None
         self.title         = None
         self.status        = None
         self.nciSponsored  = 0
@@ -331,11 +335,24 @@ class Doc:
         self.oldXml        = None
         self.phase         = None
         self.forcedImport  = False
+        self.newCtgovOwner = None
         for node in self.dom.documentElement.childNodes:
             if node.nodeName == "id_info":
                 for child in node.childNodes:
                     if child.nodeName == "org_study_id":
                         self.orgStudyId = cdr.getTextContent(child).strip()
+                        if self.orgStudyId.upper().startswith("CDR"):
+                            ids = cdr.exNormalize(self.orgStudyId)
+                            self.orgStudyCdrId = ids[1]
+                            cursor.execute("""\
+    SELECT value
+      FROM query_term
+     WHERE path = '/InScopeProtocol/CTGovOwnershipTransferInfo'
+                + '/CTGovOwnerOrganization'
+       AND doc_id = ?""", self.orgStudyCdrId)
+                            rows = cursor.fetchall()
+                            if rows:
+                                self.newCtgovOwner = rows[0][0]
                     elif child.nodeName == "nct_id":
                         self.nlmId = cdr.getTextContent(child).strip()
                     elif child.nodeName == 'nct_alias':
@@ -747,6 +764,8 @@ for name in nameList:
     wanted = 0
     xmlFile = file.read(name)
     doc = Doc(xmlFile, name)
+    if doc.newCtgovOwner:
+        log(u"New CT.gov owner for %s is %s" % (doc.nlmId, doc.newCtgovOwner))
 
     #------------------------------------------------------------------
     # Added for enhancement request #4132.
@@ -770,9 +789,11 @@ for name in nameList:
     #------------------------------------------------------------------
     # Skip documents they got from us in the first place.
     # Request #1374: pick up the NCT IDs for these documents.
+    # Request #4516: handle trials whose ownership has been transferred
+    #                from PDQ to CT.gov
     #------------------------------------------------------------------
-    elif doc.orgStudyId and doc.orgStudyId.startswith("CDR"):
-        cdrId = cdr.exNormalize(doc.orgStudyId)[1]
+    elif doc.orgStudyCdrId and doc.newCtgovOwner is None:
+        cdrId = doc.orgStudyCdrId
         if cdrId in oldOncoreNctIds and oldOncoreNctIds[cdrId] != doc.nlmId:
             newOncoreNctIds[cdrId] = doc.nlmId
         log("Skipping %s, which has a CDR ID\n" % doc.nlmId)
@@ -820,6 +841,7 @@ for name in nameList:
     #------------------------------------------------------------------
     elif (not doc.cdrId and
           not doc.forcedImport and
+          doc.newCtgovOwner is None and
           (not doc.status or doc.status.upper() not in ("NOT YET RECRUITING",
                                                         "RECRUITING"))):
         log("Skipping %s, which has a status of %s\n" % (doc.nlmId,
@@ -887,7 +909,7 @@ for name in nameList:
     # Process new trials.
     #------------------------------------------------------------------
     else:
-        if doc.forcedImport:
+        if doc.forcedImport or doc.newCtgovOwner:
             disp = dispCodes['import requested']
         else:
             disp = dispCodes['not yet reviewed']
