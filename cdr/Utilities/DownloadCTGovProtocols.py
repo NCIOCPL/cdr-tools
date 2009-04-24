@@ -1,8 +1,12 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.32 2009-03-05 21:35:29 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.33 2009-04-24 18:18:16 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.32  2009/03/05 21:35:29  bkline
+# Request #4516: handle trials whose ownership has been transferred from
+# PDQ to CT.gov.
+#
 # Revision 1.31  2008/07/21 12:45:16  bkline
 # Implementation of revised requirements for request #4132.
 #
@@ -288,7 +292,7 @@ class IdProblem:
         plural = len(nctIds) > 1 and u"s" or ""
         if nctIdToInsert:
             desc = (u"CDR%d: got new ID %s from NLM; doc already has ID%s %s"
-                    % (cdrId, plural, u"; ".join(nctIds)))
+                    % (cdrId, nctIdToInsert, plural, u"; ".join(nctIds)))
         else:
             desc = u"CDR%d: too many NCT IDs: %s" % (cdrId, u"; ".join(nctIds))
         if nctIdsToRemove:
