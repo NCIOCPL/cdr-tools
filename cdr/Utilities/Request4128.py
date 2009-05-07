@@ -6,9 +6,12 @@
 # Data is added only if there is none in the document already.  If
 # data exists in the document, it takes precedence over the spreadsheet.
 #
-# $Id: Request4128.py,v 1.2 2008-06-27 02:14:52 ameyer Exp $
+# $Id: Request4128.py,v 1.3 2009-05-07 15:35:59 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.2  2008/06/27 02:14:52  ameyer
+# Fixed misspelling of element.  RegulatoryInformation, not RegulatoryInfo.
+#
 # Revision 1.1  2008/06/24 20:09:25  ameyer
 # Initial version.
 #
@@ -47,8 +50,14 @@ class FilterTransform:
         for i in range(len(sheet.rows)):
             # Extract cells
             docIdStr     = sheet[i][0]  and sheet[i][0].val  or None
-            fdaRegulated = sheet[i][11] and sheet[i][11].val or None
-            section801   = sheet[i][12] and sheet[i][12].val or None
+
+            # Spreadsheet supplied for first use, June 2008
+            # fdaRegulated = sheet[i][11] and sheet[i][11].val or None
+            # section801   = sheet[i][12] and sheet[i][12].val or None
+
+            # Spreadsheet supplied for next use, October 2008
+            fdaRegulated = sheet[i][1] and sheet[i][1].val or None
+            section801   = sheet[i][2] and sheet[i][2].val or None
 
             # Debug
             # print ("DocID=%s fdaReg=%s 801=%s\n" % (docIdStr, fdaRegulated,
