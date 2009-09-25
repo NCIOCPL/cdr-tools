@@ -4,18 +4,18 @@
 #
 # Satisfies Bugzilla request 4632.  See comments in Bugzilla for details.
 #
-# $Id: Request4632.py,v 1.1 2009-09-09 03:54:13 ameyer Exp $
+# $Id: Request4632.py,v 1.2 2009-09-25 02:25:45 ameyer Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2009/09/09 03:54:13  ameyer
+# Initial version.
+#
 #
 #----------------------------------------------------------------------
 import sys, datetime, cdr, cdrdb, ModifyDocs
 
 # Name of the program for logging
 SCRIPT = "Request4632.py"
-
-# People to get an emailed report of all this
-EMAILS = ("ameyer2@yahoo.com",)
 
 # Collect all the data we need and return a list of doc IDs to be changed
 # In Python, we have to store a procedure first, or else execute these
@@ -206,6 +206,8 @@ class FilterTransform:
         # We only need one connection, which we'll re-use as needed
         try:
             self.conn = cdrdb.connect('cdr')
+            # Default is off, but this just confirms that
+            self.conn.setAutoCommit(on=False)
         except cdrdb.Error, info:
             fatal ("Unable to connect to database: %s" % info)
         self.__conn = None
@@ -228,9 +230,9 @@ class FilterTransform:
         returning them as a list of docIds.
         """
         # Get the ids
+        cursor = self.conn.cursor()
         for qry in SELECT_ALL_QUERIES:
             try:
-                cursor = self.conn.cursor()
                 cursor.execute(qry, timeout=300)
             except cdrdb.Error, info:
                 fatal("Unable to select documents:\nQry:\n%s\nError\n\%s" %
@@ -238,6 +240,7 @@ class FilterTransform:
 
         # Last query had the data we need
         rows = cursor.fetchall()
+        cursor.close()
 
         return [row[0] for row in rows]
 
@@ -261,6 +264,7 @@ class FilterTransform:
             cursor = self.conn.cursor()
             cursor.execute(ONE_DOC_QRY % docId)
             rows = cursor.fetchall()
+            cursor.close()
         except cdrdb.Error, info:
             fatal ("Unable to retrieve info for docID=%s: %s" %
                     (docId, info))
@@ -331,15 +335,21 @@ class FilterTransform:
             self.report += notCheckedOut
 
         sender = "cdr@%s" % cdr.getHostName()[1]
+        recips = cdr.getEmailList("CTGov Link Fix Notification")
         subject= "Global change report (%s): %s" % \
                   (datetime.date.today(),
                    "InScope->CTGov reference substitutions")
 
-        cdr.sendMail(sender, EMAILS, subject, self.report, "html")
+        cdr.sendMail(sender, recips, subject, self.report, "html")
 
 if __name__ == '__main__':
+    # DEBUG
+    cdr.logwrite("Request4632.py: starting")
+
     # Args
     if len(sys.argv) < 4:
+        # DEBUG
+        cdr.logwrite("Request4632.py: wrong arguments (%s)" % str(sys.argv))
         print("usage: Request4632.py uid pw {test|run}")
         sys.exit(1)
     uid   = sys.argv[1]
@@ -351,7 +361,7 @@ if __name__ == '__main__':
     elif sys.argv[3] == 'run':
         testMode = False
     else:
-        sys.stderr.write('Must specify "test" or "run"')
+        fatal('Must specify "test" or "run"')
         sys.exit(1)
 
     # DEBUG
@@ -372,5 +382,14 @@ if __name__ == '__main__':
     # Global change
     job.run()
 
+    # DEBUG
+    # To save or delete tables uncomment the commit or rollback
+    # Saving is unnecessary but aids debugging
+    filtTrans.conn.commit()
+    # filtTrans.conn.rollback()
+
     # Complete and email a report
     filtTrans.sendReport(job)
+
+    # DEBUG
+    cdr.logwrite("Request4632.py: completed")
