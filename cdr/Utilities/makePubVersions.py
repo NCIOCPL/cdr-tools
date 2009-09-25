@@ -10,6 +10,10 @@
 # $ID: $
 # 
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2007/03/19 18:15:44  venglisc
+# Initial version of script to make a bunch of documents publishable that have
+# changed but no publishable version was created.
+#
 # ---------------------------------------------------------------------
 import sys, cdr, cdrdb
 
@@ -25,6 +29,8 @@ if len(sys.argv) > 2: passwd   = sys.argv[2]
 if len(sys.argv) > 3: doctype  = sys.argv[3]
 
 session = cdr.login(userid, passwd)
+l  = cdr.Log('makePubVersions.log')
+l.write('makePubVersions.py - Started')
 
 #----------------------------------------------------------------------
 # Set up a database connection and cursor.
@@ -39,13 +45,14 @@ except cdrdb.Error, info:
 # Query to find the publishable documents of a given docType
 #----------------------------------------------------------------------
 cursor.execute("""\
-    SELECT DISTINCT v.id
-      FROM doc_version v
-      JOIN doc_type t
-        ON t.id = v.doc_type
-     WHERE t.name = 'GlossaryTerm'
-       AND v.publishable = 'Y'
-     ORDER BY v.id""", timeout = 300)
+    SELECT id
+      FROM document
+     WHERE doc_type = 26
+       AND active_status = 'A'
+       AND xml like '%<SpanishTerm%'
+     ORDER BY id""", timeout = 300)
+
+#       AND val_status = 'V'
 rows = cursor.fetchall()
 
 # print rows[:6]
@@ -65,32 +72,31 @@ for row in rows:
     doc = ''
     showVersion = cdr.lastVersions(session, 'CDR' + str(row[0]))
     print "CDR-ID, Versions: ", row[0], showVersion
+    l.write('CDR-ID: %s  Versions(last, pub, changed): %s' % (row[0],
+                                                              showVersion))
 
     # -----------------------------------------------------
     # Documents that have changes will need to be versioned
     # -----------------------------------------------------
     if showVersion[2] == 'Y':
-       #print '***'
        doc = cdr.getDoc ((userid, passwd), row[0], checkout = 'Y',
                                       version = 'Current', xml = 'Y')
 
-       # print doc
-       # print '=============================================='
-
        # doc is either an object or a string of errors
        # ---------------------------------------------
-       #if type(doc) == type(""):
-       #    print "Skipping Document - already checked out"
-       #    print doc
        try:
            (repId, repErrs) = cdr.repDoc (session, doc=str(doc),
                              ver="Y", verPublishable='Y',
                              val='Y', checkIn='Y', showWarnings = 1,
-                             comment="Revised by VE")
+                             comment="Create pub version, 2007-03-19, VE")
            irow += 1
            print repId, repErrs
+           l.write('%s: %s' % (repId, repErrs))
        except:
            print "Document already checked out"
-
+           l.write('Document already checked out')
 
 print '*** Documents versioned, total: ', irow, allrow
+l.write('makePubVersions.py - Documents versioned: %d' % irow)
+l.write('makePubVersions.py - Documents total:     %d' % allrow)
+l.write('makePubVersions.py - Completed')
