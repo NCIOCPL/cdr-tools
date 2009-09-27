@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: DownloadCTGovProtocols.py,v 1.33 2009-04-24 18:18:16 bkline Exp $
+# $Id: DownloadCTGovProtocols.py,v 1.34 2009-09-27 19:30:11 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.33  2009/04/24 18:18:16  bkline
+# Added a missing value for string interpolation placeholder.
+#
 # Revision 1.32  2009/03/05 21:35:29  bkline
 # Request #4516: handle trials whose ownership has been transferred from
 # PDQ to CT.gov.
@@ -275,9 +278,11 @@ class Stats:
         self.duplicates = 0
         self.outOfScope = 0
         self.closed     = 0
+        self.transfers  = 0
     def totals(self):
         return (self.newTrials + self.updates + self.unchanged + self.pdqCdr +
-                self.duplicates + self.outOfScope + self.closed)
+                self.duplicates + self.outOfScope + self.closed +
+                self.transfers)
 
 #----------------------------------------------------------------------
 # Objects for a document with too many NCT IDs.
@@ -315,6 +320,29 @@ def findIdProblem(cdrId, nctIds, nctIdToInsert, nctIdsToRemove):
         return IdProblem(cdrId, nctIds, nctIdToInsert, nctIdsToRemove)
     return None
 
+#----------------------------------------------------------------------
+# Find InScopeProtocol which has been transferred to a new owner.
+#----------------------------------------------------------------------
+def findNewlyTransferredDocs(nlmId):
+    cursor.execute("""\
+        SELECT a.id
+          FROM active_doc a
+          JOIN query_term o
+            ON o.doc_id = a.id
+          JOIN query_term i
+            ON i.doc_id = a.id
+          JOIN query_term t
+            ON t.doc_id = i.doc_id
+           AND LEFT(t.node_loc, 8) = LEFT(i.node_loc, 8)
+         WHERE o.path = '/InScopeProtocol/CTGovOwnershipTransferInfo'
+                      + '/CTGovOwnerOrganization'
+           AND i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
+           AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
+           AND t.value = 'ClinicalTrials.gov ID'
+           AND i.value = ?""", nlmId)
+    rows = cursor.fetchall()
+    return [row[0] for row in rows]
+            
 #----------------------------------------------------------------------
 # Object representing interesting components of a CTGov trial document.
 #----------------------------------------------------------------------
@@ -585,6 +613,7 @@ def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
 #----------------------------------------------------------------------
 # Seed the table with documents we know to be duplicates.
 #----------------------------------------------------------------------
+tooManyReplacedDocs = []
 ModifyDocs._testMode = False
 conn = cdrdb.connect()
 cursor = conn.cursor()
@@ -769,7 +798,7 @@ for name in nameList:
     xmlFile = file.read(name)
     doc = Doc(xmlFile, name)
     if doc.newCtgovOwner:
-        log(u"New CT.gov owner for %s is %s" % (doc.nlmId, doc.newCtgovOwner))
+        log(u"New CT.gov owner for %s is %s\n" % (doc.nlmId, doc.newCtgovOwner))
 
     #------------------------------------------------------------------
     # Added for enhancement request #4132.
@@ -913,26 +942,39 @@ for name in nameList:
     # Process new trials.
     #------------------------------------------------------------------
     else:
-        if doc.forcedImport or doc.newCtgovOwner:
+        replacedDocs = findNewlyTransferredDocs(doc.nlmId)
+        if len(replacedDocs) > 1:
+            msg = ("Skipping %s: too many replaced docs (%s)" % (doc.nlmId,
+                                                                 replacedDocs))
+            tooManyReplacedDocs.append(msg)
+            log(msg)
+            continue
+        replacedDoc = replacedDocs and replacedDocs[0] or None
+        if doc.forcedImport or replacedDoc: #doc.newCtgovOwner:
             disp = dispCodes['import requested']
         else:
             disp = dispCodes['not yet reviewed']
         try:
             cursor.execute("""\
-        INSERT INTO ctgov_import (nlm_id, title, xml, downloaded,
+        INSERT INTO ctgov_import (nlm_id, title, xml, downloaded, cdr_id,
                                   disposition, dt, verified, changed, phase)
-             VALUES (?, ?, ?, GETDATE(), ?, GETDATE(), ?, ?, ?)""",
+             VALUES (?, ?, ?, GETDATE(), ?, ?, GETDATE(), ?, ?, ?)""",
                            (doc.nlmId,
                             doc.title[:255],
                             doc.xmlFile,
+                            replacedDoc,
                             disp,
                             doc.verified,
                             doc.lastChanged,
                             doc.phase), timeout = 300)
             conn.commit()
-            stats.newTrials += 1
-            log("Added %s with disposition %s\n" % (doc.nlmId,
-                                                    dispNames[disp]))
+            if replacedDoc:
+                stats.transfers += 1
+                log("Transferred %s as CDR%d\n" % (doc.nlmId, replacedDoc))
+            else:
+                stats.newTrials += 1
+                log("Added %s with disposition %s\n" % (doc.nlmId,
+                                                        dispNames[disp]))
         except Exception, info:
             log("Failure importing %s: %s\n" % (doc.nlmId, str(info)))
 
@@ -978,6 +1020,7 @@ if logDropped:
 #----------------------------------------------------------------------
 totals = stats.totals()
 log("                 New trials: %5d\n" % stats.newTrials)
+log("         Transferred trials: %5d\n" % stats.transfers)
 log("             Updated trials: %5d\n" % stats.updates)
 log("   Skipped unchanged trials: %5d\n" % stats.unchanged)
 log("Skipped trials from PDQ/CDR: %5d\n" % stats.pdqCdr)
@@ -991,10 +1034,12 @@ log("   NCT ID problems detected: %5d\n" % len(idProblems))
 try:
     cursor.execute("""\
         INSERT INTO ctgov_download_stats (dt, total_trials, new_trials,
+                                          transferred,
                                           updated, unchanged, pdq_cdr,
                                           duplicates, out_of_scope, closed)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                   (when, totals, stats.newTrials, stats.updates,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (when, totals, stats.newTrials, stats.transfers,
+                    stats.updates,
                     stats.unchanged, stats.pdqCdr, stats.duplicates, 
                     stats.outOfScope, stats.closed), timeout = 300)
     conn.commit()
@@ -1006,9 +1051,11 @@ except Exception, e:
 #----------------------------------------------------------------------
 subject = "CTGov trials downloaded %s on %s" % (when, server)
 recips  = getEmailRecipients(cursor)
+recips = ['***REMOVED***']
 if recips:
     body = """\
                             New trials: %5d
+                    Transferred trials: %5d
                         Updated trials: %5d
               Skipped unchanged trials: %5d
            Skipped trials from PDQ/CDR: %5d
@@ -1019,10 +1066,13 @@ if recips:
               Added NCT IDs for trials: %5d
            Removed NCT IDs from trials: %5d
               NCT ID problems detected: %5d
+     CT.gov transfer problems detected: %5d
 
-""" % (stats.newTrials, stats.updates, stats.unchanged, stats.pdqCdr, 
+""" % (stats.newTrials, stats.transfers, stats.updates,
+       stats.unchanged, stats.pdqCdr, 
        stats.duplicates, stats.outOfScope, stats.closed, totals,
-       stats.nctAdded, stats.nctRemoved, len(idProblems))
+       stats.nctAdded, stats.nctRemoved, len(idProblems),
+       len(tooManyReplacedDocs))
     if droppedDocs:
         keys = droppedDocs.keys()
         keys.sort()
@@ -1038,6 +1088,8 @@ Trial %s [disposition %s] dropped by NLM.
 """ % (droppedDoc.nlmId, droppedDoc.disposition)
     for idProblem in idProblems:
         body += idProblem.description + "\n"
+    for tooMany in tooManyReplacedDocs:
+        body += tooMany + "\n"
     sendReport(recips, subject, body)
     log("Mailed download stats to %s\n" % str(recips))
 else:
