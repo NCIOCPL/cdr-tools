@@ -1,8 +1,13 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.19 2008-07-25 15:28:47 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.20 2009-09-27 19:27:09 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.19  2008/07/25 15:28:47  bkline
+# Fixed a bug in the mergeVersion() function which prevented new information
+# from CT.gov from being used in the imported CDR documents.  Documented
+# the mergeVersion() and preserveElement() functions.
+#
 # Revision 1.18  2008/04/17 15:23:23  bkline
 # Blocked out mapping for ""NHGRI - CLINICAL GENETHERAPY BRANCH" at
 # Kim's request (#4026).
@@ -67,7 +72,7 @@
 # Batch job for adding or updating CTGovProtocols to/in the CDR.
 #
 #----------------------------------------------------------------------
-import cdr, cdrdb, sys, xml.sax, re, cdrcgi
+import cdr, cdrdb, sys, xml.sax, re, cdrcgi, xml.dom.minidom
 
 class Flags:
     def __init__(self):
@@ -76,27 +81,28 @@ class Flags:
         self.isNew = 'N'
         self.needsReview = 'N'
         self.pubVersionCreated = 'N'
-        self.locked = 0
-        self.terminated = 0
+        self.locked = False
+        self.terminated = False
+        self.isTransferred = False
 
 class CTGovHandler(xml.sax.handler.ContentHandler):
     def __init__(self, flags):
         self.doc      = u""
         self.para     = u""
-        self.inPara   = 0
+        self.inPara   = False
         self.flags    = flags
-        self.inStatus = 0
+        self.inStatus = False
         self.status   = u""
     def startDocument(self):
         self.doc = u"<?xml version='1.0'?>\n"
     def startElement(self, name, attributes):
         if name == u'Para':
             self.para   = u""
-            self.inPara = 1
+            self.inPara = True
         else:
             if name == 'OverallStatus':
                 self.status = u""
-                self.inStatus = 1
+                self.inStatus = True
             self.doc += u"<%s" % name
             for attrName in attributes.getNames():
                 val = xml.sax.saxutils.quoteattr(attributes.getValue(attrName))
@@ -105,15 +111,15 @@ class CTGovHandler(xml.sax.handler.ContentHandler):
     def endElement(self, name):
         if name == 'Para':
             self.doc += self.parsePara()
-            self.inPara = 0
+            self.inPara = False
             self.para = u""
         else:
             if name == 'OverallStatus':
                 if TESTING:
                     print "STATUS: ", self.status
                 if self.status.upper().strip() in ("WITHDRAWN", "TERMINATED"):
-                    self.flags.terminated = 1
-                self.inStatus = 0
+                    self.flags.terminated = True
+                self.inStatus = False
             self.doc += "</%s>" % name
     def characters(self, content):
         if self.inPara:
@@ -177,9 +183,9 @@ def parseParas(doc):
     xml.sax.parseString(doc, parser)
     return parser.doc
 
-def log(msg, cdrErrors = None, tback = 0):
+def log(msg, cdrErrors = None, tback = False):
     if cdrErrors:
-        errors = cdr.getErrors(cdrErrors, asSequence = 1)
+        errors = cdr.getErrors(cdrErrors, asSequence = True)
         if not errors:
             cdr.logwrite(msg, LOGFILE, tback)
         elif len(errors) == 1:
@@ -192,10 +198,12 @@ def log(msg, cdrErrors = None, tback = 0):
 
 def checkResponse(resp):
     if not resp[0]:
-        errors = cdr.getErrors(resp[1], errorsExpected = 1, asSequence = 1)
+        errors = cdr.getErrors(resp[1], errorsExpected = True,
+                               asSequence = False)
         raise Exception(errors)
     if resp[1]:
-        errors = cdr.getErrors(resp[1], errorsExpected = 0, asSequence = 1)
+        errors = cdr.getErrors(resp[1], errorsExpected = False,
+                               asSequence = True)
         return errors
 
 def extractDocSubset(cdrId, docVer = None):
@@ -268,7 +276,8 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
     
     response = cdr.getDoc('guest', cdrId, version = docVer, getObject = True)
     if type(response) in (str, unicode):
-        errors = cdr.getErrors(response, errorsExpected = 0, asSequence = 1)
+        errors = cdr.getErrors(response, errorsExpected = False,
+                               asSequence = True)
         raise Exception(errors)
     dom = xml.dom.minidom.parseString(response.xml)
     newDoc = preserveElement('PDQIndexing', newDoc, dom)
@@ -278,13 +287,14 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
 
 def mergeChanges(cdrId, newDoc, flags):
 
-    response = cdr.getDoc(session, cdrId, checkout = 'Y', getObject = 1)
-    errors   = cdr.getErrors(response, errorsExpected = 0, asSequence = 1)
+    response = cdr.getDoc(session, cdrId, checkout = 'Y', getObject = True)
+    errors   = cdr.getErrors(response, errorsExpected = False,
+                             asSequence = True)
     if errors:
-        flags.locked = 1
+        flags.locked = True
         cursor.execute("""\
-        INSERT INTO ctgov_import_event (job, nlm_id, locked, new)
-             VALUES (?, ?, 'Y', 'N')""", (job, nlmId))
+        INSERT INTO ctgov_import_event (job, nlm_id, locked, new, transferred)
+             VALUES (?, ?, 'Y', 'N', 'N')""", (job, nlmId))
         conn.commit()
         raise Exception(errors)
     docObject = response
@@ -308,7 +318,7 @@ def mergeChanges(cdrId, newDoc, flags):
         #print str(docObject)
         response = cdr.repDoc(session, doc = str(docObject), ver = 'Y',
                               reason = comment, comment = comment,
-                              showWarnings = 1, verPublishable = 'N')
+                              showWarnings = True, verPublishable = 'N')
         checkResponse(response)
 
 
@@ -320,12 +330,12 @@ def mergeChanges(cdrId, newDoc, flags):
         response = cdr.repDoc(session, doc = newCwd, ver = 'Y',
                               verPublishable = 'N',
                               reason = comment, comment = comment,
-                              showWarnings = 1, activeStatus = 'I')
+                              showWarnings = True, activeStatus = 'I')
         checkResponse(response)
         savedNewCwd = True
 
-    # Has a publishable version ever been saved for this document?
-    elif lastPub != -1:
+    # Has a publishable CTGovProtocol version ever been saved for this trial?
+    elif isPublishableCtgovProtocolVersion(cdrId, lastPub):
 
         # If the differences are not significant, create a new pub. ver.
         if hasMajorDiffs(cdrId, lastPub, newSubset):
@@ -341,9 +351,9 @@ def mergeChanges(cdrId, newDoc, flags):
         response = cdr.repDoc(session, doc = newPubVer, ver = 'Y',
                               verPublishable = 'Y', val = 'Y',
                               reason = comment, comment = comment,
-                              showWarnings = 1)
+                              showWarnings = True)
         errs = checkResponse(response)
-        flags.pubVersionCreated = errs and 'F' or 'Y'
+        flags.pubVersionCreated = errs and 'N' or 'Y'
         if errs:
             cdr.logwrite("%s: %s" % (cdrId, errs[0]), LOGFILE)
 
@@ -355,16 +365,58 @@ def mergeChanges(cdrId, newDoc, flags):
     elif hasMajorDiffs(cdrId, None, newSubset):
         flags.needsReview = 'Y'
 
-    # Saving a modified publishable version, or a terminal version
+    # Saving a modified publishable version, or a terminated version
     #   also created a new CWD.
     # Otherwise, store a new CWD from the old one updated with NLM's changes.
     if not savedNewCwd:
         comment  = 'ImportCTGovProtocols: creating new CWD'
         response = cdr.repDoc(session, doc = newCwd,
                               reason = comment, comment = comment,
-                              showWarnings = 1,
+                              showWarnings = True,
                               activeStatus = flags.terminated and 'I' or None)
         checkResponse(response)
+
+#----------------------------------------------------------------------
+# Save the CTGovProtocol document for a transferred trial as a new
+# version of the InScopeProtocol document for the same trial.
+#----------------------------------------------------------------------
+def transferTrial(cdrId, newDoc, flags):
+
+    # Check out the InScopeProtocol document
+    response = cdr.getDoc(session, cdrId, checkout = 'Y', getObject = True)
+    errors = cdr.getErrors(response, errorsExpected = False, asSequence = True)
+    if errors:
+        flags.locked = True
+        cursor.execute("""\
+        INSERT INTO ctgov_import_event (job, nlm_id, locked, new, transferred)
+             VALUES (?, ?, 'Y', 'N', 'Y')""", (job, nlmId))
+        conn.commit()
+        raise Exception(errors)
+    docObject = response
+
+    # If there are unversioned changes in the CWD, preserve them.
+    if cdr.lastVersions(session, cdrId)[2] == 'Y':
+        comment = 'ImportCTGovProtocols: preserving current working doc'
+        response = cdr.repDoc(session, doc = str(docObject), ver = 'Y',
+                              verPublishable = 'N', reason = comment,
+                              comment = comment, showWarnings = True,
+                              val = 'Y')
+        errors = checkResponse(response)
+        if errors:
+            cdr.logwrite("%s: %s" % (cdrId, errors[0]), LOGFILE)
+
+    # Do the magic to transform the document type and save a new version.
+    docObject.type = 'CTGovProtocol'
+    newXml = addPdqIndexing(cdrId, newDoc).encode('utf-8')
+    docObject.xml = newXml.replace("@@ProtocolProcessingDetails@@", "")
+    comment = 'ImportCTGovProtocols: versioning transferred trial'
+    response = cdr.repDoc(session, doc = str(docObject), ver = 'Y',
+                          verPublishable = 'N', reason = comment, val = 'Y',
+                          comment = comment, showWarnings = True,
+                          activeStatus = flags.terminated and 'I' or None)
+    errors = checkResponse(response)
+    if errors:
+        cdr.logwrite("%s: %s" % (cdrId, errors[0]), LOGFILE)
 
 #----------------------------------------------------------------------
 # Plug in PDQ sponsorship information if appropriate.
@@ -475,17 +527,156 @@ def fixPdqSponsorship(doc):
     return spPatt.sub("\n".join(sponsorshipElems), doc)
 
 #----------------------------------------------------------------------
+# Assemble a new PDQIndexing block from information in the InScopeProtocol
+# document for a trial whose ownership is being transferred from PDQ,
+# and insert the block in the CTGovProtocol document which will be saved
+# in place as a new version of the InScopeProtocol document for the trial.
+#----------------------------------------------------------------------
+pdqIndexingBlockScript = """\
+<?xml version='1.0' encoding='UTF-8'?>
+<xsl:transform                version = '1.0' 
+                            xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
+                            xmlns:cdr = 'cips.nci.nih.gov/cdr'>
+ <xsl:output                   method = 'xml'/>
+
+ <!--
+ =======================================================================
+ Top-level template.
+ ======================================================================= -->
+ <xsl:template                  match = '/'>
+  <Wrapper cdr:ref='dummy'>
+   <xsl:apply-templates        select = 'InScopeProtocol'/>
+  </Wrapper>
+ </xsl:template>
+ <!--
+ =======================================================================
+ Document element template.
+ ======================================================================= -->
+ <xsl:template                  match = 'InScopeProtocol'>
+  <PDQIndexing>
+   <xsl:apply-templates        select = 'ProtocolDetail/StudyType'/>
+   <xsl:apply-templates        select = 'ProtocolDetail/StudyCategory'/>
+   <xsl:apply-templates        select = 'ProtocolDesign'/>
+   <xsl:apply-templates        select = 'ProtocolDetail/Condition'/>
+   <xsl:apply-templates        select = 'ProtocolDetail/Gene'/>
+   <xsl:apply-templates        select = 'Eligibility'/>
+   <xsl:apply-templates        select = 'ProtocolDetail/EnteredBy'/>
+   <xsl:apply-templates        select = 'ProtocolDetail/EntryDate'/>
+  </PDQIndexing>
+ </xsl:template>
+
+ <!--
+ =======================================================================
+ Copy most things straight through.
+ ======================================================================= -->
+ <xsl:template                  match = '@*|node()|comment()|
+                                         processing-instruction()'>
+  <xsl:copy>
+   <xsl:apply-templates        select = '@*|node()|comment()|
+                                         processing-instruction()'/>
+  </xsl:copy>
+ </xsl:template>
+
+ <!--
+ =======================================================================
+ Cherry-pick from the StudyCategory block.
+ ======================================================================= -->
+ <xsl:template                  match = 'StudyCategory'>
+  <StudyCategory>
+   <xsl:apply-templates         select = 'StudyCategoryType'/>
+   <xsl:apply-templates         select = 'StudyCategoryName'/>
+   <xsl:apply-templates         select = 'Intervention'/>
+  </StudyCategory>
+ </xsl:template>
+
+ <!--
+ =======================================================================
+ Cherry-pick from the Intervention block.
+ ======================================================================= -->
+ <xsl:template                  match = 'Intervention'>
+  <Intervention>
+   <xsl:apply-templates        select = 'InterventionType'/>
+   <xsl:apply-templates        select = 'InterventionNameLink'/>
+  </Intervention>
+ </xsl:template>
+
+ <!--
+ =======================================================================
+ Drop attributes from Comment elements
+ ======================================================================= -->
+ <xsl:template                  match = 'Comment'>
+  <Comment>
+   <xsl:value-of               select = '.'/>
+  </Comment>
+ </xsl:template>
+
+ <!--
+ =======================================================================
+ Strip these.
+ ======================================================================= -->
+ <xsl:template                  match = 'Gender|@PdqKey'/>
+
+</xsl:transform>
+"""
+#pdqIndexingTagPattern = re.compile(u"<PDQIndexing[^>]+>")
+def addPdqIndexing(docId, docXml):
+    result = cdr.filterDoc('guest', pdqIndexingBlockScript, docId,
+                           inline = True)
+    if type(result) in (str, unicode):
+        raise Exception(result)
+    dom = xml.dom.minidom.parseString(result[0])
+    elements = dom.getElementsByTagName('PDQIndexing')
+    if not elements:
+        raise Exception("unable to create PDQIndexing block")
+    block = elements[0].toxml()
+    if TESTING:
+        print block[:70]
+    #block = pdqIndexingTagPattern.sub(u"<PDQIndexing>", block)
+    #print type(docXml), type(block)
+    return docXml.replace(u"@@PDQIndexing@@", block)
+
+#----------------------------------------------------------------------
+# Determine the current type for a CDR document.
+#----------------------------------------------------------------------
+def getDocumentType(cdrId):
+    cursor.execute("""\
+        SELECT t.name
+          FROM doc_type t
+          JOIN document d
+            ON d.doc_type = t.id
+         WHERE d.id = ?""", cdrId)
+    rows = cursor.fetchall()
+    return rows and rows[0][0] or None
+
+#----------------------------------------------------------------------
+# Determine whether the specified version is a publishable version of
+# a CTGovProtocol document.
+#----------------------------------------------------------------------
+def isPublishableCtgovProtocolVersion(cdrId, lastPub):
+    docId = cdr.exNormalize(cdrId)[1]
+    cursor.execute("""\
+        SELECT t.name
+          FROM doc_type t
+          JOIN doc_version v
+            ON v.doc_type = t.id
+         WHERE v.publishable = 'Y'
+           AND v.id = ?
+           AND v.num = ?
+           AND t.name = 'CTGovProtocol'""", (docId, lastPub))
+    return cursor.fetchall() and True or False
+
+#----------------------------------------------------------------------
 # Module-scoped data.
 #----------------------------------------------------------------------
 TESTING = len(sys.argv) > 1 and sys.argv[1].upper().startswith('TEST')
 LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovImport.log"
 flags   = Flags()
 parser  = CTGovHandler(flags)
+spPatt  = re.compile("@@PDQSPONSORSHIP=([^@]*)@@")
 conn    = cdrdb.connect()
 cursor  = conn.cursor()
 session = cdr.login('CTGovImport', '***REMOVED***')
-errors  = cdr.getErrors(session, errorsExpected = 0, asSequence = 1)
-spPatt  = re.compile("@@PDQSPONSORSHIP=([^@]*)@@")
+errors  = cdr.getErrors(session, errorsExpected = False, asSequence = True)
 if errors:
     cdr.logwrite("Login failure", session)
     sys.stderr.write("Login failure: %s" % str(errors))
@@ -505,11 +696,28 @@ conn.commit()
 cursor.execute("SELECT @@IDENTITY")
 job = cursor.fetchone()[0]
 failures = []
+if TESTING:
+    transfersProcessed = 0
+    processed = 0
 try:
     for nlmId, cdrId in rows:
-        if TESTING:
-            print nlmId, cdrId
         flags.clear()
+        if TESTING:
+            if processed > 10:
+                break
+            processed += 1
+            if transfersProcessed > 0:
+                break
+            print nlmId, cdrId
+        if cdrId:
+            docType = getDocumentType(cdrId)
+            if TESTING:
+                print "%d: %s" % (cdrId, docType)
+            if docType == 'InScopeProtocol':
+                if TESTING:
+                    print "SETTING ISTRANSFERRED FLAG"
+                    transfersProcessed += 1
+                flags.isTransferred = True
         cursor.execute("SELECT xml FROM ctgov_import WHERE nlm_id = ?", nlmId)
         doc = cursor.fetchone()[0].encode('utf-8')
         parms = [['newDoc', cdrId and 'N' or 'Y']]
@@ -537,7 +745,7 @@ try:
      </CdrDocCtl>
      <CdrDocXml><![CDATA[%s]]></CdrDocXml>
     </CdrDoc>
-    """ % (comment, doc.encode('utf-8')), showWarnings = 1,
+    """ % (comment, doc.encode('utf-8')), showWarnings = True,
                               reason = comment, ver = "Y", val = "N",
                               verPublishable = 'N')
             if not resp[0]:
@@ -559,6 +767,31 @@ try:
                 log("Added %s as %s" % (nlmId, resp[0]))
 
         #------------------------------------------------------------------
+        # Save newly transferred trial as CTGovProtocol in place as a new
+        # version of the corresponding InScopeProtocol document (see issue
+        # number 4634).
+        #------------------------------------------------------------------
+        elif flags.isTransferred:
+            try:
+                transferTrial(cdrId, doc, flags)
+                cursor.execute("""\
+                UPDATE ctgov_import
+                   SET disposition = ?,
+                       dt = GETDATE()
+                 WHERE nlm_id = ?""", (importedDisposition, nlmId))
+                conn.commit()
+                log("Transferred %s as CDR%d" % (nlmId, cdrId))
+            except Exception, errors:
+                failures.append("Failure transferring %s as CDR%s" %
+                                (nlmId, cdrId))
+                log("Failure transferring %s as CDR%s: %s\n" %
+                    (nlmId, cdrId, errors), tback = (not flags.locked))
+            if not flags.locked:
+                cdr.unlock(session, "CDR%d" % cdrId,
+                           reason = 'ImportCTGovProtocols: '
+                                    'Unlocking transferred CTGovProtocol doc')
+                
+        #------------------------------------------------------------------
         # Merge changes into existing doc.
         #------------------------------------------------------------------
         else:
@@ -570,27 +803,29 @@ try:
                        dt = GETDATE()
                  WHERE nlm_id = ?""", (importedDisposition, nlmId))
                 conn.commit()
+                log("Updated CDR%d from %s" % (cdrId, nlmId))
             except Exception, info:
                 failures.append("Failure merging changes for %s into %s" %
                                 (nlmId, cdrId))
                 log("Failure merging changes for %s into %s: %s" %
-                    (nlmId, cdrId, str(info)), tback = (flags.locked == 0))
+                    (nlmId, cdrId, str(info)), tback = (not flags.locked))
                 #raise
             if not flags.locked:
                 cdr.unlock(session, "CDR%d" % cdrId,
                            reason = 'ImportCTGovProtocols: '
                                     'Unlocking updated CTGovProtocol doc')
-                log("Updated CDR%d from %s" % (cdrId, nlmId))
         if not flags.locked:
             try:
                 cursor.execute("""\
      INSERT INTO ctgov_import_event(job, nlm_id, new, needs_review,
-                                    pub_version)
-          VALUES (?, ?, ?, ?, ?)""", (job,
-                                      nlmId,
-                                      flags.isNew,
-                                      flags.needsReview,
-                                      flags.pubVersionCreated))
+                                    pub_version, transferred, locked)
+          VALUES (?, ?, ?, ?, ?, ?, 'N')""", (job,
+                                              nlmId,
+                                              flags.isNew,
+                                              flags.needsReview,
+                                              flags.pubVersionCreated,
+                                              flags.isTransferred
+                                              and 'Y' or 'N'))
                 conn.commit()
             except Exception, info:
                 failures.append("Failure recording import event for %s" %
