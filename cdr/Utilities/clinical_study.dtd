@@ -1,10 +1,15 @@
 <!-- XML DTD, ClinicalTrials.gov,                                       -->
 <!-- National Library of Medicine, National Institutes of Health        -->
-<!-- DTD Version: 2002.07.18                                            -->
+<!-- DTD Version: 2006.05.22                                            -->
 <!--                                                                    -->
 <!-- This DTD is subject to change without notice.                      -->
 
-<!-- NOTE: Additional rules are included following the data definitions. -->
+<!-- Additional rules are included following the data definitions. -->
+
+
+<!ELEMENT study_collection (clinical_study+)>
+
+    <!-- NOTE: For backward compatibility, the study_collection tag may be ommitted. -->
 
 <!ELEMENT clinical_study ( 
 		id_info, 
@@ -15,11 +20,14 @@
 		brief_title,
 		official_title?,
 		sponsors,
+		oversight_info,
 		brief_summary,
 		detailed_description?,
 		overall_status,
 		start_date?,	
 		end_date?,	
+		last_follow_up_date?,	
+		last_data_entry_date?,	
 		phase,		
 		study_design,	
 		condition+,	
@@ -41,14 +49,14 @@
 		org_name, org_study_id, 
 		secondary_id*)>
 
-<!ELEMENT provider_name (#PCDATA)>	<!-- max 160 characters -->
-<!ELEMENT provider_study_id (#PCDATA)>	<!-- max 30 characters -->
+<!ELEMENT provider_name (#PCDATA)>	<!-- PRS INTERNAL USE ONLY -->
+<!ELEMENT provider_study_id (#PCDATA)>	<!-- PRS INTERNAL USE ONLY -->
 <!ELEMENT org_name (#PCDATA)>		<!-- short organization name used to login to the PRS -->
 <!ELEMENT org_study_id (#PCDATA)>	<!-- unique protocol id; max 30 characters -->
 <!ELEMENT secondary_id (#PCDATA)>	<!-- max 30 characters -->
 
 <!ELEMENT is_ind_study (#PCDATA)>	<!-- none|yes|no -->
-<!ELEMENT has_irb_approval (#PCDATA)>	<!-- ** NO LONGER USED ** -->
+<!ELEMENT has_irb_approval (#PCDATA)>	<!-- ** DEPRACATED ** moved to oversight_info -->
 
 <!ELEMENT ind_info (ind_grantor, ind_number, ind_serial_number)>	
 					<!-- NOTE: IND info will not be made public -->
@@ -61,21 +69,36 @@
 <!ELEMENT meets_rqmts (#PCDATA)>	<!-- ** NO LONGER USED ** -->
 
 <!ELEMENT brief_title (#PCDATA)>	<!-- lay language and brief; 
-					     max 300 characters -->
-<!ELEMENT official_title (#PCDATA)>	<!-- max 300 characters -->
+					     max 300 characters, 120 or fewer preferred -->
+<!ELEMENT official_title (#PCDATA)>	<!-- max 300 characters, 240 or fewer preferred -->
 
 <!ELEMENT sponsors (lead_sponsor, collaborator*)>
-<!ELEMENT lead_sponsor (agency)>	<!-- max 160 characters -->
-<!ELEMENT collaborator (agency)>	<!-- max 160 characters -->
+<!ELEMENT lead_sponsor (agency)>	<!-- max 160 characters, 80 or fewer preferred -->
+<!ELEMENT collaborator (agency)>	<!-- max 160 characters, 80 or fewer preferred -->
 
-<!ELEMENT brief_summary (textblock)>
-<!ELEMENT detailed_description (textblock)>
+<!ELEMENT oversight_info (regulatory_authority+, irb_info)>
+<!ELEMENT regulatory_authority (#PCDATA)>  <!-- Country: Organization Name  -->
+<!ELEMENT irb_info (irb_approved?, approval_status?, approval_number?, name, affiliation, 
+		    chair_name?, phone, phone_ext, email, full_address)>
+<!ELEMENT irb_approved (#PCDATA)>	<!-- ** NO LONGER USED ** -->
+<!ELEMENT approval_status (#PCDATA)>	<!-- Approved | Pending | Exempt | Denied |
+                                             Not required | Not yet submitted
+                                          -->
+<!ELEMENT approval_number (#PCDATA)>	<!-- board approval number -->
+<!ELEMENT chair_name (#PCDATA)>		<!-- ** NO LONGER USED ** -->
+<!ELEMENT full_address (#PCDATA)>	<!-- full mailing address -->
+
+<!ELEMENT brief_summary (textblock)>	        <!-- max 5000 characters, 2500 or fewer preferred -->
+<!ELEMENT detailed_description (textblock)>	<!-- max 32000 characters, 12000 or fewer preferred -->
 
 <!ELEMENT overall_status (#PCDATA)>	<!-- Not yet recruiting | Recruiting
 				             No longer recruiting | Completed | 
-				             Suspended | Terminated -->
+				             Suspended | Terminated | Withdrawn -->
 <!ELEMENT start_date (#PCDATA)>	 	<!-- YYYY-MM -->
 <!ELEMENT end_date (#PCDATA)>	 	<!-- YYYY-MM -->
+
+<!ELEMENT last_follow_up_date (#PCDATA)>  <!-- YYYY-MM -->
+<!ELEMENT last_data_entry_date (#PCDATA)> <!-- YYYY-MM -->
 
 <!ELEMENT phase (#PCDATA)>		<!-- Phase [1,1/2,2,2/3,3,4] | N/A -->
 
@@ -90,7 +113,9 @@
 		masking, 		
 		control, 		
 		assignment, 		
-		endpoint)>		
+		endpoint,
+                primary_outcome+,
+                secondary_outcome*)>		
 
 <!ELEMENT observational_design (
 		observational_subtype,	
@@ -119,6 +144,9 @@
 					     Pharmacokinetics Study | Pharmacodynamics Study |
 					     Pharmacokinetics/dynamics Study -->
 
+<!ELEMENT primary_outcome (#PCDATA)> 	<!-- max 255 characters -->
+<!ELEMENT secondary_outcome (#PCDATA)> 	<!-- max 255 characters -->
+
 <!ELEMENT observational_subtype (#PCDATA)> <!-- Natural History | Screening | 
 						Psychosocial -->
 <!ELEMENT duration (#PCDATA)> 		<!-- Longitudinal | Cross-sectional -->
@@ -129,7 +157,7 @@
 <!ELEMENT timing (#PCDATA)> 		<!-- Retrospective | Prospective | 
 					     Retrospective/Prospective -->
 
-<!ELEMENT condition (#PCDATA)>		<!-- MeSH term if possible; max 255 characters -->
+<!ELEMENT condition (#PCDATA)>		<!-- MeSH term if possible; max 255 characters, 60 or fewer preferred -->
 
 <!ELEMENT intervention (intervention_type, intervention_name)>
 
@@ -137,14 +165,14 @@
 					     Behavior | Device | Procedure -->
 
 <!ELEMENT intervention_name (#PCDATA)>	<!-- Generic if possible, MeSH if possible; 
-					     max 160 characters -->
+					     max 160 characters, 60 or fewer preferred -->
 
 <!ELEMENT eligibility (
 		criteria,
 		healthy_volunteers, patients?, expected_enrollment?,
 		gender, minimum_age, maximum_age)>
 
-<!ELEMENT criteria (textblock)>
+<!ELEMENT criteria (textblock)>	                <!-- max 15000 characters, 4000 or fewer preferred -->
 <!ELEMENT gender (#PCDATA)>			<!-- Both|Female|Male -->
 <!ELEMENT healthy_volunteers (#PCDATA)>		<!-- yes|no -->
 <!ELEMENT patients (#PCDATA)>			<!-- ** NO LONGER USED ** -->
@@ -173,7 +201,7 @@
 <!ELEMENT name (#PCDATA)>	<!-- max 254 characters -->
 <!ELEMENT status (#PCDATA)>	<!-- Not yet recruiting | Recruiting | 
 				     No longer recruiting | Completed | 
-				     Suspended | Terminated -->
+				     Suspended | Terminated | Withdrawn -->
 
 <!ELEMENT overall_official (
 		first_name?, middle_name?, last_name, degrees?, 
@@ -201,14 +229,16 @@
 					     max 254 characters -->
 <!ELEMENT description (#PCDATA)>	<!-- max 254 characters -->
 
-<!ELEMENT reference (citation?, pubmed_id?)>
+<!ELEMENT reference (citation?, pubmed_id?, is_results_ref?)>
 					<!-- include PubMed Id, if it exists; 
 					     else include citation -->
-<!ELEMENT citation (textblock)>		<!-- full bibliographic citation -->
+<!ELEMENT citation (#PCDATA)>		<!-- full bibliographic citation; 
+                                             max 5000 characters, 1000 or fewer preferred -->
 <!ELEMENT pubmed_id (#PCDATA)>		<!-- unique PubMed Identifier -->
+<!ELEMENT is_results_ref (#PCDATA)>     <!-- yes|no -->
 
 <!ELEMENT verification_date (#PCDATA)>	 <!-- YYYY-MM -->
-<!ELEMENT lastchanged_date (#PCDATA)>	 <!-- YYYY-MM-DD (for internal use) -->
+<!ELEMENT lastchanged_date (#PCDATA)>	 <!-- ** NO LONGER USED ** -->
 
 <!ELEMENT address (city, state?, zip?, country)>
 <!ELEMENT city (#PCDATA)>	 <!-- use English spelling -->
@@ -226,9 +256,9 @@
 <!ELEMENT phone (#PCDATA)>		<!-- max 30 characters -->
 <!ELEMENT phone_ext (#PCDATA)>		<!-- max 14 characters -->
 <!ELEMENT email (#PCDATA)>		<!-- max 254 characters -->
-<!ELEMENT agency (#PCDATA)>		<!-- max 160 characters -->
-<!ELEMENT affiliation (#PCDATA)>	<!-- max 160 characters -->
-<!ELEMENT keyword (#PCDATA)>		<!-- max 160 characters -->
+<!ELEMENT agency (#PCDATA)>		<!-- max 160 characters, 80 or fewer preferred -->
+<!ELEMENT affiliation (#PCDATA)>	<!-- max 160 characters, 80 or fewer preferred -->
+<!ELEMENT keyword (#PCDATA)>		<!-- max 160 characters, 60 or fewer preferred -->
 
 <!-- 
     Textblocks can optionally contain some minimal formatting information. 
@@ -243,7 +273,7 @@
        - list item 2
 -->
 
-<!ELEMENT textblock (#PCDATA)>		<!-- max 65535 characters -->
+<!ELEMENT textblock (#PCDATA)>	<!-- max 65535 characters (except as noted above) -->
 
 
 

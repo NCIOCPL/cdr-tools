@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-     $Id: oncore.xsd,v 1.2 2007-02-22 20:23:07 bkline Exp $
+     $Id: oncore.xsd,v 1.3 2009-09-27 19:13:07 bkline Exp $
   -->
 
 <xsd:schema                  xmlns:xsd = 'http://www.w3.org/2001/XMLSchema'>
@@ -10,14 +10,12 @@
  Protocol document element.
  ====================================================================== -->
  <xsd:element                     name = 'Protocol'
-                                  type = 'ProtocolType'/>
+                                  type = 'ProtocolInfo'/>
 
- <xsd:complexType                 name = 'ProtocolType'>
+ <xsd:complexType                 name = 'ProtocolInfo'>
   <xsd:sequence>
 
-   <!--
-    For Oncore, PDQ Unique Identifier is the current Protocol_Number data
-   -->
+   <!-- Unique identifier for the trial -->
    <xsd:element                   name = 'Protocol_Number'
                                   type = 'xsd:string'/>
 
@@ -26,7 +24,7 @@
 
    <!-- Protocol Sites that have unexpired IRB approval -->
    <xsd:element                   name = 'Site_Registration'
-                                  type = 'Site_Registration_Type'
+                                  type = 'Site_Registration_Info'
                              minOccurs = '0'
                              maxOccurs = 'unbounded'/>
   </xsd:sequence>
@@ -41,7 +39,7 @@
  ======================================================================
  Structure for a participating site.
  ====================================================================== -->
- <xsd:complexType                 name = 'Site_Registration_Type'>
+ <xsd:complexType                 name = 'Site_Registration_Info'>
   <xsd:sequence>
 
    <!-- Natural Key -->
@@ -58,8 +56,7 @@
 
    <!-- Status for an individual site. -->
    <xsd:element                   name = 'Site_Reg_Status'
-                                  type = 'xsd:string'
-                             minOccurs = '0'/>
+                                  type = 'xsd:string'/>
 
    <!-- Organization Address -->
    <xsd:element                   name = 'Address'
