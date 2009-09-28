@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CallProcDemo.py,v 1.1 2009-01-27 19:29:50 bkline Exp $
+# $Id: CallProcDemo.py,v 1.2 2009-09-28 13:43:21 bkline Exp $
 #
 # Illustrates invocation of a stored procedure to obtain the last results
 # set when the number of results sets is unknown.  Assumes that no interim
@@ -9,10 +9,14 @@
 # option.
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.1  2009/01/27 19:29:50  bkline
+# New example program for Alan.
+#
 #----------------------------------------------------------------------
 import cdrdb
 
 def getLastResultsSet(cursor, procName, parms):
+    #cursor.execute(procName, parms, timeout = 300)
     cursor.callproc(procName, parms, timeout = 300)
     lastSet = []
     done = False
@@ -24,5 +28,6 @@ def getLastResultsSet(cursor, procName, parms):
     return lastSet
 
 cursor = cdrdb.connect().cursor()
+#print getLastResultsSet(cursor, "EXEC select_changed_non_active_protocols", [])
 parms = []
 print getLastResultsSet(cursor, "select_changed_non_active_protocols", parms)
