@@ -1,8 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.20 2009-09-27 19:27:09 bkline Exp $
+# $Id: ImportCTGovProtocols.py,v 1.21 2009-10-01 12:21:37 bkline Exp $
 #
 # $Log: not supported by cvs2svn $
+# Revision 1.20  2009/09/27 19:27:09  bkline
+# Modification for issues #4444 and #4634.
+#
 # Revision 1.19  2008/07/25 15:28:47  bkline
 # Fixed a bug in the mergeVersion() function which prevented new information
 # from CT.gov from being used in the imported CDR documents.  Documented
@@ -281,6 +284,7 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
         raise Exception(errors)
     dom = xml.dom.minidom.parseString(response.xml)
     newDoc = preserveElement('PDQIndexing', newDoc, dom)
+    newDoc = preserveElement('PDQProtocolIDs', newDoc, dom)
     newDoc = preserveElement('ProtocolProcessingDetails', newDoc, dom)
     docObject.xml = newDoc
     return str(docObject)
@@ -407,8 +411,7 @@ def transferTrial(cdrId, newDoc, flags):
 
     # Do the magic to transform the document type and save a new version.
     docObject.type = 'CTGovProtocol'
-    newXml = addPdqIndexing(cdrId, newDoc).encode('utf-8')
-    docObject.xml = newXml.replace("@@ProtocolProcessingDetails@@", "")
+    docObject.xml = fixTransferredDoc(cdrId, newDoc)
     comment = 'ImportCTGovProtocols: versioning transferred trial'
     response = cdr.repDoc(session, doc = str(docObject), ver = 'Y',
                           verPublishable = 'N', reason = comment, val = 'Y',
@@ -531,8 +534,9 @@ def fixPdqSponsorship(doc):
 # document for a trial whose ownership is being transferred from PDQ,
 # and insert the block in the CTGovProtocol document which will be saved
 # in place as a new version of the InScopeProtocol document for the trial.
+# Expanded this function to also pick up PDQ protocol IDs.
 #----------------------------------------------------------------------
-pdqIndexingBlockScript = """\
+transferredTrialScript = """\
 <?xml version='1.0' encoding='UTF-8'?>
 <xsl:transform                version = '1.0' 
                             xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
@@ -563,6 +567,10 @@ pdqIndexingBlockScript = """\
    <xsl:apply-templates        select = 'ProtocolDetail/EnteredBy'/>
    <xsl:apply-templates        select = 'ProtocolDetail/EntryDate'/>
   </PDQIndexing>
+  <PDQProtocolIDs>
+   <xsl:apply-templates        select = 'ProtocolIDs/PrimaryID'/>
+   <xsl:apply-templates        select = 'ProtocolIDs/OtherID'/>
+  </PDQProtocolIDs>
  </xsl:template>
 
  <!--
@@ -602,25 +610,14 @@ pdqIndexingBlockScript = """\
 
  <!--
  =======================================================================
- Drop attributes from Comment elements
- ======================================================================= -->
- <xsl:template                  match = 'Comment'>
-  <Comment>
-   <xsl:value-of               select = '.'/>
-  </Comment>
- </xsl:template>
-
- <!--
- =======================================================================
  Strip these.
  ======================================================================= -->
  <xsl:template                  match = 'Gender|@PdqKey'/>
 
 </xsl:transform>
 """
-#pdqIndexingTagPattern = re.compile(u"<PDQIndexing[^>]+>")
-def addPdqIndexing(docId, docXml):
-    result = cdr.filterDoc('guest', pdqIndexingBlockScript, docId,
+def fixTransferredDoc(docId, docXml):
+    result = cdr.filterDoc('guest', transferredTrialScript, docId,
                            inline = True)
     if type(result) in (str, unicode):
         raise Exception(result)
@@ -628,12 +625,15 @@ def addPdqIndexing(docId, docXml):
     elements = dom.getElementsByTagName('PDQIndexing')
     if not elements:
         raise Exception("unable to create PDQIndexing block")
-    block = elements[0].toxml()
-    if TESTING:
-        print block[:70]
-    #block = pdqIndexingTagPattern.sub(u"<PDQIndexing>", block)
-    #print type(docXml), type(block)
-    return docXml.replace(u"@@PDQIndexing@@", block)
+    pdqIndexing = elements[0].toxml()
+    elements = dom.getElementsByTagName('PDQProtocolIDs')
+    if not elements:
+        raise Exception("unable to create PDQProtocolIDs block")
+    protocolIds = elements[0].toxml()
+    docXml = docXml.replace(u"@@PDQIndexing@@", pdqIndexing)
+    docXml = docXml.replace(u"@@PDQProtocolIDs@@", protocolIds)
+    docXml = docXml.replace(u"@@ProtocolProcessingDetails@@", "")
+    return docXml.encode('utf-8')
 
 #----------------------------------------------------------------------
 # Determine the current type for a CDR document.
