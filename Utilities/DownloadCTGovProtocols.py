@@ -132,11 +132,11 @@ comment   = "Inserting NCT ID from CTGovProtocol download job."
 #----------------------------------------------------------------------
 # Log activity, errors to the download log and to the console.
 #----------------------------------------------------------------------
-def log(what):
+def log(what, traceback = False):
     sys.stderr.write(what)
     if what and what[-1] == '\n':
         what = what[:-1]
-    cdr.logwrite(what, LOGFILE)
+    cdr.logwrite(what, LOGFILE, tback = traceback)
 
 #----------------------------------------------------------------------
 # Get the names and codes for the valid CTGov dispositions.
@@ -867,7 +867,8 @@ for name in nameList:
         except Exception, e:
             if locked:
                 cdr.unlock(session, "CDR%010d" % cdrId)
-            log("Failure adjusting NCT IDs in CDR%s: %s" % (cdrId, str(e)))
+            log("Failure adjusting NCT IDs in CDR%s: %s\n" % (cdrId, str(e)),
+                True)
 
     #------------------------------------------------------------------
     # We don't want closed or completed trials.
