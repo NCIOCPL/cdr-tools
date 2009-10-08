@@ -63,7 +63,7 @@ def main():
     checkForProblems(session)
     stub = """\
 <?xml version='1.0' encoding='utf-8'?>
-<!-- $Id$ -->
+<!-- %s%s%s -->
 <!-- Filter title: %s -->
 <xsl:transform               xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                              xmlns:cdr = 'cips.nci.nih.gov/cdr'
@@ -83,7 +83,7 @@ def main():
  </xsl:template>
 
 </xsl:transform>
-""" % title
+""" % ("$", "Id", "$", title)
     docObj = cdr.Doc(stub, 'Filter', { 'DocTitle': title })
     doc = str(docObj)
     cdrId = cdr.addDoc(session, doc = doc, host = server)
