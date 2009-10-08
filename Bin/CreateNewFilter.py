@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: $
+# $Id$
 #
 # Creates a new stub filter document on Bach.  A file is created in the
 # current working directory containing the XML content for the stub
@@ -63,7 +63,7 @@ def main():
     checkForProblems(session)
     stub = """\
 <?xml version='1.0' encoding='utf-8'?>
-<!-- $Id: $ -->
+<!-- $Id$ -->
 <!-- Filter title: %s -->
 <xsl:transform               xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                              xmlns:cdr = 'cips.nci.nih.gov/cdr'
