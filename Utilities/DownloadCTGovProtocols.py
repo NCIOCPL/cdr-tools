@@ -1052,7 +1052,6 @@ except Exception, e:
 #----------------------------------------------------------------------
 subject = "CTGov trials downloaded %s on %s" % (when, server)
 recips  = getEmailRecipients(cursor)
-recips = ['***REMOVED***']
 if recips:
     body = """\
                             New trials: %5d
