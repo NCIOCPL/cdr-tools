@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: GetReplacementCitations.py,v 1.1 2003-03-11 14:50:48 bkline Exp $
+# $Id$
 #
 # Re-import citations invalidated by most recent DTD modifications at
 # NLM (see CDR request #622); only change resulting in invalid CDR

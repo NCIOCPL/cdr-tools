@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: NormalizeSpace.py,v 1.1 2006-11-22 03:52:51 ameyer Exp $
+# $Id$
 #
 # Utility for normalizing whitespace in specified fields for a
 # specified CDR document type, using a global change.

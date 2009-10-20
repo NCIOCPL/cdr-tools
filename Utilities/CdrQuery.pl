@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CdrQuery.pl,v 1.2 2002-09-08 02:55:17 bkline Exp $
+# $Id$
 #
 # Creates CDR command set for XQL query against the repository.
 #

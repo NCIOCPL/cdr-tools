@@ -1,7 +1,7 @@
 ##
 # Validate a previous version of a document against current rules.
 #
-# $Id: valDocVersion.py,v 1.2 2005-08-03 00:54:46 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.1  2005/05/25 00:42:18  ameyer

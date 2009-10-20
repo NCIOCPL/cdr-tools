@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ResearchStudies.py,v 1.1 2005-04-19 22:14:23 venglisc Exp $ 
+# $Id$ 
 #
 # Report identifying previously published protocols that should be 
 # included in a hotfix.

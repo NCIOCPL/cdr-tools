@@ -4,7 +4,7 @@
 #
 # Satisfies Bugzilla request 4619.  See comments in Bugzilla for details.
 #
-# $Id: Request4619.py,v 1.1 2009-08-13 15:40:12 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 #

@@ -6,7 +6,7 @@
 #
 # This program is based on the earlier valDocVersion.py, renamed and modified.
 #
-# $Id: valCdrDoc.py,v 1.1 2007-11-29 15:39:48 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 ##

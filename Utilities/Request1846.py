@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1846.py,v 1.1 2005-10-13 22:49:10 ameyer Exp $
+# $Id$
 #
 # One off program to create publishable versions from CTGovImport'ed
 # documents for which the last version is not publishable.

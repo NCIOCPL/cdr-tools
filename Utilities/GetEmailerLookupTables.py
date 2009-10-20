@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: GetEmailerLookupTables.py,v 1.2 2004/11/24 05:21:38 bkline Exp $
+# $Id$
 #
 # Creates and saves a serialized copy of the lookup table values for
 # the emailer server.

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1992.py,v 1.1 2006-02-16 23:22:14 ameyer Exp $
+# $Id$
 #
 # One off program to delete ExternalRef elements from Term documents
 # containing the text "See a list of clinical trials using this agent".

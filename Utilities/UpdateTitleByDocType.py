@@ -2,7 +2,7 @@
 # Regenerate and update document table titles for all docs of a
 # given doctype.
 #
-# $Id: UpdateTitleByDocType.py,v 1.1 2009-05-22 02:37:25 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 #

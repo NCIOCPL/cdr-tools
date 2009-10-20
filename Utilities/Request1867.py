@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1867.py,v 1.4 2005-10-25 23:10:54 ameyer Exp $
+# $Id$
 #
 # One off program to report on differences between current working
 # versions of CTGovProtocol documents and their last publishable

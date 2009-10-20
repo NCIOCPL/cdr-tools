@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CCR_ActiveTrialReport.py,v 1.1 2009-06-01 21:57:18 venglisc Exp $
+# $Id$
 #
 # Create CCR report for active and closed trials.
 #

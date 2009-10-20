@@ -6,7 +6,7 @@
 #
 # Written for Bugzilla issue #2747.
 #
-# $Id: Request2747.py,v 1.3 2007-01-10 05:51:27 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.2  2006/12/08 02:45:47  ameyer

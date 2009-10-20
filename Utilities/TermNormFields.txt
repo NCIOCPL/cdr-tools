@@ -6,7 +6,7 @@
 # 
 # Note: Free space and # delimited comments are okay in the file
 #
-# $Id: TermNormFields.txt,v 1.1 2006-11-22 03:54:01 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 ##################################################################

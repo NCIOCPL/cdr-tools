@@ -4,7 +4,7 @@ import re, sys, xml.sax.handler, xml.sax.saxutils, ExcelReader
 
 """
 
-$Id: NciThesaurus.py,v 1.1 2007-07-31 20:06:24 bkline Exp $
+$Id$
 
 Module for extracting Concept records from the NCI Thesaurus.
 

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ActiveNCIProtocols.py,v 1.2 2003-11-04 13:27:47 bkline Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.1  2003/11/04 13:24:55  bkline

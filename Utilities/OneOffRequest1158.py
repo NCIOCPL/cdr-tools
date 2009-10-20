@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: OneOffRequest1158.py,v 1.6 2004-06-04 18:15:16 bkline Exp $
+# $Id$
 #
 # This task is required to facilitate web-based updates. Persons who are 
 # designated as Protocol Update Persons will need to have an UpdateMode

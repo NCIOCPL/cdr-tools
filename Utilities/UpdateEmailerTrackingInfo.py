@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: UpdateEmailerTrackingInfo.py,v 1.2 2004-12-10 12:45:49 bkline Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.1  2004/06/19 12:30:44  bkline

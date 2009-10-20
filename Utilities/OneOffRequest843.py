@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: OneOffRequest843.py,v 1.2 2003-08-21 19:28:18 bkline Exp $
+# $Id$
 #
 # CDR request number 843 to transform GlossaryTerm documents to
 # match the new schema changes, introducing new Audience, Dictionary,

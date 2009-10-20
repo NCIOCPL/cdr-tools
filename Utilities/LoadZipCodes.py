@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: LoadZipCodes.py,v 1.4 2008-08-11 18:44:37 venglisc Exp $
+# $Id$
 #
 # Utility to drop, re-create, and load the zipcode validation table.
 # Required command-line argument is path to comma-delimited ASCII

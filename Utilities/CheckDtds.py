@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CheckDtds.py,v 1.9 2006-10-31 19:45:06 bkline Exp $
+# $Id$
 #
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.

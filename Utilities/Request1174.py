@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1174.py,v 1.2 2004-06-19 12:30:02 bkline Exp $
+# $Id$
 #
 # Report on Board member CIPS contact addresses (one-off for Lakshmi).
 #

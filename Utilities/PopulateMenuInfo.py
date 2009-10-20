@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: PopulateMenuInfo.py,v 1.5 2003-04-15 15:36:32 bkline Exp $
+# $Id$
 #
 # Populate the CDR Term documents with MenuInformation elements.
 #

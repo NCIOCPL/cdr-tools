@@ -1,6 +1,6 @@
 #======================================================================
 #
-# $Id: GetPermissions.py,v 1.1 2004-01-10 14:49:19 bkline Exp $
+# $Id$
 #
 # Fetch a list of who can do what.
 #

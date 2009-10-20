@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: DenormalizeDocs.py,v 1.2 2003-03-04 16:07:29 bkline Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.1  2002/09/15 19:08:04  bkline

@@ -2,7 +2,7 @@
 
 #----------------------------------------------------------------------
 #
-# $Id: twebcvs.py,v 1.1 2009-07-21 19:54:51 bkline Exp $
+# $Id$
 #
 # Demonstration of python code to retrieve filter document from
 # cvs using anonymous http interface.

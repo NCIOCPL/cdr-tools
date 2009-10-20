@@ -3,7 +3,7 @@
 #
 # See usage() for parameters.
 #
-# $Id: RevalidateDocs.py,v 1.8 2008-12-31 02:43:41 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.7  2007/02/02 01:21:14  ameyer

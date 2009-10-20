@@ -6,7 +6,7 @@
 # Data is added only if there is none in the document already.  If
 # data exists in the document, it takes precedence over the spreadsheet.
 #
-# $Id: Request4128.py,v 1.3 2009-05-07 15:35:59 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.2  2008/06/27 02:14:52  ameyer

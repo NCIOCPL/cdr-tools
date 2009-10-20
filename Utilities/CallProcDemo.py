@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CallProcDemo.py,v 1.2 2009-09-28 13:43:21 bkline Exp $
+# $Id$
 #
 # Illustrates invocation of a stored procedure to obtain the last results
 # set when the number of results sets is unknown.  Assumes that no interim

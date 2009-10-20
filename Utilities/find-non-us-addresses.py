@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: find-non-us-addresses.py,v 1.1 2003-01-21 14:29:19 bkline Exp $
+# $Id$
 #
 # Companion reporting script for fix-non-us-address.py utility.
 #

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CCR_ClosedTrialReport.py,v 1.1 2009-06-01 21:58:09 venglisc Exp $
+# $Id$
 #
 # Update Non-Compliance Report from CTGov to add PUP information.
 #

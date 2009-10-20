@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: UnlockDocsForUser.py,v 1.1 2002-09-15 19:08:04 bkline Exp $
+# $Id$
 #
 # Unlocks all documents checked out by a user.
 #

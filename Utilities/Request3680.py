@@ -15,7 +15,7 @@
 # New type that replaces them:
 #    256087 - Intervention or procedure
 #
-# $Id: Request3680.py,v 1.2 2008-06-27 02:12:00 ameyer Exp $
+# $Id$
 # $Log: not supported by cvs2svn $
 # Revision 1.1  2007/10/19 04:15:44  ameyer
 # Initial version.

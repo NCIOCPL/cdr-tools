@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1519.py,v 1.2 2005-05-06 03:05:52 bkline Exp $
+# $Id$
 #
 # "To facilitate the CTEP Data export tasks, we need to add CTEPIDS to
 # InScopeProtocols."

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1349.py,v 1.3 2004-12-10 12:45:49 bkline Exp $
+# $Id$
 #
 # [Kim]
 # Attempting to summarize Friday's decisions. Most of this is reflected 

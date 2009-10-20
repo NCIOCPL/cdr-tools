@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ExtractBoardMemberInfo.py,v 1.2 2004-05-03 14:14:46 bkline Exp $
+# $Id$
 #
 # Generate documents in the following form:
 #  <PDQBoardMemberInfo>

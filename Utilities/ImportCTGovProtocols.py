@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ImportCTGovProtocols.py,v 1.21 2009-10-01 12:21:37 bkline Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.20  2009/09/27 19:27:09  bkline

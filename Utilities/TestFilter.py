@@ -3,7 +3,7 @@
 #
 # Run without args for usage info.
 #
-# $Id: TestFilter.py,v 1.6 2008-12-24 02:23:51 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 # Revision 1.5  2008/12/23 20:15:52  ameyer

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# $Id: RunCdrCommands.py,v 1.1 2002-09-29 14:15:21 bkline Exp $
+# $Id$
 #
 # Tool to run a set of commands stored in a text XML document file.
 # The top-level wrapper element is CdrCommandSets, which in turn

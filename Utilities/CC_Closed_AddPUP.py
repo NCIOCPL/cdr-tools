@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CC_Closed_AddPUP.py,v 1.1 2009-09-25 19:09:49 venglisc Exp $
+# $Id$
 #
 # Update Spreadsheet provided by CIAT with PUP information
 #

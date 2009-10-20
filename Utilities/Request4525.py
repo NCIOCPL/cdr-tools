@@ -8,7 +8,7 @@
 # Satisfies Bugzilla requests 4525, 4526, and 4527.  See comments in
 # 4525 for details.
 #
-# $Id: Request4525.py,v 1.1 2009-03-26 18:53:53 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 #----------------------------------------------------------------------

@@ -3,7 +3,7 @@
 # Reports to terminal every 100 docs, and reports total docs to be
 # indexed and actually indexed.
 #
-# $Id: ReindexAllDoctypes.py,v 1.1 2006-09-22 03:48:10 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 

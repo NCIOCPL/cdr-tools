@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: UnlockCdrDoc.py,v 1.1 2004-01-10 14:48:03 bkline Exp $
+# $Id$
 #
 # Unlock a document by its doc id.
 #

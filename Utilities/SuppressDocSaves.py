@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: SuppressDocSaves.py,v 1.1 2007-07-04 01:53:39 bkline Exp $
+# $Id$
 #
 # Create a temporary CDR login for migrating documents from Bach
 # to Franck for testing of nightly publishing, and wipe out the

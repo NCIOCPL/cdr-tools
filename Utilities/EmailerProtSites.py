@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: EmailerProtSites.py,v 1.1 2004/11/23 16:45:36 bkline Exp $
+# $Id$
 #
 # Creates rows to be inserted into the emailer_prot_site table.
 #

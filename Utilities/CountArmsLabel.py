@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: CountArmsLabel.py,v 1.6 2009-01-21 19:59:09 venglisc Exp $
+# $Id$
 #
 # Count the number of files in the CTGovExport directory that have
 # Arms information (identified by the existence of the arms_grou_label).

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: GetCdrCommands.py,v 1.3 2003-04-08 18:32:27 bkline Exp $
+# $Id$
 #
 # Extracts command sets from the CDR command log into a form which can
 # be resubmitted to the CDR Server.

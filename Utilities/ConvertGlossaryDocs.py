@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ConvertGlossaryDocs.py,v 1.2 2008-10-02 12:23:15 bkline Exp $
+# $Id$
 #
 # Issue 3723:
 # We need the data in the current Glossary document to be converted for the

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: RefreshManifest.py,v 1.8 2008-03-11 20:46:05 bkline Exp $
+# $Id$
 #
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.

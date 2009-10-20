@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request2015.py,v 1.1 2007-07-31 20:01:02 bkline Exp $
+# $Id$
 #
 # Import drug terminology information from NCI Thesaurus.
 #

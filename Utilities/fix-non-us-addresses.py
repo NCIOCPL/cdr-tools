@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: fix-non-us-addresses.py,v 1.1 2003-01-21 14:29:19 bkline Exp $
+# $Id$
 #
 # Change AddressType attributes of "Non US" to "Non-US" so we can
 # take advantage of the DTD support for attribute valid value

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ReimportCitations.py,v 1.1 2003-03-11 14:50:48 bkline Exp $
+# $Id$
 #
 # Second step in process to refresh citations invalidated by NLM DTD
 # changes.

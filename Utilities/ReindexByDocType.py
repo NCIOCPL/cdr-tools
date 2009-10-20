@@ -1,7 +1,7 @@
 #----------------------------------------------------------
 # Reindex all documents of a given doctype.
 #
-# $Id: ReindexByDocType.py,v 1.5 2008-09-02 22:21:16 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 #----------------------------------------------------------

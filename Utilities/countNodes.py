@@ -1,6 +1,6 @@
 # Count the nodes in an XML document, report to standard out
 #
-# $Id: countNodes.py,v 1.2 2009-09-23 02:56:33 ameyer Exp $
+# $Id$
 # $Log: not supported by cvs2svn $
 # Revision 1.1  2005/09/28 01:37:20  ameyer
 # Initial version

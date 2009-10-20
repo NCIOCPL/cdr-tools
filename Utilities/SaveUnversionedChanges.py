@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: SaveUnversionedChanges.py,v 1.4 2008-11-03 17:06:43 bkline Exp $
+# $Id$
 #
 # Save changes which haven't been versioned as a new version for a
 # given CDR document type.

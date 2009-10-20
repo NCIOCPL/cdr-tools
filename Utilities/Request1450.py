@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1450.py,v 1.1 2005-01-20 00:04:31 bkline Exp $
+# $Id$
 #
 # We need to add the following text "Eligibility criteria include the 
 # following:" to all patient abstracts in Active, Temporarily Closed,

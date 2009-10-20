@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request2655.py,v 1.2 2009-09-27 19:15:36 bkline Exp $
+# $Id$
 #
 # For the pilot phase of this project, provide Oncore with an Excel file that
 # maps CTEP Institutions codes to CDR Organization IDs and Names. The External

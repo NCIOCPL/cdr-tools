@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request1442.py,v 1.1 2005-02-16 19:23:21 bkline Exp $
+# $Id$
 #
 # One-time flat file for CTEP, mapping CTEP IDs to NCT IDs.
 #

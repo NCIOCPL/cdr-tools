@@ -1,7 +1,7 @@
 #######################################################
 # Get one XML document from pub_proc_cg to stdout
 #
-# $Id: getPubProcCGdoc.py,v 1.1 2007-04-19 14:32:01 ameyer Exp $
+# $Id$
 #
 # $Log: not supported by cvs2svn $
 #

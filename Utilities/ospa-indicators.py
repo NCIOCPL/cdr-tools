@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: ospa-indicators.py,v 1.1 2006-08-15 14:56:37 bkline Exp $
+# $Id$
 #
 # Software to export trial data to the Office of Science Policy for
 # display on the Executive Dashboard.
