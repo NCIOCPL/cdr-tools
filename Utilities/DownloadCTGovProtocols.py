@@ -779,7 +779,8 @@ else:
     #sys.exit(0)
 when = time.strftime("%Y-%m-%d")
 try:
-    file     = zipfile.ZipFile(name)
+    fp       = open(name, 'rb')
+    file     = zipfile.ZipFile(fp)
     nameList = file.namelist()
 except Exception, e:
     msg = "Failure opening %s: %s" % (name, str(e))
