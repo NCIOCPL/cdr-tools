@@ -996,7 +996,7 @@ if logDropped:
             self.cdrId       = cdrId
             self.disposition = disposition
     cursor.execute("""\
-        SELECT nlm_id, disposition, cdr_id, dropped
+        SELECT nlm_id, disposition, cdr_id, dropped, reason_dropped
           FROM ctgov_import""", timeout = 300)
     rows = cursor.fetchall()
     for row in rows:
@@ -1004,7 +1004,8 @@ if logDropped:
         dropped = 'N'
         if row[0] not in docsInSet and dispName != 'duplicate':
             dropped = 'Y'
-            droppedDocs[row[0]] = DroppedDoc(row[0], row[2], dispName)
+            if row[3] is None:
+                droppedDocs[row[0]] = DroppedDoc(row[0], row[2], dispName)
         if dropped != row[3]:
             try:
                 cursor.execute("""\
