@@ -339,7 +339,7 @@ def findNewlyTransferredDocs(nlmId):
            AND i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
            AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
            AND t.value = 'ClinicalTrials.gov ID'
-           AND i.value = ?""", nlmId)
+           AND i.value = ?""", nlmId, timeout = 300)
     rows = cursor.fetchall()
     return [row[0] for row in rows]
             
