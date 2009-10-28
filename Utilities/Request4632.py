@@ -92,7 +92,7 @@ SELECT q.doc_id, m.inscope_id
  -- Uncomment the following to skip docs that are themselves being replaced
  -- AND q.doc_id NOT IN (SELECT m.inscope_id FROM inscope2ctgov_map g)
  -- OR uncomment the following to skip all inactive docs, including above
- -- AND t.active_status = 'A'
+   AND d.active_status = 'A'
 """,
 """
 -- Find docs to change for ModifyDocs module
