@@ -184,7 +184,7 @@ def preserveElement(tagName, newXml, dom):
     if elems:
         for e in elems:
             oldXml.append(e.toxml())
-    oldXml = u"\n".join(e)
+    oldXml = u"\n".join(oldXml)
     placeholder = "@@%s@@" % tagName
     return newXml.replace(placeholder, oldXml.encode('utf-8'))
 
