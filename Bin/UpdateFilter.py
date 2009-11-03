@@ -22,7 +22,7 @@ def findTargetCdrId(prodCdrId, server):
           FROM document d
           JOIN doc_type t
             ON t.id = d.doc_type
-         WHERE t.name = 'filter'
+         WHERE t.name = 'Filter'
            AND d.title = ?""", title)
     return cursor.fetchall()[0][0]
 
