@@ -2,122 +2,10 @@
 #
 # $Id$
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.33  2009/04/24 18:18:16  bkline
-# Added a missing value for string interpolation placeholder.
-#
-# Revision 1.32  2009/03/05 21:35:29  bkline
-# Request #4516: handle trials whose ownership has been transferred from
-# PDQ to CT.gov.
-#
-# Revision 1.31  2008/07/21 12:45:16  bkline
-# Implementation of revised requirements for request #4132.
-#
-# Revision 1.30  2008/06/18 16:31:56  bkline
-# Added workaround for lame limitations in CT.gov service; suppressed
-# new code to block 'alias' documents.
-#
-# Revision 1.29  2008/06/10 19:48:43  bkline
-# Added code to block obsolete CT.gov documents.
-#
-# Revision 1.28  2008/03/13 20:54:48  bkline
-# Normalized CDR ID (stripping out non-digits) in getOncoreNctIds().
-#
-# Revision 1.27  2008/02/20 18:35:45  bkline
-# Added code to collect new NCT IDs for Oncore documents.
-#
-# Revision 1.26  2008/01/24 15:02:51  bkline
-# Fixed handling of utf-8 characters.
-#
-# Revision 1.25  2008/01/09 22:27:16  bkline
-# Changes make to work around breakage caused by unannounced changes to
-# NLM's service.  Will restore to using POST when Nick tells us support
-# for it has been restore.  Moved "studyxml=true" parameter to the end
-# so that if this fails because we exceed a length limitation, the
-# failure will not be silent.
-#
-# Revision 1.24  2007/07/11 20:23:46  bkline
-# Modified to detect and report problems with too many NCT IDs.
-#
-# Revision 1.23  2007/06/21 19:53:51  bkline
-# Changed test for detecting documents CT.gov got from us to also include
-# trials we used to get from them but have been replaced by our own
-# InScopeProtocol documents (see discussion in issue #3324).
-#
-# Revision 1.22  2007/06/18 20:53:06  bkline
-# Added code to remove obsolete NCTIDs (see request #3250).
-#
-# Revision 1.21  2007/03/22 13:49:01  bkline
-# Added code to set new phase column of ctgov_import table.
-#
-# Revision 1.20  2007/02/02 19:31:42  bkline
-# Increased DB timeouts; added code to make sure doc is unlocked
-# after inserting NCT ID.
-#
-# Revision 1.19  2007/02/02 18:30:02  bkline
-# Modified to use new signature of ModifyDocs.saveChanges() method.
-#
-# Revision 1.18  2006/11/14 21:46:18  bkline
-# Change made in response to Lakshmi's request that we not skip forced
-# import trials, regardless of their status.
-#
-# Revision 1.17  2006/10/18 20:49:46  bkline
-# Added support for forcing download and import of a specific trial.
-#
-# Revision 1.16  2006/08/22 17:22:55  bkline
-# Extra conditions plugged into query.
-#
-# Revision 1.15  2005/01/24 15:30:52  bkline
-# Added code to unlock InScopeProtocol documents; changed zip location.
-#
-# Revision 1.14  2005/01/19 15:14:52  bkline
-# Added code to unlock documents into which we insert NCT IDs.
-#
-# Revision 1.13  2004/12/20 19:58:50  bkline
-# Added tally of NCT IDs inserted into trials.
-#
-# Revision 1.12  2004/12/10 12:45:49  bkline
-# Switched to writing copy of documents into a subdirectory; added
-# code to insert NCT IDs into CDR documents we have exported to NLM.
-#
-# Revision 1.11  2004/08/02 15:55:07  bkline
-# Added test to weed out expired users in the CTGov Publishers group.
-#
-# Revision 1.10  2004/07/28 13:11:27  bkline
-# Added code to handle database failure when trying to send out email
-# report of failure.
-#
-# Revision 1.9  2004/07/28 13:07:08  bkline
-# Added email report on failure.
-#
-# Revision 1.8  2004/07/28 12:33:35  bkline
-# Added logging for download/zipfile failures.
-#
-# Revision 1.7  2004/02/24 12:47:17  bkline
-# Added code to drop rows from ctgov_import for trials which NLM is no
-# longer exporting.
-#
-# Revision 1.6  2004/01/27 15:04:32  bkline
-# Changed email group from CTGOV Maintainers to CTGov Publishers at
-# Lakshmi's request.
-#
-# Revision 1.5  2004/01/14 19:25:19  bkline
-# Added support for the new download report requirements.
-#
-# Revision 1.4  2003/12/18 21:04:41  bkline
-# Modified code to check for changes before pulling down a fresh
-# copy of the XML for a document markes as "Not yet reviewed,"
-# "Needs CIPS feedback," or "Import requested."
-#
-# Revision 1.3  2003/12/14 19:46:58  bkline
-# Added logging to logfile with standard CDR logging facility.
-#
-# Revision 1.2  2003/12/14 19:07:06  bkline
-# Final versions for promotion to production system.
-#
-# Revision 1.1  2003/11/26 13:01:20  bkline
-# Nightly job to pull down the latest set of cancer trials from
-# ClinicalTrials.gov.
+# BZIssue::3250
+# BZIssue::3324
+# BZIssue::4132
+# BZIssue::4516
 #
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
@@ -347,6 +235,14 @@ def findNewlyTransferredDocs(nlmId):
 # Object representing interesting components of a CTGov trial document.
 #----------------------------------------------------------------------
 class Doc:
+
+    #------------------------------------------------------------------
+    # Using this instead of startswith("CDR") since we discovered that
+    # NLM has some org study IDs which start with "CDR" but aren't CDR
+    # IDs.
+    #------------------------------------------------------------------
+    cdrIdFormat = re.compile(r"^CDR(\d{10})$", re.IGNORECASE)
+
     def __init__(self, xmlFile, name):
         self.name          = name
         self.xmlFile       = unicode(xmlFile, 'utf-8')
@@ -373,9 +269,9 @@ class Doc:
                 for child in node.childNodes:
                     if child.nodeName == "org_study_id":
                         self.orgStudyId = cdr.getTextContent(child).strip()
-                        if self.orgStudyId.upper().startswith("CDR"):
-                            ids = cdr.exNormalize(self.orgStudyId)
-                            self.orgStudyCdrId = ids[1]
+                        match = Doc.cdrIdFormat.match(self.orgStudyId)
+                        if match:
+                            self.orgStudyCdrId = int(match.group(1))
                             cursor.execute("""\
     SELECT value
       FROM query_term
