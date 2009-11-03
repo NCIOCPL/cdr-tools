@@ -2,80 +2,10 @@
 #
 # $Id$
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.20  2009/09/27 19:27:09  bkline
-# Modification for issues #4444 and #4634.
-#
-# Revision 1.19  2008/07/25 15:28:47  bkline
-# Fixed a bug in the mergeVersion() function which prevented new information
-# from CT.gov from being used in the imported CDR documents.  Documented
-# the mergeVersion() and preserveElement() functions.
-#
-# Revision 1.18  2008/04/17 15:23:23  bkline
-# Blocked out mapping for ""NHGRI - CLINICAL GENETHERAPY BRANCH" at
-# Kim's request (#4026).
-#
-# Revision 1.17  2008/04/17 15:15:54  bkline
-# Sponsorship Mapping changes requested by Sheri (#4026).
-#
-# Revision 1.16  2008/03/27 14:48:00  bkline
-# Modifications for request #3949 (preserve protocol processing details
-# block).
-#
-# Revision 1.15  2008/01/24 15:02:51  bkline
-# Fixed handling of utf-8 characters.
-#
-# Revision 1.14  2008/01/23 04:28:24  ameyer
-# Eliminated saving of a new current working version in those cases
-# where a prior save created a CWD that would be identical to the one
-# that was going to be saved.
-#
-# Revision 1.13  2008/01/22 18:42:05  bkline
-# Changed sponsorship to allow multiple occurrences; made test output
-# conditional.
-#
-# Revision 1.12  2007/10/18 19:29:50  bkline
-# Enhanced exception handling.
-#
-# Revision 1.11  2006/10/18 20:52:10  bkline
-# Modified selection query to avoid importing trials for which we have
-# no XML (they're in the table only to force download of the XML in
-# the next download job).
-#
-# Revision 1.10  2006/06/15 13:58:16  bkline
-# Removed testing code for new email report.
-#
-# Revision 1.9  2006/05/18 18:53:49  bkline
-# Added email report of failures (request #2094).
-#
-# Revision 1.8  2005/09/19 19:23:59  bkline
-# Modified logic to create publishable version even if significant changes
-# are detected.
-#
-# Revision 1.7  2004/04/02 19:16:49  bkline
-# Implemented modification for request #1172 (special handling for
-# terminated protocols).
-#
-# Revision 1.6  2004/03/30 22:12:37  bkline
-# Fixed typo in PDQ sponsorship mapping value.
-#
-# Revision 1.5  2004/03/30 16:52:57  bkline
-# Added mapping for WARREN GRANT MAGNUSON CLINICAL CENTER (request #1159).
-#
-# Revision 1.4  2004/03/22 15:38:40  bkline
-# Enhancements for request #1150 (PDQ sponsorship handling changes).
-#
-# Revision 1.3  2003/12/16 13:28:58  bkline
-# Improved detection and elimination of blank Para and ListItem elements.
-#
-# Revision 1.2  2003/12/14 19:07:06  bkline
-# Final versions for promotion to production system.
-#
-# Revision 1.1  2003/11/05 16:25:19  bkline
-# Batch job for adding or updating CTGovProtocols to/in the CDR.
+# BZIssue::4667
 #
 #----------------------------------------------------------------------
-import cdr, cdrdb, sys, xml.sax, re, cdrcgi, xml.dom.minidom
+import cdr, cdrdb, sys, xml.sax, re, cdrcgi, xml.dom.minidom, time
 
 class Flags:
     def __init__(self):
@@ -250,7 +180,11 @@ def preserveElement(tagName, newXml, dom):
         the corresponding CDR document inserted.
     """
     elems = dom.getElementsByTagName(tagName)
-    oldXml = elems and elems[0].toxml() or u""
+    oldXml = []
+    if elems:
+        for e in elems:
+            oldXml.append(e.toxml())
+    oldXml = u"\n".join(e)
     placeholder = "@@%s@@" % tagName
     return newXml.replace(placeholder, oldXml.encode('utf-8'))
 
@@ -284,7 +218,7 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
         raise Exception(errors)
     dom = xml.dom.minidom.parseString(response.xml)
     newDoc = preserveElement('PDQIndexing', newDoc, dom)
-    newDoc = preserveElement('PDQProtocolIDs', newDoc, dom)
+    newDoc = preserveElement('PDQAdminInfo', newDoc, dom)
     newDoc = preserveElement('ProtocolProcessingDetails', newDoc, dom)
     docObject.xml = newDoc
     return str(docObject)
@@ -567,10 +501,15 @@ transferredTrialScript = """\
    <xsl:apply-templates        select = 'ProtocolDetail/EnteredBy'/>
    <xsl:apply-templates        select = 'ProtocolDetail/EntryDate'/>
   </PDQIndexing>
-  <PDQProtocolIDs>
-   <xsl:apply-templates        select = 'ProtocolIDs/PrimaryID'/>
-   <xsl:apply-templates        select = 'ProtocolIDs/OtherID'/>
-  </PDQProtocolIDs>
+  <PDQAdminInfo>
+   <PDQProtocolIDs>
+    <xsl:apply-templates       select = 'ProtocolIDs/PrimaryID'/>
+    <xsl:apply-templates       select = 'ProtocolIDs/OtherID'/>
+   </PDQProtocolIDs>
+   <xsl:apply-templates        select = 'FundingInfo'/>
+   <xsl:apply-templates        select = 'CTGovOwnershipTransferControlLog'/>
+   <xsl:apply-templates        select = 'CTGovOwnershipTransferInfo'/>
+  </PDQAdminInfo>
  </xsl:template>
 
  <!--
@@ -626,13 +565,12 @@ def fixTransferredDoc(docId, docXml):
     if not elements:
         raise Exception("unable to create PDQIndexing block")
     pdqIndexing = elements[0].toxml()
-    elements = dom.getElementsByTagName('PDQProtocolIDs')
+    elements = dom.getElementsByTagName('PDQAdminInfo')
     if not elements:
-        raise Exception("unable to create PDQProtocolIDs block")
-    protocolIds = elements[0].toxml()
+        raise Exception("unable to create PDQAdminInfo block")
+    adminInfo = elements[0].toxml()
     docXml = docXml.replace(u"@@PDQIndexing@@", pdqIndexing)
-    docXml = docXml.replace(u"@@PDQProtocolIDs@@", protocolIds)
-    docXml = docXml.replace(u"@@ProtocolProcessingDetails@@", "")
+    docXml = docXml.replace(u"@@PDQAdminInfo@@", adminInfo)
     return docXml.encode('utf-8')
 
 #----------------------------------------------------------------------
@@ -695,6 +633,7 @@ cursor.execute("INSERT into ctgov_import_job (dt) VALUES (GETDATE())")
 conn.commit()
 cursor.execute("SELECT @@IDENTITY")
 job = cursor.fetchone()[0]
+now = time.strftime("%Y-%m-%d")
 failures = []
 if TESTING:
     transfersProcessed = 0
@@ -720,7 +659,9 @@ try:
                 flags.isTransferred = True
         cursor.execute("SELECT xml FROM ctgov_import WHERE nlm_id = ?", nlmId)
         doc = cursor.fetchone()[0].encode('utf-8')
-        parms = [['newDoc', cdrId and 'N' or 'Y']]
+        parms = [['newDoc', cdrId and 'N' or 'Y'],
+                 ['newlyTransferredDoc', flags.isTransferred and 'Y' or 'N'],
+                 ['importDateTime', time.strftime("%Y-%m-%dT%H:%M:%S")]]
         resp = cdr.filterDoc('guest', ['name:Import CTGovProtocol'], doc = doc,
                              parm = parms)
         if type(resp) in (type(""), type(u"")):
