@@ -633,7 +633,6 @@ cursor.execute("INSERT into ctgov_import_job (dt) VALUES (GETDATE())")
 conn.commit()
 cursor.execute("SELECT @@IDENTITY")
 job = cursor.fetchone()[0]
-now = time.strftime("%Y-%m-%d")
 failures = []
 if TESTING:
     transfersProcessed = 0
