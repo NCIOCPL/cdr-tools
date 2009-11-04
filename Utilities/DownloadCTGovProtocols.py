@@ -71,8 +71,8 @@ def postNctIdsToOncore(newIds):
 """]
         for cdrId in newIds:
             nctId = newIds[cdrId]
-            log("posting NCT ID '%s' to Oncore server for CDR%s" %
-                (cdrId, nctId))
+            log("posting NCT ID '%s' to Oncore server for CDR%s\n" %
+                (nctId, cdrId))
             payload.append(u"""\
  <Trial CdrId='%s' NctId='%s'/>
 """ % (cdrId, newIds[cdrId]))
