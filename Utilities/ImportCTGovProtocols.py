@@ -507,7 +507,7 @@ transferredTrialScript = """\
     <xsl:apply-templates       select = 'ProtocolIDs/OtherID'/>
    </PDQProtocolIDs>
    <xsl:apply-templates        select = 'FundingInfo'/>
-   <xsl:apply-templates        select = 'CTGovOwnershipTransferControlLog'/>
+   <xsl:apply-templates        select = 'CTGovOwnershipTransferContactLog'/>
    <xsl:apply-templates        select = 'CTGovOwnershipTransferInfo'/>
   </PDQAdminInfo>
  </xsl:template>
