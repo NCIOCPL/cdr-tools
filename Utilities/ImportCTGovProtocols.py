@@ -3,9 +3,69 @@
 # $Id$
 #
 # BZIssue::4667
+# BZIssue::4689
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys, xml.sax, re, cdrcgi, xml.dom.minidom, time
+etree = cdr.importEtree()
+
+#----------------------------------------------------------------------
+# Determine whether the clinical center at the main NIH campus is
+# (or is about to be) actively participating in this trial.
+# See Request #4689.
+#----------------------------------------------------------------------
+def hasActiveMagnusonSite(tree):
+    for node in tree.findall('Location'):
+        facility = status = None
+        for child in node.iterchildren():
+            if child.tag == 'Facility':
+                for grandchild in child.findall('Name'):
+                    facility = grandchild.get("{cips.nci.nih.gov/cdr}ref")
+            elif child.tag == 'Status':
+                status = child.text
+        if facility in (u'CDR0000034517', u'CDR0000032457'):
+            if status in (u'Active', u'Approved-not yet active'):
+                return True
+    return False
+
+#----------------------------------------------------------------------
+# Determine whether the trial document already has at least one
+# ProtocolSpecialCategory block with SpecialCategory containing the
+# value "NIH Clinical Center trial" (see Request #4689).
+#----------------------------------------------------------------------
+def hasNihCctBlock(tree):
+    for node in tree.findall('PDQAdminInfo/ProtocolSpecialCategory'
+                             '/SpecialCategory'):
+        if node.text == u'NIH Clinical Center trial':
+            return True
+    return False
+
+#----------------------------------------------------------------------
+# Adjust the PDQAdminInfo block, ensuring that it contains at least one
+# ProtocolSpecialCategory block with SpecialCategory child set to
+# 'NIH Clinical Center trial' if and only if the clinical center at
+# the main NIH campus is (or is about to be) actively participating
+# in the trial.  See request #4689.
+#----------------------------------------------------------------------
+def fixSpecialCategory(docXml):
+    tree = etree.XML(docXml)
+    activeMagnusonSite = hasActiveMagnusonSite(tree)
+    nihCctBlock = hasNihCctBlock(tree)
+    filt = None
+    parm = []
+    if activeMagnusonSite:
+        if not nihCctBlock:
+            filt = ['name:NIH CCT Block Inserter']
+            parm.append(['cmt', 'Inserted by CT.gov import program'])
+    else:
+        if nihCctBlock:
+            filt = ['name:NIH CCT Block Stripper']
+    if filt:
+        response = cdr.filterDoc('guest', filt, doc = docXml, parm = parm)
+        if type(response) in (str, unicode):
+            raise Exception(response)
+        return response[0]
+    return docXml
 
 class Flags:
     def __init__(self):
@@ -220,6 +280,7 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
     newDoc = preserveElement('PDQIndexing', newDoc, dom)
     newDoc = preserveElement('PDQAdminInfo', newDoc, dom)
     newDoc = preserveElement('ProtocolProcessingDetails', newDoc, dom)
+    newDoc = fixSpecialCategory(newDoc)
     docObject.xml = newDoc
     return str(docObject)
 
@@ -571,7 +632,8 @@ def fixTransferredDoc(docId, docXml):
     adminInfo = elements[0].toxml()
     docXml = docXml.replace(u"@@PDQIndexing@@", pdqIndexing)
     docXml = docXml.replace(u"@@PDQAdminInfo@@", adminInfo)
-    return docXml.encode('utf-8')
+    docXml = fixSpecialCategory(docXml.encode('utf-8'))
+    return docXml
 
 #----------------------------------------------------------------------
 # Determine the current type for a CDR document.
@@ -678,6 +740,7 @@ try:
             flags.isNew = 'Y'
             comment = ('ImportCTGovProtocols: '
                        'Adding imported CTGovProtocol document')
+            doc = fixSpecialCategory(doc.encode('utf-8'))
             resp = cdr.addDoc(session, doc = """\
     <CdrDoc Type='CTGovProtocol'>
      <CdrDocCtl>
@@ -685,7 +748,7 @@ try:
      </CdrDocCtl>
      <CdrDocXml><![CDATA[%s]]></CdrDocXml>
     </CdrDoc>
-    """ % (comment, doc.encode('utf-8')), showWarnings = True,
+    """ % (comment, doc), showWarnings = True,
                               reason = comment, ver = "Y", val = "N",
                               verPublishable = 'N')
             if not resp[0]:
