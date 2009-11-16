@@ -24,7 +24,7 @@ def hasActiveMagnusonSite(tree):
             elif child.tag == 'Status':
                 status = child.text
         if facility in (u'CDR0000034517', u'CDR0000032457'):
-            if status in (u'Active', u'Approved-not yet active'):
+            if status in (u'Active', u'Temporarily closed'): #u'Approved-not yet active'):
                 return True
     return False
 
@@ -61,6 +61,7 @@ def fixSpecialCategory(docXml):
         if nihCctBlock:
             filt = ['name:NIH CCT Block Stripper']
     if filt:
+        cdr.logwrite("applying filter '%s'" % filt[0], LOGFILE)
         response = cdr.filterDoc('guest', filt, doc = docXml, parm = parm)
         if type(response) in (str, unicode):
             raise Exception(response)
