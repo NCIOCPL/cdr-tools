@@ -244,26 +244,27 @@ class Doc:
     cdrIdFormat = re.compile(r"^CDR(\d{10})$", re.IGNORECASE)
 
     def __init__(self, xmlFile, name):
-        self.name          = name
-        self.xmlFile       = unicode(xmlFile, 'utf-8')
-        self.dom           = xml.dom.minidom.parseString(xmlFile)
-        self.officialTitle = None
-        self.briefTitle    = None
-        self.nlmId         = None
-        self.obsoleteIds   = []
-        self.orgStudyId    = None
-        self.orgStudyCdrId = None
-        self.title         = None
-        self.status        = None
-        self.nciSponsored  = 0
-        self.verified      = None
-        self.lastChanged   = None
-        self.cdrId         = None
-        self.disposition   = None
-        self.oldXml        = None
-        self.phase         = None
-        self.forcedImport  = False
-        self.newCtgovOwner = None
+        self.name           = name
+        self.xmlFile        = unicode(xmlFile, 'utf-8')
+        self.dom            = xml.dom.minidom.parseString(xmlFile)
+        self.officialTitle  = None
+        self.briefTitle     = None
+        self.nlmId          = None
+        self.obsoleteIds    = []
+        self.orgStudyId     = None
+        self.orgStudyCdrId  = None
+        self.orgStudyCdrDt  = None
+        self.title          = None
+        self.status         = None
+        self.nciSponsored   = 0
+        self.verified       = None
+        self.lastChanged    = None
+        self.cdrId          = None
+        self.disposition    = None
+        self.oldXml         = None
+        self.phase          = None
+        self.forcedDownload = False
+        self.newCtgovOwner  = None
         for node in self.dom.documentElement.childNodes:
             if node.nodeName == "id_info":
                 for child in node.childNodes:
@@ -273,14 +274,24 @@ class Doc:
                         if match:
                             self.orgStudyCdrId = int(match.group(1))
                             cursor.execute("""\
+    SELECT t.name
+      FROM doc_type t
+      JOIN document d
+        ON d.doc_type = t.id
+     WHERE d.id = ?""", self.orgStudyCdrId)
+                            rows = cursor.fetchall()
+                            if rows:
+                                self.orgStudyCdrDt = rows[0][0]
+                            if self.orgStudyCdrDt == 'InScopeProtocol':
+                                cursor.execute("""\
     SELECT value
       FROM query_term
      WHERE path = '/InScopeProtocol/CTGovOwnershipTransferInfo'
                 + '/CTGovOwnerOrganization'
        AND doc_id = ?""", self.orgStudyCdrId)
-                            rows = cursor.fetchall()
-                            if rows:
-                                self.newCtgovOwner = rows[0][0]
+                                rows = cursor.fetchall()
+                                if rows:
+                                    self.newCtgovOwner = rows[0][0]
                     elif child.nodeName == "nct_id":
                         self.nlmId = cdr.getTextContent(child).strip()
                     elif child.nodeName == 'nct_alias':
@@ -321,7 +332,7 @@ class Doc:
             if row:
                 self.oldXml, self.cdrId, self.disposition, forced = row
                 if forced == 'Y':
-                    self.forcedImport = True
+                    self.forcedDownload = True
 
 #----------------------------------------------------------------------
 # An object of this class is fed to the constructor for each ModifyDocs.Doc
@@ -446,11 +457,11 @@ def getNctIds(cdrId):
     return set([row[0] for row in cursor.fetchall()])
 
 #----------------------------------------------------------------------
-# Get the NCT IDs for trials we need to import even if their index
+# Get the NCT IDs for trials we need to download even if their index
 # terms don't fit the criteria for our search query.
 #----------------------------------------------------------------------
-def getForcedImportIds(cursor):
-    conn = cdrdb.connect('CdrGuest', dataSource = 'bach.nci.nih.gov')
+def getForcedDownloadIds(cursor):
+    conn = cdrdb.connect('CdrGuest')
     cursor = conn.cursor()
     cursor.execute("SELECT nlm_id FROM ctgov_import WHERE force = 'Y'",
                    timeout = 300)
@@ -641,7 +652,7 @@ else:
     downloaded = set([n[:-4].upper() for n in glob.glob("*.xml")])
     connector = ''
     params = ["term="]
-    forcedIds = getForcedImportIds(cursor)
+    forcedIds = getForcedDownloadIds(cursor)
     counter = 1
     for nctId in forcedIds:
         if nctId.upper() not in downloaded:
@@ -735,18 +746,20 @@ for name in nameList:
             # See if we need to insert the current NCT ID.
             nctIdToInsert = None
             if doc.nlmId not in nctIds:
-                log("Inserting NCT ID %s into CDR%s\n" % (doc.nlmId, cdrId))
-                nctIdToInsert = doc.nlmId
-                stats.nctAdded += 1
+                if doc.orgStudyCdrDt == 'InScopeProtocol':
+                    log("Inserting NCT ID %s into CDR%s\n" % (doc.nlmId, cdrId))
+                    nctIdToInsert = doc.nlmId
+                    stats.nctAdded += 1
 
             # Request #3250: remove obsolete NCT IDs.
             nctIdsToRemove = []
-            for obsoleteId in doc.obsoleteIds:
-                if obsoleteId in nctIds:
-                    log("Removing NCT ID %s from CDR%s\n" % (obsoleteId,
-                                                             cdrId))
-                    nctIdsToRemove.append(obsoleteId)
-                    stats.nctRemoved += 1
+            if doc.orgStudyCdrDt == 'InScopeProtocol':
+                for obsoleteId in doc.obsoleteIds:
+                    if obsoleteId in nctIds:
+                        log("Removing NCT ID %s from CDR%s\n" % (obsoleteId,
+                                                                 cdrId))
+                        nctIdsToRemove.append(obsoleteId)
+                        stats.nctRemoved += 1
 
             # See comment #13 of request #3250.
             idProblem = findIdProblem(cdrId, nctIds, nctIdToInsert,
@@ -771,7 +784,7 @@ for name in nameList:
     # We don't want closed or completed trials.
     #------------------------------------------------------------------
     elif (not doc.cdrId and
-          not doc.forcedImport and
+          not doc.forcedDownload and
           doc.newCtgovOwner is None and
           (not doc.status or doc.status.upper() not in ("NOT YET RECRUITING",
                                                         "RECRUITING"))):
@@ -848,7 +861,7 @@ for name in nameList:
             log(msg)
             continue
         replacedDoc = replacedDocs and replacedDocs[0] or None
-        if doc.forcedImport or replacedDoc: #doc.newCtgovOwner:
+        if doc.forcedDownload or replacedDoc:
             disp = dispCodes['import requested']
         else:
             disp = dispCodes['not yet reviewed']
@@ -874,7 +887,7 @@ for name in nameList:
                 log("Added %s with disposition %s\n" % (doc.nlmId,
                                                         dispNames[disp]))
         except Exception, info:
-            log("Failure importing %s: %s\n" % (doc.nlmId, str(info)))
+            log("Failure inserting %s: %s\n" % (doc.nlmId, str(info)))
 
 #----------------------------------------------------------------------
 # Send the Oncore server any new NCT IDs we've collected.
