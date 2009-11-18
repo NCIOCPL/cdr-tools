@@ -30,7 +30,7 @@ def main():
             fp = open(zipName, "wb")
             fp.write(page)
             fp.close()
-            print "downloaded %s" % zipName
+            sys.stderr.write("downloaded %s\n" % zipName)
         except Exception, e:
             sys.stderr.write("Failure writing %s: %s\n" % (zipName, e))
             sys.exit(3)
