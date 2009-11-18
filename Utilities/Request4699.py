@@ -13,6 +13,13 @@
 # we were in the process of converting the data so it could take a week or
 # more to get the report."
 #
+# Modified 2009-11-18 at Margaret's request: the report had used the
+# tables for "expertise provided" for showing specialties, but that's
+# not what she wanted.  She has asked us to use the table which shows
+# which boards the GPs have been certified by, or for which they are
+# eligible for certification, or even those for which they would like
+# to be certified, but aren't even eligible.
+#
 # BZIssue::4699
 #
 #----------------------------------------------------------------------
@@ -35,10 +42,10 @@ class GP:
           ORDER BY DegreeSeq""", gpId)
         self.degrees = u"; ".join([r[0] for r in cursor.fetchall() if r[0]])
         cursor.execute("""\
-            SELECT e."Desc"
-              FROM testdu.lExp_Provided e
-              JOIN testdu.tblExp_Provided m
-                ON m.Code = e.Code
+            SELECT b."Desc"
+              FROM testdu.lBoard b
+              JOIN testdu.tblBoard m
+                ON m.Code = b.Code
              WHERE m.MainID = ?
           ORDER BY 1""", gpId)
         for row in cursor.fetchall():
@@ -55,7 +62,7 @@ hdrStyle = book.addStyle(alignment = centered, font = hdrFont)
 row = sheet.addRow(1, hdrStyle)
 sheet.addCol(1, 100)
 sheet.addCol(2, 100)
-sheet.addCol(3, 750)
+sheet.addCol(3, 150)
 row.addCell(1, "Name")
 row.addCell(2, "Professional Suffixes")
 row.addCell(3, "Specialty")
@@ -96,6 +103,6 @@ for gpId, lastName, firstName in rows:
 # Drop the workbook in the web server's root directory on the production
 # system.
 #----------------------------------------------------------------------
-fp = open("b:/Inetpub/wwwroot/Request4699.xls", "wb")
+fp = open("b:/Inetpub/wwwroot/Request4699-boards.xls", "wb")
 book.write(fp, True)
 fp.close()
