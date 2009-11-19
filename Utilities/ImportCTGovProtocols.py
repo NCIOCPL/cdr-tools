@@ -611,6 +611,20 @@ transferredTrialScript = """\
 
  <!--
  =======================================================================
+ Add empty date element if element isn't already present.
+ ======================================================================= -->
+ <xsl:template                  match = 'CTGovOwnershipTransferInfo'>
+  <CTGovOwnershipTransferInfo>
+   <xsl:apply-templates        select = 'CTGovOwnerOrganization|PRSUserName'/>
+    <xsl:if                      test = 'not(CTGovOwnershipTransferDate)'>
+     <CTGovOwnershipTransferDate/>
+    </xsl:if>
+   <xsl:apply-templates        select = 'CTGovOwnershipTransferDate|Comment'/>
+  </CTGovOwnershipTransferInfo>
+ </xsl:template>
+
+ <!--
+ =======================================================================
  Strip these.
  ======================================================================= -->
  <xsl:template                  match = 'Gender|@PdqKey'/>
