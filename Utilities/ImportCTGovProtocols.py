@@ -24,7 +24,7 @@ def hasActiveMagnusonSite(tree):
             elif child.tag == 'Status':
                 status = child.text
         if facility in (u'CDR0000034517', u'CDR0000032457'):
-            if status in (u'Active', u'Temporarily closed'): #u'Approved-not yet active'):
+            if status in (u'Active', u'Temporarily closed'):
                 return True
     return False
 
@@ -400,7 +400,7 @@ def transferTrial(cdrId, newDoc, flags):
         response = cdr.repDoc(session, doc = str(docObject), ver = 'Y',
                               verPublishable = 'N', reason = comment,
                               comment = comment, showWarnings = True,
-                              val = 'Y')
+                              val = 'N')
         errors = checkResponse(response)
         if errors:
             cdr.logwrite("%s: %s" % (cdrId, errors[0]), LOGFILE)
@@ -410,7 +410,7 @@ def transferTrial(cdrId, newDoc, flags):
     docObject.xml = fixTransferredDoc(cdrId, newDoc)
     comment = 'ImportCTGovProtocols: versioning transferred trial'
     response = cdr.repDoc(session, doc = str(docObject), ver = 'Y',
-                          verPublishable = 'N', reason = comment, val = 'Y',
+                          verPublishable = 'N', reason = comment, val = 'N',
                           comment = comment, showWarnings = True,
                           activeStatus = flags.terminated and 'I' or None)
     errors = checkResponse(response)
@@ -616,9 +616,9 @@ transferredTrialScript = """\
  <xsl:template                  match = 'CTGovOwnershipTransferInfo'>
   <CTGovOwnershipTransferInfo>
    <xsl:apply-templates        select = 'CTGovOwnerOrganization|PRSUserName'/>
-    <xsl:if                      test = 'not(CTGovOwnershipTransferDate)'>
-     <CTGovOwnershipTransferDate/>
-    </xsl:if>
+   <xsl:if                       test = 'not(CTGovOwnershipTransferDate)'>
+    <CTGovOwnershipTransferDate/>
+   </xsl:if>
    <xsl:apply-templates        select = 'CTGovOwnershipTransferDate|Comment'/>
   </CTGovOwnershipTransferInfo>
  </xsl:template>
