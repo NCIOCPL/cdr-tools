@@ -2,68 +2,53 @@
 #
 # $Id$
 #
-# Creates a new stub filter document on Bach.  A file is created in the
-# current working directory containing the XML content for the stub
-# document under the name CDR9999999999.xml (where 9999999999 is replaced
-# by the actual 10-digit version of the newly created document's CDR ID).
-# This document can be edited and installed in the version control
-# system.  See the usage() function below for invocation details.
+# Creates a new stub filter document on Bach.  See description below in
+# createOptionParser.
 #
 #----------------------------------------------------------------------
-import cdr, getopt, sys
+import cdr, optparse, sys, cgi
 
-def usage():
-    sys.stderr.write("""\
-usage: %s [options]
+#----------------------------------------------------------------------
+# Create an object which can describe the behavior of this command
+# and the options and arguments accepted/required.
+#----------------------------------------------------------------------
+def createOptionParser():
+    op = optparse.OptionParser(usage='%prog [options] UID PWD "TITLE"',
+                               description="""\
+This program creates a new stub filter document on Bach.  A file is created
+in the current working directory containing the XML content for the stub
+document under the name CDR9999999999.xml (where 9999999999 is replaced
+by the actual 10-digit version of the newly created document's CDR ID).
+This document can be edited and installed in the version control system.""")
+    op.add_option("-s", "--server", default=cdr.PROD_HOST, help="for debugging")
+    return op
 
-options:
-    -t "T"              title of new filter [required; must be unique]
-    -u U                CDR user ID [required]
-    -p P                CDR account password [required]
-    -s S                optional server name [for testing only]
-    --title "T"         title of new filter [required]
-    --userid U          CDR user ID [required]
-    --password P        CDR account password [required]
-    --server S          optional server name [for testing only]
-    --usage             print this message
-""" % sys.argv[0])
-    sys.exit(1)
-
-def checkForProblems(response):
+#----------------------------------------------------------------------
+# Find out if the response to a CDR client-server command indicates
+# failure.  If so, describe the problem and exit.  Note that this
+# function works properly even when passed a document object, because
+# cdr.getErrors() only looks for error messages if a string is passed
+# for the first argument.
+#----------------------------------------------------------------------
+def checkForProblems(response, optionsParser):
     errors = cdr.getErrors(response, errorsExpected = False, asSequence = True)
     if errors:
         for error in errors:
             sys.stderr.write("%s\n" % error)
-        usage()
+        optionsParser.error("aborting")
 
 def main():
-    uid = pwd = title = None
-    server = "bach.nci.nih.gov"
-    try:
-        longopts = ["title", "userid", "password", "server"]
-        opts, args = getopt.getopt(sys.argv[1:], "u:p:t:s:", longopts)
-    except getopt.GetoptError, e:
-        usage()
-    for o, a in opts:
-        if o in ('-t', '--title'):
-            title = a
-        elif o in ('-u', '--userid'):
-            uid = a
-        elif o in ('-p', '--password'):
-            pwd = a
-        elif o in ('-s', '--server'):
-            server = a
-        else:
-            usage()
-    if args:
-        usage()
-    if not uid or not pwd or not title:
-        usage()
-    session = cdr.login(uid, pwd, server)
-    checkForProblems(session)
+    op = createOptionParser()
+    (options, args) = op.parse_args()
+    if len(args) != 3:
+        op.print_help()
+        op.exit(2)
+    uid, pwd, title = args
+    session = cdr.login(uid, pwd, options.server)
+    checkForProblems(session, op)
     stub = """\
 <?xml version='1.0' encoding='utf-8'?>
-<!-- %s%s%s -->
+<!-- $""" """Id$ -->
 <!-- Filter title: %s -->
 <xsl:transform               xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                              xmlns:cdr = 'cips.nci.nih.gov/cdr'
@@ -83,18 +68,19 @@ def main():
  </xsl:template>
 
 </xsl:transform>
-""" % ("$", "Id", "$", title)
+""" % cgi.escape(title)
     docObj = cdr.Doc(stub, 'Filter', { 'DocTitle': title })
     doc = str(docObj)
-    cdrId = cdr.addDoc(session, doc = doc, host = server)
-    checkForProblems(cdrId)
-    response = cdr.unlock(session, cdrId)
-    checkForProblems(response)
+    cdrId = cdr.addDoc(session, doc = doc, host = options.server)
+    checkForProblems(cdrId, op)
+    response = cdr.unlock(session, cdrId, host = options.server)
+    checkForProblems(response, op)
     name = cdrId + ".xml"
     fp = open(name, "w")
     fp.write(stub)
     fp.close()
     print "Created %s" % name
+    cdr.logout(session, host = options.server)
 
 if __name__ == '__main__':
     main()
