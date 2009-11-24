@@ -13,13 +13,19 @@
 import sys, optparse, cdr, cdrdb
 etree = cdr.importEtree()
 
-def fatal(msg):
+def fatal(msg, parser=None):
     """
     Write message and quit.
+
+    Pass:
+        msg    - Message to write
+        parser - If not None, invoke parser.print_help()
     """
     sys.stderr.write("Fatal error.\n")
     sys.stderr.write(msg)
-    sys.stderr.write("\n\nInstallFilter.py -h for usage help\nExiting\n")
+    sys.stderr.write("\n\n")
+    if parser:
+        parser.print_help()
     sys.exit(1)
 
 def createOptionParser():
@@ -27,41 +33,23 @@ def createOptionParser():
     Create an option parser and associated usage, help, etc.
     """
     parser = optparse.OptionParser(
-      usage = """
-%prog {--server} filterfile userid password
+      usage = """%prog {--server} userid password filterfile
 
   args:
-    filterfile = Name of filter, must be in CDRnnnnnnnnn.xml format.
     userid     = CDR user id.
-    password   = CDR password. """,
-      description = """
-Install a filter on a test or development server for the first time.
-Filter must already have been created on the production server.
-Filter will be installed on the requested server using the existing
+    password   = CDR password.
+    filterfile = Name of filter, must be in CDRnnnnnnnnn.xml format.""",
+      description = """Install a filter on a test or development server
+for the first time.  Filter must already have been created on the production
+server.  Filter will be installed on the requested server using the existing
 name/title from production, and (almost certainly) a new CDR ID.
+
 """)
     parser.add_option("-s", "--server", dest="server", metavar="server",
                       help="install filter on this server, default=%default")
     parser.set_defaults(server="localhost")
 
     return parser
-
-def usage(msg):
-    sys.stderr.write("""
-Install a filter on a test or development server for the first time.
-Filter must already have been created on the production server.
-Filter will be installed on the requested server using the existing
-name/title from production, and (almost certainly) a new CDR ID.
-
-usage: InstallFilter.py server filterfile userid pw
-  server     = name of server on which to install filter.
-  filterfile = name of file containing filter in plain (not CdrDoc) format.
-  userid     = your CDR userid.
-  pw         = your password.
-
-%s
-""" % msg)
-    sys.exit(1)
 
 class DocDesc:
     """
@@ -193,11 +181,11 @@ if __name__ == "__main__":
     (options, args) = op.parse_args()
 
     if len(args) != 3:
-        fatal("Missing required args")
+        fatal("Missing required args", op)
 
-    fname  = args[0]
-    userid = args[1]
-    passwd = args[2]
+    userid = args[0]
+    passwd = args[1]
+    fname  = args[2]
     server = options.server
 
     # Can only use this program for installing on development or test servers
