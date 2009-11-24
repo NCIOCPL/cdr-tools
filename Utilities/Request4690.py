@@ -331,6 +331,7 @@ class FilterTransform:
         fundingInfo      = None
         ownerTransLog    = None
         ownerTransInfo   = None
+        pdqProtocolIDs   = None
 
         # If there is a corresponding InScope document
         if inscopeId:
@@ -359,14 +360,49 @@ class FilterTransform:
                                 "CTGovOwnershipTransferContactLog")
             ownerTransInfo = inscopeTree.find(
                                 "CTGovOwnershipTransferInfo")
+            protocolIDs    = inscopeTree.find(
+                                "ProtocolIDs")
+
+            # ProtocolIDs have several complications:
+            #  1. They may have been inserted using an earlier schema in what
+            #     is now the wrong place.  If so, we have to keep these but
+            #     Move them to the right place.
+            #  2. If taken from the InScopeProtocol, they require a change
+            #     of element tag from "ProtocolIDs" to "PDQProtocolIDs".
+            # In either case, if there is an existing
+            #   CTGovProtocol/PDQAdminInfo/PDQProtocolIDs,
+            #   we'll use that one.
+            oldIDs = ctgovTree.find("PDQProtocolIDs")
+            if oldIDs is not None:
+                # We have case 1
+                # Use oldIDs as the source, not the InScopeProtocol
+                pdqProtocolIDs = oldIDs
+
+                # Delete them from the CTGovProtocol, they'll go in again
+                #   later if they are needed.
+                # ElementTree does the right thing here keeping oldIDs alive
+                #   while removing it from the CTGov tree.
+                ctgovTree.remove(oldIDs)
+
+            elif protocolIDs is not None:
+                # We have case 2 above
+                # Recreate the element with the new tag
+                pdqProtocolIDs = etree.Element("PDQProtocolIDs")
+                position = 0
+                for elem in protocolIDs.getchildren():
+                    insertElement(pdqProtocolIDs, elem, position)
+                    position += 1
 
             # If we got anything, we'll need a PDQAdminInfo block for them
             if fundingInfo is not None or ownerTransLog is not None or \
-                                          ownerTransInfo is not None:
+                    ownerTransInfo is not None or protocolIDs is not None:
                 needPDQAdminInfo = True
             # DEBUG
-            print("fundingInfo=%s transLog=%s transInfo=%s" %
-                   (fundingInfo, ownerTransLog, ownerTransInfo))
+            print(
+           "fundingInfo:%s trLog:%s trInfo:%s protocolIDs:%s oldIDs:%s" %
+                   (fundingInfo is not None, ownerTransLog is not None,
+                    ownerTransInfo is not None, protocolIDs is not None,
+                    oldIDs is not None))
 
         # Whether or not we have an InScope doc, we might need SpecialCategory
         if hasActiveMagnusonSite(ctgovTree):
@@ -393,7 +429,7 @@ class FilterTransform:
         # Move all the elements from the CTGov or the InScope doc
         position = 0
         position = addAdminElems(oldAdminElem, newAdminElem, "PDQProtocolIDs",
-                      position, None)
+                      position, pdqProtocolIDs)
 
         position = addAdminElems(oldAdminElem, newAdminElem, "FundingInfo",
                    position, fundingInfo)
@@ -475,7 +511,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # DEBUG
-    testMode = True
+    # testMode = True
 
     # Instantiate our object
     filtTrans = FilterTransform()
@@ -483,8 +519,7 @@ if __name__ == '__main__':
     # Instantiate ModifyDocs job
     job = ModifyDocs.Job(uid, pw, filtTrans, filtTrans,
       "Global change to add data from former InScopeProtocol to current" +
-      "CTGovProtocol.  Request 4690.",
-      testMode=testMode)
+      "CTGovProtocol.  Request 4690.", validate=True, testMode=testMode)
 
     # DEBUG
     # job.setMaxDocs(12)
