@@ -103,6 +103,8 @@ def main():
     fp = open(filename, 'r')
     docXml = fp.read()
     fp.close()
+    if u']]>' in docXml:
+        op.error("CdrDoc wrapper must be stripped from the file")
 
     #------------------------------------------------------------------
     # 3. Log into the CDR on the target server.
