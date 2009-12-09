@@ -4,6 +4,7 @@
 #
 # BZIssue::4667
 # BZIssue::4689
+# BZIssue::4697 (copy citations from transferred InScopeProtocol)
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys, xml.sax, re, cdrcgi, xml.dom.minidom, time
@@ -571,6 +572,8 @@ transferredTrialScript = """\
    <xsl:apply-templates        select = 'FundingInfo'/>
    <xsl:apply-templates        select = 'CTGovOwnershipTransferContactLog'/>
    <xsl:apply-templates        select = 'CTGovOwnershipTransferInfo'/>
+   <xsl:apply-templates        select = 'PublishedResults'/>
+   <xsl:apply-templates        select = 'RelatedPublications'/>
   </PDQAdminInfo>
  </xsl:template>
 
