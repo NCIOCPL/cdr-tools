@@ -48,6 +48,7 @@ def createOptionParser():
     op = optparse.OptionParser(usage="%prog [options] UID PWD FILE",
                                description="""\
 This program stores a new version of a filter on the target CDR server.
+
 The default target server is the server on which the program is invoked.
 The new version of the filter is obtained by reading the file named on
 the command line, and the name of the file is expected to be in the format
@@ -56,13 +57,16 @@ on the production server.  The document ID of the filter for the target
 server, if not provided as a command-line argument, is determined by
 looking up the document's title on the production server using the document
 ID extracted from the filename, and then looking up the filter document ID
-matching that title on the target CDR server.  It is common to provide
-the version control revision number of the filter in the comment
-option, particularly when storing a new version of the filter on the
-production server.""")
+matching that title on the target CDR server.  
+It is common to provide the version control revision number of the 
+filter in the comment option as well as the Bugzilla issue number, 
+particularly when storing a new version of the filter on the production 
+server.
+   Sample comment:   R4321: Adding Vendor Info (Bug 1234) """)
     op.add_option("-s", "--server", default="localhost", help="target server")
     op.add_option("-i", "--docid", type="int", help="CDR ID on target server")
     op.add_option("-t", "--title", help="replacement title for filter")
+    op.add_option("-v", "--version", default="Y", help="create version [Y/N]")
     op.add_option("-c", "--comment", help="description of new version",
                   default="")
     return op
@@ -129,7 +133,7 @@ def main():
     doc = str(docObj)
     cdrId = cdr.repDoc(session, doc=doc, host=options.server, checkIn="Y",
                        reason=options.comment, comment=options.comment,
-                       ver="Y", verPublishable="N", setLinks="N")
+                       ver=options.version, verPublishable="N", setLinks="N")
     checkForProblems(cdrId, op)
 
     #------------------------------------------------------------------
