@@ -6,6 +6,7 @@
 # BZIssue::3324
 # BZIssue::4132
 # BZIssue::4516
+# BZIssue::4747
 #
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
@@ -333,6 +334,18 @@ class Doc:
                 self.oldXml, self.cdrId, self.disposition, forced = row
                 if forced == 'Y':
                     self.forcedDownload = True
+
+    def isOwnedByPdq(self):
+        """
+        Determine if this trial should not be imported from NLM
+        because they got it from PDQ to begin with, and PDQ has
+        not transferred the ownership.
+        """
+
+        if not self.orgStudyCdrId: return False
+        if self.newCtgovOwner: return False
+        if self.orgStudyCdrDt == 'CTGovProtocol': return False
+        return True
 
 #----------------------------------------------------------------------
 # An object of this class is fed to the constructor for each ModifyDocs.Doc
@@ -733,11 +746,13 @@ for name in nameList:
     # Request #4516: handle trials whose ownership has been transferred
     #                from PDQ to CT.gov
     #------------------------------------------------------------------
-    elif doc.orgStudyCdrId and doc.newCtgovOwner is None:
+    elif doc.isOwnedByPdq():
+        
         cdrId = doc.orgStudyCdrId
         if cdrId in oldOncoreNctIds and oldOncoreNctIds[cdrId] != doc.nlmId:
             newOncoreNctIds[cdrId] = doc.nlmId
-        log("Skipping %s, which has a CDR ID\n" % doc.nlmId)
+        log("Skipping %s, which is owned by PDQ as CDR%s\n" %
+            (doc.nlmId, cdrId))
         stats.pdqCdr += 1
         try:
             locked = False
@@ -746,10 +761,9 @@ for name in nameList:
             # See if we need to insert the current NCT ID.
             nctIdToInsert = None
             if doc.nlmId not in nctIds:
-                if doc.orgStudyCdrDt == 'InScopeProtocol':
-                    log("Inserting NCT ID %s into CDR%s\n" % (doc.nlmId, cdrId))
-                    nctIdToInsert = doc.nlmId
-                    stats.nctAdded += 1
+                log("Inserting NCT ID %s into CDR%s\n" % (doc.nlmId, cdrId))
+                nctIdToInsert = doc.nlmId
+                stats.nctAdded += 1
 
             # Request #3250: remove obsolete NCT IDs.
             nctIdsToRemove = []
