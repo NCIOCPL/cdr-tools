@@ -26,13 +26,12 @@ INVESTIGATORS = "CT.gov Investigators"
 FACILITIES = "CT.gov Facilities"
 FILTERS = ['name:Set InScopeProtocol Status to Active',
            'set:Vendor InScopeProtocol Set']
-countries = set()
 
 class MappingControl:
     def __init__(self, cursor):
         self.mappings = { 'agencies': {}, 'officials': {}, 'investigators': {},
                           'facilities': {} }
-        self.ambiguous = {}
+        self.ambiguous = set()
         self.activePersons = self.findActiveDocs('Person', cursor)
         self.activeOrgs = self.findActiveDocs('Organization', cursor)
         cdr.logwrite("loaded %d active persons" % len(self.activePersons),
@@ -53,11 +52,15 @@ class MappingControl:
             raise Exception("unrecognized usage '%s'" % usage)
         mappings = self.mappings[usage]
         key = value.upper()
-        if key not in mappings:
-            mappings[key] = docId
-        elif mappings[key] != docId:
-            msg = "%s has two mappings: %s and %s" % (key, mappings[key], docId)
-            cdr.logwrite(msg, LOGFILE)
+        if (usage, key) not in self.ambiguous:
+            if key not in mappings:
+                mappings[key] = docId
+            elif mappings[key] != docId:
+                self.ambiguous.add((usage, key))
+                msg = "%s has two mappings: %s and %s" % (key,
+                                                          mappings[key], docId)
+                cdr.logwrite(msg, LOGFILE)
+                del mappings[key]
 
 class PersonalName:
     def __init__(self, node):
@@ -113,7 +116,6 @@ class PostalAddress:
                     self.zip = extractText(child)
                 elif child.tag == 'CountryName':
                     self.country = extractText(child)
-                    countries.add(self.country)
     def makeKey(self):
         country = self.country
         if country.upper() in self.countryMap:
@@ -239,18 +241,6 @@ def collectMappings():
         fp.close()
     cdr.logwrite("collected %d mappings from %d protocols" %
                  (mappingCount, done), LOGFILE)
-    fp = open('d:/tmp/countries.txt', 'w')
-    countryList = list(countries)
-    countryList.sort()
-    for country in countryList:
-        try:
-            fp.write("%s\n" % country.encode('utf-8'))
-        except Exception, e:
-            cdr.logwrite("Failure writing country: %s" % repr(e), LOGFILE)
-            f = open('d:/tmp/country-set.txt', 'w')
-            f.write(repr(countries))
-            f.close()
-    fp.close()
 
 def populateMapping(value, docId, usageId, cursor):
     docId = int(docId)
