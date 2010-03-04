@@ -62,7 +62,7 @@ It is common to provide the version control revision number of the
 filter in the comment option as well as the Bugzilla issue number, 
 particularly when storing a new version of the filter on the production 
 server.
-   Sample comment:   R4321: Adding Vendor Info (Bug 1234) """)
+   Sample comment:   R4321 (Bug 1234): Adding Vendor Info""")
     op.add_option("-s", "--server", default="localhost", help="target server")
     op.add_option("-i", "--docid", type="int", help="CDR ID on target server")
     op.add_option("-t", "--title", help="replacement title for filter")
@@ -101,6 +101,13 @@ def main():
         else:
             options.docid = findTargetCdrId(prodCdrId, options.server)
 
+    # If no comment is specified the last comment used (from the
+    # all_docs table) would be stored.
+    # Setting the comment to something to overwrite the last comment
+    # -----------------------------------------------------------------
+    if not options.comment:
+        options.comment = 'Replaced w/o user comment'
+
     #------------------------------------------------------------------
     # 2. Load the new version of the filter from the file system.
     #------------------------------------------------------------------
@@ -128,6 +135,7 @@ def main():
     # 5. Store the new version on the target CDR server.
     #------------------------------------------------------------------
     docObj.xml = docXml
+    
     if options.title:
         docObj.ctrl['DocTitle'] = options.title
     doc = str(docObj)
