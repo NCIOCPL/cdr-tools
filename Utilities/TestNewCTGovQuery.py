@@ -9,9 +9,10 @@
 # BZIssue::4817
 #
 #----------------------------------------------------------------------
-import zipfile, sys, urllib
+import zipfile, sys, urllib, time
 
 def submitQuery(params, which):
+    start = time.time()
     url  = "http://clinicaltrials.gov/ct2/results"
     params.append('&studyxml=true')
     params = ''.join(params)
@@ -26,6 +27,7 @@ def submitQuery(params, which):
     zf = zipfile.ZipFile(fp)
     s = set(zf.namelist())
     saveSet(s, 'd:/tmp/%s-ctgov-query.set' % which)
+    print "elapsed: %f seconds" % (time.time() - start)
     return s
 
 def saveSet(s, filename):
@@ -39,7 +41,6 @@ def saveSet(s, filename):
 #----------------------------------------------------------------------
 # This is how we currently ask for trials.
 #----------------------------------------------------------------------
-print "%d files in result from new query" % len(newList)
 conditions = ('cancer', 'lymphedema', 'myelodysplastic syndromes',
               'neutropenia', 'aspergillosis', 'mucositis')
 connector = ''
@@ -57,7 +58,7 @@ print "%d files in result from original query" % len(oldList)
 #----------------------------------------------------------------------
 # William and Lakshmi have asked that we add this approach.
 #----------------------------------------------------------------------
-params = ["term=(cancer+OR+neoplasm)+%5BALL-FIELDS%5D"]
+params = ["term=(cancer+OR+neoplasm)+%5BDISEASE%5D"]
 newList = submitQuery(params, "new")
 print "%d files in result from new query" % len(newList)
 
@@ -81,12 +82,12 @@ saveSet(combo, 'd:/tmp/combined.set')
 #----------------------------------------------------------------------
 # See if a single query can be used to get the same combined results.
 #----------------------------------------------------------------------
-params = ['term=(cancer+OR+neoplasm)+[ALL-FIELDS]',
+params = ['term=(cancer+OR+neoplasm)+[DISEASE]',
           '+OR+',
-          '(cancer+OR+lymphedema+OR+myelodysplastic+syndromes+OR+',
+          '(lymphedema+OR+myelodysplastic+syndromes+OR+',
           'neutropenia+OR+aspergillosis+OR+mucositis)+[CONDITION]']
 comboList = submitQuery(params, "combo")
 print "%d files in result from combo query" % len(comboList)
 saveSet(comboList, 'd:/tmp/direct-combo.set')
 print ("two approaches to fetching combined lists %s" %
-       combo == comboListdiffer and "match" or "differ")
+       combo == comboList and "match" or "differ")
