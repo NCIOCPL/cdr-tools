@@ -22,6 +22,7 @@
 # BZIssue::2869
 # BZIssue::4182
 # BZIssue::4610
+# BZIssue::4832
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, xml.dom.minidom, time, sys, ExcelWriter, re
@@ -411,9 +412,9 @@ def request2502(startDate, endDate):
     print "wrote", name
 
 def usage():
-    sys.stderr.write("usage: %s start-date end-date\n")
+    sys.stderr.write("usage: %s start-date end-date\n" % sys.argv[0])
     sys.stderr.write(" (dates must be in ISO format)\n")
-    sys.stderr.write("e.g.: %s 2007-10-01 2008-09-30\n")
+    sys.stderr.write("e.g.: %s 2007-10-01 2008-09-30\n" % sys.argv[0])
     sys.exit(1)
 
 def checkDateArg(arg):
