@@ -183,8 +183,6 @@ SELECT DISTINCT d.id
   JOIN doc_type t
     ON d.doc_type = t.id
    AND t.name = 'InScopeProtocol'
-  JOIN query_term q
-    ON d.id = q.doc_id
  WHERE d.id NOT IN (
         SELECT doc_id
           FROM query_term
@@ -207,10 +205,8 @@ SELECT DISTINCT d.id
           '/InScopeProtocol/ProtocolProcessingDetails/ProcessingStatus'
            )
            AND value in (
-            'Pending',
             'Hold',
             'Abstract in review',
-            'Merged',
             'Needs administrative information'
            )
     )
@@ -241,6 +237,19 @@ SELECT DISTINCT qIdType.doc_id
            '/InScopeProtocol/CTGovOwnershipTransferContactLog/CTGovOwnershipTransferContactResponse',
            '/InScopeProtocol/CTGovOwnershipTransferInfo/CTGovOwnerOrganization'
          )
+    )
+   AND qIdType.doc_id NOT IN (
+        SELECT doc_id
+          FROM query_term
+         WHERE path IN (
+          '/InScopeProtocol/ProtocolProcessingDetails/ProcessingStatuses/ProcessingStatusInfo/ProcessingStatus',
+          '/InScopeProtocol/ProtocolProcessingDetails/ProcessingStatus'
+           )
+           AND value in (
+            'Hold',
+            'Abstract in review',
+            'Needs administrative information'
+           )
     )
  ORDER BY qIdType.doc_id
 """))
