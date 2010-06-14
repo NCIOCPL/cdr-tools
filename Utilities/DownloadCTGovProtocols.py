@@ -7,6 +7,7 @@
 # BZIssue::4132
 # BZIssue::4516
 # BZIssue::4747
+# BZIssue::4817
 #
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
@@ -626,29 +627,22 @@ else:
     os.makedirs(workdir)
     os.chdir(workdir)
     log("workdir is '%s'\n" % workdir)
-    conditions = ('cancer', 'lymphedema', 'myelodysplastic syndromes',
-                  'neutropenia', 'aspergillosis', 'mucositis')
-    connector = ''
-    params = ["term="]
-    url  = "http://clinicaltrials.gov/ct/search"
-    url  = "http://clinicaltrials.gov/ct2/results"
-    for condition in conditions:
-        params.append(connector)
-        params.append('(')
-        params.append(condition.replace(' ', '+'))
-        params.append(')+%5BCONDITION%5D')
-        connector = '+OR+'
-    params.append('&studyxml=true')
-    params = ''.join(params)
-    #print params
+    conditions = ['cancer', 'lymphedema', 'myelodysplastic syndromes',
+                  'neutropenia', 'aspergillosis', 'mucositis']
+    diseases = ['cancer', 'neoplasm']
+    sponsor = "(National Cancer Institute) [SPONSOR]"
+    conditions = "(%s) [CONDITION]" % " OR ".join(conditions)
+    diseases = "(%s) [DISEASE]" % " OR ".join(diseases)
+    params = "%s OR %s OR %s&studyxml=true" % (conditions, diseases, sponsor)
+    params = "term=%s" % params.replace(" ", "+")
+    base  = "http://clinicaltrials.gov/ct2/results"
+    url = "%s?%s" % (base, params)
+    print url
     try:
-        # POST is broken again: NLM ignores the 'studyxml' paramater
-        # when they get a POST request.
-        # urlobj = urllib.urlopen(url, params) # POST request
-        urlobj = urllib.urlopen("%s?%s" % (url, params)) # GET request
+        urlobj = urllib.urlopen(url)
         page   = urlobj.read()
     except Exception, e:
-        msg = "Failure downloading core set: %s" % str(e)
+        msg = "Failure downloading core set using %s: %s" % (url, e)
         reportFailure(cursor, msg)
     try:
         fp = open("core-set.zip", "wb")
