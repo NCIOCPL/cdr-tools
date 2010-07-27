@@ -9,7 +9,7 @@
 #----------------------------------------------------------------------
 import re, urllib, cdrdb
 
-cursor = cdrdb.connect('CdrGuest', dataSource='mahler.nci.nih.gov').cursor()
+cursor = cdrdb.connect('CdrGuest').cursor()
 cursor.execute("""\
     SELECT d.id, q.doc_id, d.title
       FROM document d
@@ -39,8 +39,8 @@ boards = { 'adult-treatment': 'Adult Treatment',
            'screening-prevention': 'Screening and Prevention',
            'cancer-genetics': 'Genetics',
            'cancer-cam': 'Complementary and Alternative Medicine' }
-standard = open('task4835-standard.txt', 'w')
-exceptions = open('task4835-exceptions.txt', 'w')
+standard = open('d:/tmp/task4835-standard.txt', 'w')
+exceptions = open('d:/tmp/task4835-exceptions.txt', 'w')
 pattern = re.compile('<li><strong>([^<]+)</strong>(.*?)</li>', re.DOTALL)
 specials = {
     'DOUGLAS ARTHUR': """\
