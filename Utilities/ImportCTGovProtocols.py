@@ -721,7 +721,7 @@ try:
     for nlmId, cdrId in rows:
         flags.clear()
         if TESTING:
-            if processed > 10:
+            if processed >= 10:
                 break
             processed += 1
             if transfersProcessed > 0:
