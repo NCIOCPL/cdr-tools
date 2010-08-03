@@ -87,8 +87,11 @@ class Transform:
             # Remove newlines and quotes added by Excel
             # Quotes appear on any strings with commas, even though it's tab
             #   delimited data.
+            # Some strings had periods appended.  We'll let the filters do
+            #   that instead.
             text = text.rstrip()
             text = text.strip('"')
+            text = text.rstrip('.')
 
             # Some lines indicate docs with no PurposeText
             if text.lower() == "no section":
@@ -151,7 +154,7 @@ class Transform:
         tree = etree.fromstring(oldXml)
 
         # Does it already have PurposeText?
-        if tree.findall("PurposeText"):
+        if tree.findall("SummaryMetaData/PurposeText"):
             self.job.log("CDR ID: %d already has PurposeText skipping." % cdrId)
             return oldXml
 
