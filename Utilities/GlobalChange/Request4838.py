@@ -30,6 +30,7 @@ class FilterTransform:
         JOIN query_term q
           ON d.id = q.doc_id
        WHERE t.name = 'Summary'
+         AND d.active_status = 'A'
          AND q.path = '/Summary/SummaryMetadata/SummaryAudience'
          AND q.value = 'Health professionals'
 """)
