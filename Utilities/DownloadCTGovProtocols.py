@@ -57,7 +57,7 @@ def getOncoreNctIds():
                 if cdrId:
                     cdrId = re.sub("[^0-9]", "", cdrId)
                     ids[int(cdrId)] = nctId
-        log("loaded NCT IDs for %d Oncore trials" % len(ids))
+        log("loaded NCT IDs for %d Oncore trials\n" % len(ids))
     except Exception, e:
         log("failure loading Oncore NCT IDs: %s" % e)
     return ids
@@ -587,15 +587,14 @@ for line in open('ctgov-dups.txt'):
                 log('Unable to insert row for %s/CDR%d\n' %
                     (nlmId, cdrId))
 
-def getForcedDocs(params, counter, cursor):
+def getForcedDocs(base, params, counter, cursor):
     params.append('&studyxml=true')
     params = ''.join(params)
-    #print params
     name = "force-set-%d.zip" % counter
-    #print name
     try:
-        #urlobj = urllib.urlopen(url, params)
-        urlobj = urllib.urlopen("%s?%s" % (url, params))
+        url = "%s?%s" % (base, params)
+        print name, url
+        urlobj = urllib.urlopen(url)
         page   = urlobj.read()
     except Exception, e:
         msg = "Failure downloading %s: %s" % (name, str(e))
@@ -673,14 +672,14 @@ else:
             # they're unwilling to do the work to determine that
             # we're not a hacker).
             if (len(params) / 2) > 10:
-                getForcedDocs(params, counter, cursor)
+                getForcedDocs(base, params, counter, cursor)
                 counter += 1
                 connector = ''
                 params = ["term="]
 
     # Take care of any leftover 'force' documents.
     if len(params) > 1:
-        getForcedDocs(params, counter, cursor)
+        getForcedDocs(base, params, counter, cursor)
     name = "CTGovDownload-%s.zip" % now
     result = cdr.runCommand("zip ../%s *.xml" % name)
     if result.code:
