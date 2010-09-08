@@ -2,10 +2,10 @@
 #
 # $Id$
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2004/06/19 12:30:44  bkline
 # Script to perform scheduled updates of electronic mailer tracking
 # documents.
+#
+# BZIssue::4900 [support for GP mailers]
 #
 #----------------------------------------------------------------------
 import xml.dom.minidom, sys, cdr, cdrmailcommon, time
@@ -45,19 +45,20 @@ class MailerBatch:
 #----------------------------------------------------------------------
 class Mailer:
     def __init__(self, id):
-        self.id                = id
+        self.id                = str(id)
         self.changesCategories = []
-    def updateTracker(self, session):
+    def updateTracker(self, session, date=None):
         response = cdr.getDoc(session, int(self.id), 'Y', getObject = 1)
         if type(response) in (type(""), type(u"")):
             logwrite("updateTracker(%s): %s" % (self.id, response))
             return False
         if self.alreadyUpdated(response.xml):
             logwrite("updateTracker(%s): already updated" % self.id)
+            #print type(self.id)
             cdr.unlock(session, cdr.normalize(self.id),
                        reason = 'Tracker already updated')
             return True
-        newDoc = self.transform()
+        newDoc = self.transform(date)
         if not newDoc:
             cdr.unlock(session, cdr.normalize(self.id),
                        reason = 'Unable to filter document')
@@ -83,11 +84,11 @@ class Mailer:
             if child.nodeName == 'Response':
                 return True
         return False
-    def transform(self):
+    def transform(self, date=None):
         response = """\
  <Response>
   <Received>%s</Received>
-""" % time.strftime("%Y-%m-%d")
+""" % (date and date[:10] or time.strftime("%Y-%m-%d"))
         for changesCategory in self.changesCategories:
             response += """\
   <ChangesCategory>%s</ChangesCategory>
@@ -165,4 +166,36 @@ for doc, category, recip in rows:
 session = cdr.login('etracker', '***REMOVED***')
 for key in batches:
     batches[key].updateTrackers(conn, cursor, session)
+
+#----------------------------------------------------------------------
+# BK 2010-08-30: added support for GP emailers for William (request #4900)
+#----------------------------------------------------------------------
+def record(mailerId, date):
+    data = "mailerId=%s&recorded=%s" % (mailerId, str(date).replace(' ', '+'))
+    fp = urllib2.urlopen("%s/recorded-gp.py" % cdr.emailerCgi(), data)
+    response = fp.read()
+    if not response.startswith('OK'):
+        #print response
+        logwrite("mailer %s: %s" % (mailerId, response))
+import lxml.etree as etree, urllib2
+fp = urllib2.urlopen("%s/completed-gp.py" % cdr.emailerCgi())
+tree = etree.XML(fp.read())
+nodes = [node for node in tree.findall('mailer')]
+for node in nodes:
+    mailer = Mailer(node.get('id'))
+    if node.get('completed'):
+        date = node.get('completed')
+        if node.get('modified') == 'Y':
+            mailer.changesCategories = ['Administrative changes']
+        else:
+            mailer.changesCategories = ['None']
+    elif node.get('bounced'):
+        mailer.changesCategories = ['Returned to sender']
+        date = node.get('bounced')
+    else:
+        mailer.changesCategories = ['None']
+        date = node.get('expired')
+        if date:
+            if mailer.updateTracker(session, date):
+                record(mailer.id, date)
 cdr.logout(session)
