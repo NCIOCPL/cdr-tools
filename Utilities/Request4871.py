@@ -77,6 +77,7 @@ class ProblemChild:
             self.verified = node.text
         self.phase = ";".join([p.text for p in tree.findall('phase')])
     def fix(self, conn, cursor, downloaded):
+        docXml = unicode(self.docXml, 'utf-8')
         if self.haveCc:
             cursor.execute("""\
                 UPDATE ctgov_import
@@ -90,7 +91,7 @@ class ProblemChild:
                        verified = ?,
                        comment = ?,
                        disposition = ?
-                 WHERE nlm_id = ?""", (self.docXml, self.title, self.phase,
+                 WHERE nlm_id = ?""", (docXml, self.title[:255], self.phase,
                                        self.cdrId, downloaded, self.changed,
                                        self.verified, COMMENT,
                                        DISPOSITION_IMPORT, self.ccNctId))
@@ -101,7 +102,7 @@ class ProblemChild:
                                           verified, changed, cdr_id,
                                           comment)
                      VALUES (?, ?, ?, ?, ?, ?, GETDATE(), ?, ?, ?, ?)
-                     """, (self.ccNctId, self.docXml, self.title, self.phase,
+                     """, (self.ccNctId, docXml, self.title[:255], self.phase,
                            downloaded, DISPOSITION_IMPORT, self.verified,
                            self.changed, self.cdrId, COMMENT))
         if self.havePdq:
@@ -123,10 +124,10 @@ class ProblemChild:
                                                          COMMENT))
         conn.commit()
 
-if len(sys.argv) != 4:
+if len(sys.argv) < 4:
     sys.stderr.write("""\
-usage: Request4871Fix.py download-directory download-date id-file
- e.g.: Request4871Fix.py d:work-20100713050004 2010-07-13 trial-ids.txt
+usage: Request4871.py download-directory download-date id-file [comment]
+ e.g.: Request4871.py d:work-20100713050004 2010-07-13 trial-ids.txt
 
 Format of ID file must have three IDs for one trial on each line, separated
 by whitespace:
@@ -143,9 +144,17 @@ NCT00337311\tNCT00321555\t482415
 NCT00331617\tNCT00304460\t473925
 NCT00313664\tNCT00302159\t473181
 NCT00304057\tNCT00273910\t465410
-""")
+
+You can optionally supply an extra command-line argument to override the
+default comment to be stored in the rows for the NCT IDs.  The default
+comment is:
+
+%s
+""" % COMMENT)
     sys.exit(1)
-directory, date, idFileName = sys.argv[1:]
+directory, date, idFileName = sys.argv[1:4]
+if len(sys.argv) > 4:
+    COMMENT = sys.argv[4]
 conn = cdrdb.connect()
 cursor = conn.cursor()
 idFile = open(idFileName)
