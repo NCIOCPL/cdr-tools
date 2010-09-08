@@ -18,7 +18,6 @@ TARCMD             = "d:\\cygwin\\bin\\tar.exe"
 BLOCKPATH          = "/InScopeProtocol/BlockedFromCTGov"
 INTERVENTIONS      = "@@INTERVENTIONS-START@@(.*)@@INTERVENTIONS-END@@"
 STUDY_DESIGN       = "@@STUDY-DESIGN-START@@(.*)@@STUDY-DESIGN-END@@"
-CONDITION          = "@@CONDITIONS@@(.*)@@CONDITIONS@@"
 MIDDLE_NAME        = "@@MIDDLE-NAME-START@@(.*?)@@MIDDLE-NAME-END@@"
 CTEP_ID            = "@@CTEPID@@(.*?)@@CTEPID@@"
 NCTTRIALID         = "@@NCTTRIALID@@"
@@ -360,7 +359,7 @@ class Intervention(PostProcess):
         interventions = []
         for block in uniqueBlocks:
             interventions.append(u"""\
-  <intervention pdq-id='CDR%010d>
+  <intervention cdr-id='CDR%010d'>
     <intervention_type>%s</intervention_type>
     <intervention_name>%s</intervention_name>
 """ % (block.cdrId, block.interventionType, escape(block.interventionName)))
@@ -665,245 +664,6 @@ class StudyDesignInfo(PostProcess):
 
         # We're done.
         return u"".join(designXml)
-
-class Condition(PostProcess):
-    """
-    Transformation which maps conditions and diagnoses from the
-    vendor document to the names of the cancer types used in
-    Cancer.gov menus.  Implemented as a post-process since this
-    terminology menu information is not found in the vendor
-    documents for the trials, so we instead examine the vendor
-    output for the term documents (recursively walking the
-    terminology tree upwards when necessary until we find a
-    parent with an associated menu string that we can use).
-    """
-
-    __pattern  = re.compile(CONDITION, re.DOTALL)
-
-    @classmethod
-    def getPattern(cls):
-        return cls.__pattern
-
-    @staticmethod
-    def convert(match):
-        """
-        For the mapping logic requirements, see the end of the document
-        attached by Lakshmi as part of comment #14 for CDR Bugzilla
-        issue #1892.
-        """
-        Condition.clearWarnings()
-        terms = {}
-        fragment = match.group(1)
-        try:
-            dom = xml.dom.minidom.parseString(fragment.encode('utf-8'))
-        except:
-            f = open('fragment.xml', 'wb')
-            f.write(fragment)
-            f.close()
-            raise
-        for node in dom.documentElement.childNodes:
-            if node.nodeName == 'Condition':
-                idString = cdr.getTextContent(node).strip()
-                term = Condition.Term.getTerm(idString)
-                if not term:
-                    term = Condition.Term(idString)
-                condition = docId = None
-                if term.ospaName:
-                    condition = term.ospaName
-                    docId = term.ospaId
-                elif term.cgName:
-                    condition = term.cgName
-                    docId = term.cgId
-                else:
-                    Condition.addWarning("no menu name for term %s" % idString)
-                    if term.prefName:
-                        condition = term.prefName
-                        docId = term.cdrId
-                    else:
-                        Condition.addWarning("no preferred name for term %s" %
-                                             idString)
-                if condition:
-                    condition = condition.lower()
-
-                    # XXX Remove this when CIAT has sarcoma menu mapping done.
-                    # XXX Lakshmi (2008-07-22): I have not had a chance to
-                    # confirm this has been done. For now please leave it in.
-                    if u'sarcoma' in condition:
-                        condition = u'sarcoma'
-                        docId = 'CDR0000039253'
-                    # XXX End temporary code
-
-                    # Modification for issue #4557, from Lakshmi (2009-04-22):
-                    # "... if the mapping is to the cancer-related problem
-                    # condition term, then the program should take the actual
-                    # term that is used and output that in the condition
-                    # field."
-                    problemCondition = 'cancer-related problem/condition'
-                    if condition == problemCondition:
-                        if term.prefName:
-                            condition = term.prefName.lower()
-                            docId = term.cdrId
-                        else:
-                            condition = docId = None
-                            Condition.addWarning("no preferred name for term "
-                                                 "%s, which maps to '%s'" %
-                                                 (idString, problemCondition))
-                    if condition and condition not in terms:
-                        terms[condition] = docId
-        replacement = []
-        if not terms:
-            Condition.addWarning("no conditions found for trial %s" %
-                                 Condition.trial.cdrId)
-        #elif len(terms) > 12:
-        #    terms = ['cancer']
-        else:
-            termNames = terms.keys()
-            termNames.sort()
-            for name in termNames:
-                replacement.append(u"""\
-  <condition pdq-id='%s'>%s</condition>
-""" % (terms[name], name))
-        return u"".join(replacement)
-        
-    class Term:
-        """
-        This class collects terms from the CDR thesaurus, with the
-        menu strings used for mapping those terms into condition
-        elements for the document exported to NLM.
-
-        In constructing a Term object, we:
-        
-            Climb the terminology tree to the node that has the
-            MenuType of Clinical Trials-CancerType and the MenuParent
-            = Disease/diagnosis; remember the value of the PreferredTerm
-            for that term record as the menuName attribute of this
-            object.  As we come back out of recursion looking for
-            a parent with a usable menu string, we attach that string
-            to all the children we've visited on the path to that
-            parent.
-
-            Modified 2006-08-16 at Lakshmi's request.  We now climb
-            the tree looking for menu items for OSPA (menu type is
-            'Key cancer type') and for Cancer.gov (menu type is
-            'Clinical trials--CancerType').
-            
-            If we find an OSPA menu item in the term document or in
-            any of its parents then we use that menu item's display
-            name if any, or the preferred name for the term in which
-            the OSPA menu item was found if the menu item doesn't
-            have a display name (a condition we report to Lakshmi).
-            If we found no OSPA menu items for the term or its parents,
-            then we look for Cancer.gov menu items which have menu
-            parents of 'Disease/diagnosis' in the term or any of its
-            parents (again, climbing up the tree as far as we need
-            to).  For Cancer.gov menu items we never use the display
-            name for the term, but always use the preferred name
-            for the term in which the Cancer.gov menu item was found.
-            If neither an OSPA menu item or a usable Cancer.gov menu
-            item is found, we fall back on the preferred name for
-            the condition's term document.
-        """
-
-        __CG_MENU_TYPE   = u"Clinical Trials--CancerType"
-        __OSPA_MENU_TYPE = u"Key cancer type"
-        __terms          = {}
-
-        def __init__(self, cdrId):
-            self.cdrId    = cdrId
-            self.prefName = None
-            self.cgName   = None
-            self.ospaName = None
-            self.cgId     = None
-            self.ospaId   = None
-            parents       = []
-            dom           = JobControl.getVendorDoc(cdrId)
-            for node in dom.documentElement.childNodes:
-                if node.nodeName == 'PreferredName':
-                    self.prefName = escape(cdr.getTextContent(node).strip())
-                elif node.nodeName == 'TermRelationship':
-                    for child in node.childNodes:
-                        if child.nodeName == 'ParentTerm':
-                            for grandchild in child.childNodes:
-                                if grandchild.nodeName == 'ParentTermName':
-                                    parentId = grandchild.getAttribute('ref')
-                                    if parentId:
-                                        parents.append(parentId)
-                elif node.nodeName == 'MenuInformation':
-                    for child in node.childNodes:
-                        if child.nodeName == 'MenuItem':
-                            menuParents = set()
-                            menuType    = None
-                            displayName = None
-                            for grandchild in child.childNodes:
-                                if grandchild.nodeName == 'MenuType':
-                                    t = cdr.getTextContent(grandchild).strip()
-                                    if t:
-                                        menuType = t
-                                elif grandchild.nodeName == 'MenuParent':
-                                    p = cdr.getTextContent(grandchild).strip()
-                                    if p:
-                                        menuParents.add(p)
-                                elif grandchild.nodeName == 'DisplayName':
-                                    n = cdr.getTextContent(grandchild).strip()
-                                    if n:
-                                        displayName = n
-                            if menuType == self.__CG_MENU_TYPE:
-                                if 'Disease/diagnosis' in menuParents:
-                                    self.cgName = u''
-                                    self.cgId = None
-                            elif menuType == self.__OSPA_MENU_TYPE:
-                                if not self.ospaName:
-                                    self.ospaId = cdrId
-                                    if displayName:
-                                        self.ospaName = escape(displayName)
-                                    else:
-                                        self.ospaName = u''
-
-            if self.cgName is not None:
-                self.cgName = self.prefName
-            if self.ospaName is not None:
-                if not self.ospaName:
-                    Condition.addWarning("no DisplayName for OSPA "
-                                         "MenuItem in doc %s" % cdrId)
-                self.ospaName = self.prefName
-            else:
-                # Found that the OSPA menu items aren't included in
-                # the vendor output!  Have to go to the query_term
-                # table instead.
-                (ospaFlag, ospaName) = JobControl.lookupOspaMenuItem(cdrId)
-                if ospaFlag:
-                    self.ospaId = cdrId
-                    ospaName = ospaName and ospaName.strip() or None
-                    if ospaName:
-                        self.ospaName = ospaName
-                    else:
-                        Condition.addWarning("no DisplayName for OSPA "
-                                             "MenuItem in doc %s" % cdrId)
-                        self.ospaName = self.prefName
-
-            # If we have an OSPA menu name, we don't care whether we have
-            # a Cancer.gov menu name.  If we don't have an OSPA menu name,
-            # we keep looking further up the terminology tree, even if
-            # we have a Cancer.gov menu name, because we prefer to use
-            # the OSPA menu structure, even if we have to go further to
-            # find it.
-            if not self.ospaName:
-                for parentId in parents:
-                    parentTerm = self.getTerm(parentId)
-                    if not parentTerm:
-                        parentTerm = Condition.Term(parentId)
-                    if parentTerm.ospaName:
-                        self.ospaName = parentTerm.ospaName
-                        self.ospaId = parentTerm.ospaId
-                        break
-                    elif not self.cgName and parentTerm.cgName:
-                        self.cgName = parentTerm.cgName
-                        self.cgId = parentTerm.cgId
-            self.__terms[cdrId] = self
-
-        @classmethod
-        def getTerm(cls, cdrId):
-            return cls.__terms.get(cdrId)
 
 class MiddleInitials(PostProcess):
     """
@@ -1302,11 +1062,11 @@ class ResponsibleParty(PostProcess):
             result.append(u"""\
   <resp_party%s>
    <name_title>%s</name_title>
-""" % (ctepPid and (u" ctep-id='%s'" % ctepPid or u''), escape(nameTitle)))
+""" % (ctepPid and (u" ctep-id='%s'" % ctepPid) or u'', escape(nameTitle)))
             if org:
                 result.append(u"""\
    <organization%s>%s</organization>
-""" % (ctepOid and (u" ctep-id='%s'" % ctepOid or u''), escape(org)))
+""" % (ctepOid and (u" ctep-id='%s'" % ctepOid) or u'', escape(org)))
             if phone:
                 result.append(u"""\
    <phone>%s</phone>
