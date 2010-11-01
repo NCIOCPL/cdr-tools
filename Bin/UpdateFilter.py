@@ -67,6 +67,7 @@ server.
     op.add_option("-i", "--docid", type="int", help="CDR ID on target server")
     op.add_option("-t", "--title", help="replacement title for filter")
     op.add_option("-v", "--version", default="Y", help="create version [Y/N]")
+    op.add_option("-p", "--publishable", default="N", help="create pup version [Y/N]")
     op.add_option("-c", "--comment", help="description of new version",
                   default="")
     return op
@@ -100,6 +101,10 @@ def main():
             options.docid = prodCdrId
         else:
             options.docid = findTargetCdrId(prodCdrId, options.server)
+    if not options.publishable:
+        options.publishable = 'N'
+    elif options.publishable == 'Y':
+        options.version = 'Y'
 
     # If no comment is specified the last comment used (from the
     # all_docs table) would be stored.
@@ -139,9 +144,13 @@ def main():
     if options.title:
         docObj.ctrl['DocTitle'] = options.title
     doc = str(docObj)
+    print 'Versioned: %s, Publishable: %s' % (options.version,
+                                              options.publishable)
+
     cdrId = cdr.repDoc(session, doc=doc, host=options.server, checkIn="Y",
                        reason=options.comment, comment=options.comment,
-                       ver=options.version, verPublishable="N", setLinks="N")
+                       ver=options.version, verPublishable=options.publishable,
+                       setLinks="N")
     checkForProblems(cdrId, op)
 
     #------------------------------------------------------------------
