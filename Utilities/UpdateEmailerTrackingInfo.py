@@ -6,6 +6,7 @@
 # documents.
 #
 # BZIssue::4900 [support for GP mailers]
+# BZIssue::4977 [fixed indentation bug at bottom of script]
 #
 #----------------------------------------------------------------------
 import xml.dom.minidom, sys, cdr, cdrmailcommon, time
@@ -195,7 +196,7 @@ for node in nodes:
     else:
         mailer.changesCategories = ['None']
         date = node.get('expired')
-        if date:
-            if mailer.updateTracker(session, date):
-                record(mailer.id, date)
+    if date:
+        if mailer.updateTracker(session, date):
+            record(mailer.id, date)
 cdr.logout(session)
