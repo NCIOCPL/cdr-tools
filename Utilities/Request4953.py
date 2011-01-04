@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: Request4857.py 9649 2010-06-02 19:21:34Z bkline $
+# $Id$
 #
 # Another script to fix muck-up of CT.gov import duplicates.
 #
