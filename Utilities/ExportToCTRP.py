@@ -10,7 +10,7 @@
 import os, sys, xml.dom.minidom, cdr, cdrdb, re, socket, cdrcgi, getopt, time
 import xml.sax.saxutils, cdrdocobject, ExcelReader
 
-OUTPUTBASE         = "."
+OUTPUTBASE         = "d:/tmp"
 COLLECTION_NAME    = "study_collection.xml"
 LOGNAME            = "clinical_trials.log"
 TARNAME            = "clinical_trials.tar.bz2"
@@ -31,6 +31,7 @@ REG_INFO           = "@@REG-INFO@@"
 RESP_PARTY         = "@@RESP_PARTY@@"
 GENDER             = "<gender>Both</gender>"
 COMPLETION         = "@@COMPLETION-DATE@@"
+LEAD_ORG_STATUS    = "@@LEAD-ORG-STATUS@@"
 VERIFICATION_DATE  = "<verification_date[^>]*>\\d{4}-\\d{2}-\\d{2}</verif"
 STATUS             = "<overall_status[^>]*>([^<]*)</overall_status>"
 NON_DIGITS         = "[^\\d]"
@@ -1013,6 +1014,7 @@ class ResponsibleParty(PostProcess):
         cursor = conn.cursor()
         dom = ResponsibleParty.cdrDom
         nameTitle = org = phone = email = ctepPid = ctepOid = None
+        partyType = 'person'
         for node in dom.getElementsByTagName('ResponsiblePerson'):
             linkString = None
             for child in node.getElementsByTagName('Person'):
@@ -1038,6 +1040,7 @@ class ResponsibleParty(PostProcess):
                 if orgs:
                     org = orgs[0]
         for node in dom.getElementsByTagName('ResponsibleOrganization'):
+            partyType = 'organization'
             linkString = None
             for child in node.getElementsByTagName('Organization'):
                 linkString = child.getAttribute('cdr:ref')
@@ -1060,9 +1063,10 @@ class ResponsibleParty(PostProcess):
                     ctepOid = JobControl.getCtepId(docId)
         if nameTitle:
             result.append(u"""\
-  <resp_party%s>
+  <resp_party%s party-type='%s'>
    <name_title>%s</name_title>
-""" % (ctepPid and (u" ctep-id='%s'" % ctepPid) or u'', escape(nameTitle)))
+""" % (ctepPid and (u" ctep-id='%s'" % ctepPid) or u'', partyType,
+       escape(nameTitle)))
             if org:
                 result.append(u"""\
    <organization%s>%s</organization>
@@ -1170,6 +1174,45 @@ class DCPTrialID(PostProcess):
                     idString = cdr.getTextContent(child)
             if idString and idType == 'DCP ID':
                 return escape(idString)
+        return u""
+
+class LeadOrgStatus(PostProcess):
+    """
+    Get the current status value and date for the primary lead org.
+    """
+
+    __pattern = re.compile(LEAD_ORG_STATUS)
+
+    @classmethod
+    def getPattern(cls):
+        return cls.__pattern
+
+    @staticmethod
+    def convert(match):
+        """
+        Added at Charles Yaghmour's request.  We don't have the information
+        in the published vendor document, so we have to go back to the
+        CDR document in the repository.  Note that we're not using the
+        value-mapping logic from the XSL/T filter.
+        """
+        statusValue = statusDate = None
+        dom = LeadOrgStatus.cdrDom
+        for orgNode in dom.getElementsByTagName('ProtocolLeadOrg'):
+            role = None
+            for roleNode in orgNode.getElementsByTagName('LeadOrgRole'):
+                role = cdr.getTextContent(roleNode)
+            if role != 'Primary':
+                continue
+            for statusNode in orgNode.getElementsByTagName('CurrentOrgStatus'):
+                for child in statusNode.childNodes:
+                    if child.nodeName == 'StatusName':
+                        statusValue = cdr.getTextContent(child)
+                    elif child.nodeName == 'StatusDate':
+                        statusDate = cdr.getTextContent(child)
+        if statusValue:
+            return u"""\
+  <lead_org_status status_date='%s'>%s</lead_org_status>
+""" % (statusDate or u"", statusValue)
         return u""
 
 class Trial:
@@ -1284,36 +1327,48 @@ class JobControl:
         # Find trials in spreadsheet which are published as InScopeProtocols.
         #--------------------------------------------------------------
         book = ExcelReader.Workbook('d:/Inetpub/wwwroot/report4896.xls')
+        trialIds = set()
         trials = {}
         for i in range(2):
             sheet = book[i]
             for row in sheet:
                 try:
-                    docId = int(row[0].val)
+                    trialIds.add(int(row[0].val))
                 except:
                     continue
-                self.__cursor.execute("""\
-                    SELECT d.doc_version, t.name
-                      FROM pub_proc_doc d
-                      JOIN pub_proc_cg c
-                        ON c.pub_proc = d.pub_proc
-                       AND c.id = d.doc_id
-                      JOIN doc_version v
-                        ON d.doc_version = v.num
-                       AND v.id = d.doc_id
-                      JOIN doc_type t
-                        ON t.id = v.doc_type
-                     WHERE d.doc_id = ?""", docId, timeout=300)
-                rows = self.__cursor.fetchall()
-                if rows:
-                    docVersion, docType = rows[0]
-                    if docType == 'InScopeProtocol':
-                        trials[docId] = Trial(docId, docVersion)
-                    else:
-                        self.__logWrite("doc type for CDR%d is %s" %
-                                        (docId, docType))
+        print "%d IDs extracted from original spreadsheets" % len(trialIds)
+        book = ExcelReader.Workbook('d:/Inetpub/wwwroot/CTRP-extras.xls')
+        sheet = book[0]
+        for row in sheet:
+            if row[2].val == 'Yes':
+                if not 'is a CTGovProtocol document' in row[1].val:
+                    match = re.search(r'\[NCT\d+] CDR(\d+)', row[1].val)
+                    if match:
+                        trialIds.add(int(match.group(1)))
+        print "%d IDs extracted from all sheets" % len(trialIds)
+        for trialId in trialIds:
+            self.__cursor.execute("""\
+                SELECT d.doc_version, t.name
+                  FROM pub_proc_doc d
+                  JOIN pub_proc_cg c
+                    ON c.pub_proc = d.pub_proc
+                   AND c.id = d.doc_id
+                  JOIN doc_version v
+                    ON d.doc_version = v.num
+                   AND v.id = d.doc_id
+                  JOIN doc_type t
+                    ON t.id = v.doc_type
+                 WHERE d.doc_id = ?""", trialId, timeout=300)
+            rows = self.__cursor.fetchall()
+            if rows:
+                docVersion, docType = rows[0]
+                if docType == 'InScopeProtocol':
+                    trials[trialId] = Trial(trialId, docVersion)
                 else:
-                    self.__logWrite("CDR%d not published" % docId)
+                    self.__logWrite("doc type for CDR%d is %s" %
+                                    (trialId, docType))
+            else:
+                self.__logWrite("CDR%d not published" % trialId)
 
         #--------------------------------------------------------------
         # Remember the list of trials to be exported.
