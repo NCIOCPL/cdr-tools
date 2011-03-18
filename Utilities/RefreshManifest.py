@@ -5,30 +5,6 @@
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.7  2008/03/04 21:12:26  bkline
-# Extended workaround to Microsoft's Y2K7 bug for 2008.
-#
-# Revision 1.6  2007/09/12 21:49:45  bkline
-# Extended workaround for Microsoft Y2K7 bug.  Will need to do it again
-# in the spring of 2008.
-#
-# Revision 1.5  2007/03/15 21:22:07  bkline
-# Installed workaround for DST 2007 bug in Microsoft runtime libraries.
-#
-# Revision 1.4  2007/03/13 20:59:55  bkline
-# Turned off the kludge for the DST bug.
-#
-# Revision 1.3  2007/03/13 20:13:20  venglisc
-# Included temporary fix for daylight savings time needed due to a bug
-# in the pywintypes.Time() function.
-#
-# Revision 1.2  2006/06/14 13:18:44  bkline
-# Added code to fix windows permissions.
-#
-# Revision 1.1  2006/01/24 21:52:47  bkline
-# Rewrite of Jeff's tool to rebuild the client files manifest.
-#
 #----------------------------------------------------------------------
 import cdr, sys, time, socket, os, win32file, pywintypes
 
@@ -43,7 +19,7 @@ class File:
                                      win32file.OPEN_EXISTING, 0, 0)
             t = win32file.GetFileTime(h)
             h.Close()
-            return t[3].Format("%Y-%m-%dT%H:%M:%S")
+            return t[-1].Format("%Y-%m-%dT%H:%M:%S")
         except Exception, e:
             print "failure:", self.name, str(e)
             sys.exit(1)
