@@ -10,6 +10,9 @@
 import ExcelReader, ModifyDocs, cdr, sys, lxml.etree as etree, cdrdb, time, os
 import MP3Info, cgi
 
+CDRNS = "cips.nci.nih.gov/cdr"
+NSMAP = { "cdr" : CDRNS }
+
 def getCreationDate(path):
     s = os.stat(path)
     return time.strftime("%Y-%m-%d", time.localtime(s.st_mtime))
@@ -23,7 +26,7 @@ def getDocTitle(docId):
     return cursor.fetchall()[0][0]
 
 class MP3:
-    def __init__(self, row):
+    def __init__(self, row, archive):
         self.nameId = int(row[0].val)
         self.nameTitle = getDocTitle(self.nameId)
         self.name = row[1].val
@@ -31,7 +34,6 @@ class MP3:
         self.filename = row[4].val
         self.creator = row[5] and row[5].val or None
         self.notes = row[6] and row[6].val or None
-        self.fullPath = "%s/%s" % (basePath, self.filename)
         self.created = getCreationDate(self.fullPath)
         self.duration = getDuration(self.fullPath)
         if self.language not in ('English', 'Spanish'):
@@ -52,52 +54,45 @@ class MP3:
                 return nameNode
         raise Exception("unable to find name node for %s in CDR%s" %
                         (repr(self.name), self.nameId))
+    def toXml(self):
+        language = self.language == 'Spanish' and 'es' or 'en'
+        creator = self.creator or u'Vanessa Richardson, VR Voice'
+        title = name = self.nameTitle.split(';')[0]
+        if self.language == 'Spanish':
+            title += u"-Spanish"
+        root = etree.Element("Media", nsmap=NSMAP)
+        etree.SubElement(root, "MediaTitle").text = title
+        physicalMedia = etree.SubElement(root, "PhysicalMedia")
+        soundData = etree.SubElement(physicalMedia, "SoundData")
+        etree.SubElement(soundData, "SoundType").text = "Speech"
+        etree.SubElement(soundData, "SoundEncoding").text = "MP3"
+        etree.SubElement(soundData, "RunSeconds").text = str(self.duration)
+        mediaSource = etree.SubElement(root, "MediaSource")
+        originalSource = etree.SubElement(mediaSource, "OriginalSource")
+        etree.SubElement(originalSource, "Creator").text = creator
+        etree.SubElement(originalSource, "DateCreated").text = self.created
+        etree.SubElement(originalSource, "SourceFilename").text = self.filename
+        mediaContent = etree.SubElement(root, "MediaContent")
+        categories = etree.SubElement(mediaContent, "Categories")
+        etree.SubElement(categories, "Category").text = "pronunciation"
+        descs = etree.SubElement(mediaContent, "ContentDescriptions")
+        desc = etree.SubElement(descs, "ContentDescription")
+        desc.text = "Pronunciation of dictionary term '%s'" % self.name
+        desc.set("audience", "Patients")
+        desc.set("language", language)
+        proposedUse = etree.SubElement(root, "ProposedUse")
+        glossary = etree.SubElement(proposedUse, "Glossary")
+        glossary.set("{%s}ref" % CDRNS, "CDR%010d" % self.nameId)
+        glossary.text = self.nameTitle
+        return etree.tostring(root, pretty_print=True)
     def save(self, session):
         bytes = open(self.fullPath, 'rb').read()
         comment = "document created for CDR task 4926"
-        language = self.language == 'Spanish' and 'es' or 'en'
-        creator = self.creator or u'Vanessa Richardson, VR Voice'
         docTitle = u"%s; pronunciation; mp3" % self.name
-        name = self.nameTitle.split(';')[0]
-        title = name
-        if self.language == 'Spanish':
-            title += u"-Spanish"
-        #ctrl = { 'DocType': 'Media', 'DocTitle': docTitle.encode('utf-8') }
         ctrl = { 'DocType': 'Media', 'DocTitle': title.encode('utf-8') }
-        docXml = u"""\
-<Media xmlns:cdr='cips.nci.nih.gov/cdr'>
- <MediaTitle>%s</MediaTitle>
- <PhysicalMedia>
-  <SoundData>
-   <SoundType>Speech</SoundType>
-   <SoundEncoding>MP3</SoundEncoding>
-   <RunSeconds>%s</RunSeconds>
-  </SoundData>
- </PhysicalMedia>
- <MediaSource>
-  <OriginalSource>
-   <Creator>%s</Creator>
-   <DateCreated>%s</DateCreated>
-   <SourceFilename>%s</SourceFilename>
-  </OriginalSource>
- </MediaSource>
- <MediaContent>
-  <Categories>
-   <Category>pronunciation</Category>
-  </Categories>
-  <ContentDescriptions>
-   <ContentDescription audience='Patients' language='%s'>Pronunciation of dictionary term '%s'</ContentDescription>
-  </ContentDescriptions>
- </MediaContent>
- <ProposedUse>
-  <Glossary cdr:ref='CDR%010d'>%s</Glossary>
- </ProposedUse>
-</Media>
-""" % (cgi.escape(title), self.duration, cgi.escape(creator),
-       self.created, self.filename, language, cgi.escape(self.name),
-       self.nameId, cgi.escape(self.nameTitle))
-        doc = cdr.Doc(docXml.encode('utf-8'), 'Media', ctrl, bytes,
-                      encoding='utf-8')
+        doc = cdr.Doc(self.toXml(), 'Media', ctrl, bytes, encoding='utf-8')
+        print str(doc)
+        return "CDR9999999999"
         result = cdr.addDoc(session, doc=str(doc), comment=comment, val='Y',
                             reason=comment, ver='Y', verPublishable='Y')
         self.mediaId = cdr.exNormalize(result)[1]
@@ -140,10 +135,11 @@ for line in fp:
     k, v = eval(line)
     mediaDocs[k] = v
 fp.close()
-if len(sys.argv) != 5:
-    sys.stderr.write("usage: %s uid pwd spreadsheet basepath\n" % sys.argv[0])
+mediaDocs = {}
+if len(sys.argv) != 4:
+    sys.stderr.write("usage: %s uid pwd zipfile\n" % sys.argv[0])
     sys.exit(1)
-uid, pwd, xls, basePath = sys.argv[1:]
+uid, pwd, zipname = sys.argv[1:]
 session = cdr.login(uid, pwd)
 docs = {}
 cursor = cdrdb.connect('CdrGuest').cursor()
@@ -153,7 +149,18 @@ SELECT DISTINCT doc_id
           WHERE path LIKE '/GlossaryTermName/%/MediaLink/MediaID/@cdr:ref'""")
 alreadyDone = set([row[0] for row in cursor.fetchall()])
 print "%d documents already processed" % len(alreadyDone)
-book = ExcelReader.Workbook(xls)
+archive = zipfile.ZipFile(zipname)
+xlsNames = [n for n in archive.namelist() if n.lower().endswith('.xls')]
+book = None
+for name in xlsNames:
+    bytes = archive.read(name)
+    try:
+        book = ExcelReader.Workbook(fileBuf=bytes)
+        break
+    except:
+        pass
+if not book:
+    raise Exception("Excel workbook not found in %s" % zipname)
 sheet = book[0]
 for row in sheet:
     try:
