@@ -77,7 +77,7 @@ class MP3:
         etree.SubElement(categories, "Category").text = "pronunciation"
         descs = etree.SubElement(mediaContent, "ContentDescriptions")
         desc = etree.SubElement(descs, "ContentDescription")
-        desc.text = "Pronunciation of dictionary term '%s'" % self.name
+        desc.text = 'Pronunciation of dictionary term "%s"' % self.name
         desc.set("audience", "Patients")
         desc.set("language", language)
         proposedUse = etree.SubElement(root, "ProposedUse")
@@ -129,12 +129,6 @@ class Request4926:
             node.node.insert(node.insertPosition, mp3.makeElement())
         return etree.tostring(tree)
 
-fp = open('media-docs.repr')
-mediaDocs = {}
-for line in fp:
-    k, v = eval(line)
-    mediaDocs[k] = v
-fp.close()
 mediaDocs = {}
 if len(sys.argv) != 4:
     sys.stderr.write("usage: %s uid pwd zipfile\n" % sys.argv[0])
@@ -185,11 +179,6 @@ for row in sheet:
         mediaId = mp3.save(session)
         mediaDocs[key] = mediaId
         print "saved %s as CDR%d" % (key, mediaId)
-        #break
-fp = open('media-docs.repr', 'w')
-for k, v in mediaDocs.iteritems():
-    fp.write("%s\n" % repr((k, v)))
-fp.close()
 obj = Request4926(docs)
 job = ModifyDocs.Job(uid, pwd, obj, obj, "Request 4926", validate=True,
                      testMode=False)
