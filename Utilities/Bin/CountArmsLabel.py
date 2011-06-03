@@ -5,7 +5,8 @@
 # Count the number of files in the CTGovExport directory that have
 # Arms information (identified by the existence of the arms_grou_label).
 #
-# $Log: not supported by cvs2svn $
+# BZIssue::4983 - Arms Count Report Problem
+#
 # Revision 1.5  2008/10/06 20:07:53  venglisc
 # Changed output formatting. (Bug 4123)
 #
@@ -57,8 +58,8 @@ def parseArgs(args):
     global l
 
     try:
-        longopts = ["testmode", "livemode", "directory"]
-        opts, args = getopt.getopt(args[1:], "tld:", longopts)
+        longopts = ["logfile=", "directory=", "testmode", "livemode"]
+        opts, args = getopt.getopt(args[1:], "o:d:tl", longopts)
     except getopt.GetoptError, e:
         usage(args)
 
@@ -188,12 +189,20 @@ os.chdir(OUTPUTBASE)
 if not pubDir:
     # We're comparing to last weeks output, so we need to set the 
     # year appropriately during the first week of a year.
+    # Note:  The above comment is wrong.
+    #        We need to find the latest (Friday/Saturday) export
+    #        directory.  This should, by default, be the one just
+    #        created.
     # -----------------------------------------------------------
-    now  = time.time()
-    last = now - (6 * 24 * 60 * 60)
-    lastWeeksYear = time.strftime("%Y", time.localtime(last))
+    # now  = time.time()
+    # last = now - (6 * 24 * 60 * 60)
+    # lastWeeksYear = time.strftime("%Y", time.localtime(last))
+    # lastDirs = glob.glob(lastWeeksYear + '*')
 
-    lastDirs = glob.glob(lastWeeksYear + '*')
+    # If we're still running this program after 2099-12-31 the 
+    # the text string for glob should be changed.
+    # --------------------------------------------------------
+    lastDirs = glob.glob('20*')
     lastDirs.sort()
     lastDir = lastDirs[-1:][0]
 else:
