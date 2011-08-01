@@ -38,40 +38,48 @@ def findPosition(tree):
 class Concept:
     def __init__(self, row):
         self.cdrId = int(get(row, 0))
+        self.termName = get(row, 1)
         self.title = get(row, 2)
-        self.summaryId = get(row, 4)
-        self.summaryTitle = get(row, 5)
-        self.drugId = get(row, 7)
-        self.drugTitle = get(row, 8)
-        self.externalUrl = get(row, 9)
+        self.spanishTitle = get(row, 3)
+        self.summaryId = get(row, 5)
+        self.summaryTitle = get(row, 6)
+        self.drugId = get(row, 8)
+        self.drugTitle = get(row, 9)
+        self.externalUrl = get(row, 10)
+        self.spanishUrl = get(row, 11)
         if self.summaryId:
             self.summaryId = int(self.summaryId)
         if self.drugId:
             self.drugId = int(self.drugId)
     def wanted(self):
-        return self.externalUrl or self.summaryId or self.drugId
+        return (self.externalUrl or self.summaryId or self.drugId or
+                self.spanishUrl)
     def makeRelatedInfoElement(self):
         info = etree.Element("RelatedInformation")
         if self.externalUrl:
             child = makeChildElement("RelatedExternalRef", "xref",
                                      self.externalUrl, self.title, "en")
             info.append(child)
-            spanishUrl = spanishUrls.get(self.externalUrl)
-            if spanishUrl:
-                child = makeChildElement("RelatedExternalRef", "xref",
-                                         spanishUrl, self.title, "es")
-                info.append(child)
+            #spanishUrl = spanishUrls.get(self.externalUrl)
+            #if spanishUrl:
+            #    child = makeChildElement("RelatedExternalRef", "xref",
+            #                             spanishUrl, self.title, "es")
+            #    info.append(child)
+        if self.spanishUrl:
+            child = makeChildElement("RelatedExternalRef", "xref",
+                                     self.spanishUrl, self.spanishTitle, "es")
+            info.append(child)
         if self.summaryId:
-            href = "CDR%010d" % self.summaryId
+            ref = "CDR%010d" % self.summaryId
             title = self.summaryTitle or u""
-            child = makeChildElement("RelatedSummaryRef", "href", href, title,
+            child = makeChildElement("RelatedSummaryRef", "ref", ref, title,
                                      "en")
             info.append(child)
             spanishId, title = spanishSummaries.get(self.summaryId, (None,
                                                                      None))
             if spanishId:
-                href = "CDR%010d" % spanishId
-                child = makeChildElement("RelatedSummaryRef", "href", href,
+                ref = "CDR%010d" % spanishId
+                child = makeChildElement("RelatedSummaryRef", "ref", ref,
                                          title, "es")
                 info.append(child)
         if self.drugId:
@@ -112,13 +120,7 @@ SELECT q.doc_id, q.int_val, a.title
  WHERE path = '/Summary/TranslationOf/@cdr:ref'""")
 for spanishId, englishId, title in cursor.fetchall():
     spanishSummaries[englishId] = (spanishId, title)
-spanishUrls = {}
-book = ExcelReader.Workbook('d:/tmp/spanish-glossary-urls.xls')
-sheet = book[0]
-for row in sheet:
-    english, spanish = [get(row, i) for i in (0, 1)]
-    spanishUrls[english] = spanish
-book = ExcelReader.Workbook('d:/tmp/glossary-links.xls')
+book = ExcelReader.Workbook(r"\\franck\d$\tmp\glossary-links.xls")
 sheet = book[0]
 concepts = {}
 for row in sheet:
