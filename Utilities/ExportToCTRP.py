@@ -1698,6 +1698,7 @@ options:
         return nctId
 
     def __logWrite(self, what):
+        sys.stderr.write("%s\n" % what)
         cdr.logwrite(what, self.__logName)
 
 #----------------------------------------------------------------------
