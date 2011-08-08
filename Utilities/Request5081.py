@@ -45,4 +45,4 @@ for line in sys.stdin:
         UPDATE ctgov_import
            SET disposition = 4
          WHERE nlm_id = ?""", aliasNctId)
-#conn.commit()
+conn.commit()

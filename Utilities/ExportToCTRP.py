@@ -1307,6 +1307,7 @@ class JobControl:
         self.__exported   = []
         self.__suppress   = {}
         self.__nctIds     = {}
+        self.__extraIds   = []
         self.__parseArgs(argv)
         self.__processes  = PostProcess.getDerivedClasses()
 
@@ -1327,7 +1328,7 @@ class JobControl:
         # Find trials in spreadsheet which are published as InScopeProtocols.
         #--------------------------------------------------------------
         book = ExcelReader.Workbook('d:/Inetpub/wwwroot/report4896.xls')
-        trialIds = set()
+        trialIds = set(self.__extraIds)
         trials = {}
         for i in range(2):
             sheet = book[i]
@@ -1336,7 +1337,6 @@ class JobControl:
                     trialIds.add(int(row[0].val))
                 except:
                     continue
-        print "%d IDs extracted from original spreadsheets" % len(trialIds)
         book = ExcelReader.Workbook('d:/Inetpub/wwwroot/CTRP-extras.xls')
         sheet = book[0]
         for row in sheet:
@@ -1345,7 +1345,17 @@ class JobControl:
                     match = re.search(r'\[NCT\d+] CDR(\d+)', row[1].val)
                     if match:
                         trialIds.add(int(match.group(1)))
-        print "%d IDs extracted from all sheets" % len(trialIds)
+        self.__cursor.execute("""\
+SELECT doc_id
+  FROM query_term_pub
+ WHERE path = '/InScopeProtocol/ProtocolSources/ProtocolSource/SourceName'
+   AND value IN ('NCI-CTEP', 'NCI-DCP')""", timeout=300)
+        rows = self.__cursor.fetchall()
+        for row in rows:
+            self.__cursor.execute("""\
+SELECT MIN(dt) FROM audit_trail WHERE document = ?""", row[0], timeout=300)
+            if self.__cursor.fetchall()[0][0] >= '2009-01-01':
+                trialIds.add(row[0])
         for trialId in trialIds:
             self.__cursor.execute("""\
                 SELECT d.doc_version, t.name
@@ -1379,6 +1389,7 @@ class JobControl:
             self.__trials.append(trials[docId])
         self.__logWrite("selected %d candidate trials for export" %
                         len(self.__trials))
+        print "%d candidate trials selected for export" % len(self.__trials)
 
     def processProtocols(self):
         self.__cursor.execute("""\
@@ -1507,10 +1518,9 @@ class JobControl:
     def __parseArgs(self, argv):
         self.__argv = argv
         try:
-            longopts = ["optimize", "debugging",
-                        "verbose", "basedir=", "maxtestdocs=", "since=",
-                        "force=", "force-list="]
-            opts, args = getopt.getopt(argv[1:], "odvs:b:m:f:F:", longopts)
+            longopts = ["debugging", "verbose", "basedir=", "maxtestdocs=",
+                        "id=", "id-list="]
+            opts, args = getopt.getopt(argv[1:], "dvb:m:i:I:", longopts)
         except getopt.GetoptError, e:
             self.__usage()
         for o, a in opts:
@@ -1527,6 +1537,21 @@ class JobControl:
                 try:
                     self.__maxDocs = int(a)
                     self.__logWrite("max docs set to %d" % self.__maxDocs)
+                except:
+                    self.__usage()
+            elif o in ("-i", "--id"):
+                try:
+                    docId = int(a)
+                    self.__extraIds.append(docId)
+                    self.__logWrite("forcing export of CDR%s" % a)
+                except:
+                    self.__usage()
+            elif o in ("-I", "--id-list"):
+                try:
+                    for line in open(a):
+                        docId = int(line.strip())
+                        self.__extraIds.append(docId)
+                        self.__logWrite("forcing export of CDR%s" % a)
                 except:
                     self.__usage()
             else:
