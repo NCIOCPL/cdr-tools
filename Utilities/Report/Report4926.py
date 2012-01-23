@@ -74,8 +74,8 @@ docIds = [row[0] for row in cursor.fetchall()]
 docIds.sort()
 
 alreadyDone = set()
-if len(sys.argv) > 1:
-    book = ExcelReader.Workbook(sys.argv[1])
+for name in sys.argv[1:]:
+    book = ExcelReader.Workbook(name)
     sheet = book[0]
     for row in sheet:
         try:
