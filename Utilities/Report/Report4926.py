@@ -39,6 +39,14 @@ def saveBook(book, name):
     book.write(fp, True)
     fp.close()
 
+def isNewlyPublishable(docId, cursor, cutoff="2012-02-04"):
+    cursor.execute("""\
+SELECT MIN(dt)
+  FROM doc_version
+ WHERE id = ?
+   AND publishable = 'Y'""", docId)
+    return cursor.fetchall()[0][0] >= cutoff
+
 class TermName:
     def __init__(self, node, language):
         self.language = language
@@ -89,6 +97,9 @@ rowNumbers = [2, 2]
 done = 0
 for docId in docIds:
     if docId in alreadyDone:
+        continue
+    # special filter added for the 2012-02-07 run.
+    if isNewlyPublishable(docId, cursor):
         continue
     try:
         doc = TermNameDoc(docId, cursor)
