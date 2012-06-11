@@ -34,6 +34,18 @@ def addDoc(sheet, doc, rowNumber):
             row.addCell(4, name.pronunciation)
     return rowNumber
 
+def getAcronymDocs():
+    book = ExcelReader.Workbook("glossary-acronyms.xls")
+    sheet = book[0]
+    docIds = set()
+    for row in sheet:
+        try:
+            docIds.add(int(row[0].val))
+        except:
+            sys.stderr.write("skipping %s\n" % repr(row[0].val))
+    sys.stderr.write("collected %d acronymn doc IDs\n" % len(docIds))
+    return docIds
+
 def saveBook(book, name):
     fp = open(name, 'wb')
     book.write(fp, True)
@@ -69,6 +81,7 @@ class TermNameDoc:
         for nameNode in tree.findall('TranslatedName'):
             self.names.append(TermName(nameNode, 'Spanish'))
 
+acronymDocIds = getAcronymDocs()
 cursor = cdrdb.connect('CdrGuest').cursor()
 cursor.execute("""\
     SELECT d.id
@@ -99,17 +112,26 @@ for docId in docIds:
     if docId in alreadyDone:
         continue
     # special filter added for the 2012-02-07 run.
-    if isNewlyPublishable(docId, cursor):
-        continue
+    #if isNewlyPublishable(docId, cursor):
+    #    continue
     try:
         doc = TermNameDoc(docId, cursor)
         which = doc.names[0].pronunciation and 1 or 0
         rowNumbers[which] = addDoc(sheets[which], doc, rowNumbers[which])
+        if doc.names[0].pronunciation:
+            alreadyDone.add(docId)
     except Exception, e:
         sys.stderr.write("\nCDR%d: %s\n" % (docId, e))
     finally:
         done += 1
         sys.stderr.write("\rprocessed %d of %d documents" %
                          (done, len(docIds)))
+which = 1
+for docId in acronymDocIds:
+    if docId in alreadyDone:
+        continue
+    doc = TermNameDoc(docId, cursor)
+    rowNumbers[which] = addDoc(sheets[which], doc, rowNumbers[which])
+    alreadyDone.add(docId)
 saveBook(books[0], "B.xls")
 saveBook(books[1], "A.xls")
