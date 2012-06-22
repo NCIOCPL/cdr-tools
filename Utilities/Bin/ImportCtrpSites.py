@@ -12,6 +12,7 @@
 import cdrdb, lxml.etree as etree, cgi, ctrp, cdr, sys, copy
 
 LOGFILE = cdr.DEFAULT_LOGDIR + "/CTRPImport.log"
+TESTING = True
 
 #----------------------------------------------------------------------
 # Object used to track what we do for this import job.
@@ -64,12 +65,15 @@ SELECT disp_id
         self.importedDisposition = self.cursor.fetchall()[0][0]
 
         # Create the job and fetch its ID.
-        self.cursor.execute("""\
+        if not TESTING:
+            self.cursor.execute("""\
 INSERT INTO ctrp_import_job (imported)
      VALUES (GETDATE())""")
-        self.conn.commit()
-        self.cursor.execute("SELECT @@IDENTITY")
-        self.jobId = self.cursor.fetchall()[0][0]
+            self.conn.commit()
+            self.cursor.execute("SELECT @@IDENTITY")
+            self.jobId = self.cursor.fetchall()[0][0]
+        else:
+            self.jobId = 0
 
     #------------------------------------------------------------------
     # Add a row to the ctrp_import_event table for a trial whose site
@@ -77,12 +81,14 @@ INSERT INTO ctrp_import_job (imported)
     # CTGovProtocol document locked.
     #------------------------------------------------------------------
     def recordLockedDoc(self, ctrpId):
+        self.log("Trial '%s' skipped (locked by another user)" % ctrpId)
+        self.locked += 1
+        if TESTING:
+            return
         self.cursor.execute("""\
 INSERT INTO ctrp_import_event (job_id, ctrp_id, locked)
      VALUES (?, ?, 'Y')""", (self.jobId, ctrpId))
         self.conn.commit()
-        self.log("Trial '%s' skipped (locked by another user)" % ctrpId)
-        self.locked += 1
 
     #------------------------------------------------------------------
     # Add a row to the ctrp_import_event table for a trial whose site
@@ -90,12 +96,14 @@ INSERT INTO ctrp_import_event (job_id, ctrp_id, locked)
     # of persons, organizations, countries, and/or political subdivisions.
     #------------------------------------------------------------------
     def recordMappingGaps(self, ctrpId):
+        self.log("Trial '%s' skipped (mapping problems)" % ctrpId)
+        self.failures += 1
+        if TESTING:
+            return
         self.cursor.execute("""\
 INSERT INTO ctrp_import_event (job_id, ctrp_id, mapping_gaps)
      VALUES (?, ?, 'Y')""", (self.jobId, ctrpId))
         self.conn.commit()
-        self.log("Trial '%s' skipped (mapping problems)" % ctrpId)
-        self.failures += 1
 
     #------------------------------------------------------------------
     # Add a row to the ctrp_import_event table for a trial whose site
@@ -103,6 +111,9 @@ INSERT INTO ctrp_import_event (job_id, ctrp_id, mapping_gaps)
     # trial so that it's no longer in the import queue.
     #------------------------------------------------------------------
     def recordImportEvent(self, ctrpId):
+        self.imported += 1
+        if TESTING:
+            return
         self.cursor.execute("""\
 INSERT INTO ctrp_import_event (job_id, ctrp_id)
      VALUES (?, ?)""", (self.jobId, ctrpId))
@@ -111,7 +122,6 @@ UPDATE ctrp_import
    SET disposition = ?
  WHERE ctrp_id = ?""", (self.importedDisposition, ctrpId))
         self.conn.commit()
-        self.imported += 1
 
     #------------------------------------------------------------------
     # Fetch the document for a CTRP trial document from the import table.
@@ -129,7 +139,8 @@ UPDATE ctrp_import
     #------------------------------------------------------------------
     def findMappingProblems(self, doc):
         return ctrp.MappingProblem.findMappingProblems(self.session, doc,
-                                                       self.poIds, self.geoMap)
+                                                       self.poIds, self.geoMap,
+                                                       orgsOnly=True)
 
     #------------------------------------------------------------------
     # Create an entry in the log file for the script, and show the
@@ -138,7 +149,8 @@ UPDATE ctrp_import
     @staticmethod
     def log(what):
         sys.stderr.write("%s\n" % what)
-        cdr.logwrite(what, LOGFILE)
+        if not TESTING:
+            cdr.logwrite(what, LOGFILE)
 
 #----------------------------------------------------------------------
 # Examine the CDR server's response to a request to version a document.
@@ -219,7 +231,9 @@ def updateDocument(job, trial, tree):
             (trial.ctrpId, trial.cdrId))
 
     # Check out the document for changes.
-    docObj = cdr.getDoc(job.session, trial.cdrId, checkout='Y', getObject=True)
+    checkout = TESTING and "N" or "Y"
+    docObj = cdr.getDoc(job.session, trial.cdrId, checkout=checkout,
+                        getObject=True)
     err = cdr.checkErr(docObj)
     if err:
         job.recordLockedDoc(trial.ctrpId)
@@ -249,6 +263,14 @@ def updateDocument(job, trial, tree):
     # but keeping the code clean and simple trumps performance here.
     newCwdXml = merge(cwdXml, infoBlock)
     newPubXml = pubXml and merge(pubXml, infoBlock) or None
+    if TESTING:
+        fp = open("ctrptest-%s-cwd.xml" % trial.cdrId, "wb")
+        fp.write(newCwdXml)
+        fp.close()
+        fp = open("ctrptest-%s-pub.xml" % trial.cdrId, "wb")
+        fp.write(newPubXml)
+        fp.close()
+        return
 
     # If the CWD has been changed since the last version, capture it.
     if compare(verXml, cwdXml):
@@ -292,6 +314,7 @@ def updateDocument(job, trial, tree):
 #----------------------------------------------------------------------
 def main():
 
+    # Temporary code; creates URLs I can paste into Bugzilla for William.
     fp = open("ctrp-urls.txt", "w")
 
     # Initialize the import job, loading the queue of trials to import.
@@ -320,7 +343,8 @@ def main():
             job.log("Trial '%s': %s" % (trial.ctrpId, e))
 
         finally:
-            cdr.unlock(job.session, trial.cdrId)
+            if not TESTING:
+                cdr.unlock(job.session, trial.cdrId)
 
         #if job.imported:
         #    break
@@ -331,4 +355,10 @@ def main():
     fp.close()
 
 if __name__ == "__main__":
-    main()
+    if "--test" not in sys.argv and "--live" not in sys.argv:
+        sys.stderr.write("usage: %s --test|--live\n" % sys.argv[0])
+    else:
+        TESTING = ("--test" in sys.argv)
+        sys.stderr.write("running in %s mode\n" %
+                         (TESTING and "test" or "live"))
+        main()
