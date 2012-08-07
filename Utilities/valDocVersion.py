@@ -36,7 +36,7 @@ if len(sys.argv) > 4:
 if len(sys.argv) > 5:
     host = sys.argv[5]
 if len(sys.argv) > 6:
-    port = sys.argv[6]
+    port = int(sys.argv[6])
 
 # Establish session
 session = cdr.login(userId, passwd, host=host, port=int(port))
