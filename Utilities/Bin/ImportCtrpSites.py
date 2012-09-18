@@ -236,6 +236,7 @@ def updateDocument(job, trial, tree):
                         getObject=True)
     err = cdr.checkErr(docObj)
     if err:
+        print err
         job.recordLockedDoc(trial.ctrpId)
         return
 
@@ -244,7 +245,8 @@ def updateDocument(job, trial, tree):
     infoBlock = protocol.makeInfoBlock(trial.ctrpId)
 
     # Get the XML for the CDR versions of the CTGovProtocol document
-    lastAny, lastPub, isChanged = cdr.lastVersions(job.session, trial.cdrId)
+    cdrId = cdr.normalize(trial.cdrId)
+    lastAny, lastPub, isChanged = cdr.lastVersions(job.session, cdrId)
     cwdXml = docObj.xml
     verXml = pubXml = None
     if lastAny > 0:
@@ -332,22 +334,20 @@ def main():
             if job.findMappingProblems(doc):
                 job.recordMappingGaps(trial.ctrpId)
             else:
-                fp.write("http://franck.nci.nih.gov/cgi-bin/cdr/"
+                fp.write("http://bach.nci.nih.gov/cgi-bin/cdr/"
                          "show-cdr-doc.py?id=%d\n" % trial.cdrId)
-                fp.write("http://franck.nci.nih.gov/cgi-bin/cdr/"
+                fp.write("http://bach.nci.nih.gov/cgi-bin/cdr/"
                          "show-ctrp-doc.py?id=%s\n" % trial.ctrpId)
                 updateDocument(job, trial, doc)
 
         except Exception, e:
             job.failures += 1
             job.log("Trial '%s': %s" % (trial.ctrpId, e))
+            raise
 
         finally:
             if not TESTING:
                 cdr.unlock(job.session, trial.cdrId)
-
-        #if job.imported:
-        #    break
 
     # Log the summary of what we did.
     job.log("Updated %d trials" % job.imported)

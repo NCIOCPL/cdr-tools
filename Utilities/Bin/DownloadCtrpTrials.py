@@ -12,9 +12,9 @@ import cdrdb, lxml.etree as etree, sys, urllib2, zipfile, cdr, os, datetime
 import re
 
 RSS = "CTEPRSS RSS"
-BASE = "https://trials.nci.nih.gov/pa/pdqgetFileByDate.action"
 BASE = "https://trials-qa.nci.nih.gov/pa/pdqgetFileByDate.action"
-LOGFILE = cdr.DEFAULT_LOGDIR + "/DownloadCtrpTrials.log"
+BASE = "https://trials.nci.nih.gov/pa/pdqgetFileByDate.action"
+LOGFILE = cdr.DEFAULT_LOGDIR + "/CTRPDownload.log"
 CTRP = 'CTRP (Clinical Trial Reporting Program)'
 IMPORT = 'import requested'
 
@@ -43,7 +43,7 @@ class TrialID:
 # One of these for each trial document we download from CTRP.
 #----------------------------------------------------------------------
 class Trial:
-    def __init__(self, archive, docName, cursor):
+    def __init__(self, archive, docName, cursor, mappings):
         self.name = docName
         self.owners = set()
         self.ctrpId = self.nctId = self.cdrId = self.lastXml = self.disp = None
@@ -81,6 +81,15 @@ SELECT i.cdr_id, i.doc_xml, d.disp_name
                 self.lastXml = docXml
                 self.disp = disp
             if not self.cdrId:
+                if self.ctrpId in mappings:
+                    cdrId, nctId = mappings[self.ctrpId]
+                    if self.nctId and self.nctId != nctId:
+                        message = ("%s has NCT ID %s; mapping table has %s" %
+                                   (self.ctrpId, self.nctId, nctId))
+                        raise Exception(message)
+                    self.nctId = nctId
+                    self.cdrId = cdrId
+            if not self.cdrId:
                 cdrIds = set()
                 cursor.execute("""\
 SELECT doc_id
@@ -117,7 +126,7 @@ SELECT doc_id
     # corresponding CTGovProtocol document.
     #------------------------------------------------------------------
     def queue(self, cursor, disposition):
-        if self.lastXml:
+        if self.disp:
             cursor.execute("""\
 UPDATE ctrp_import
    SET doc_xml = ?,
@@ -186,6 +195,12 @@ INSERT INTO ctrp_download_job (downloaded, job_filename, job_url)
     # Process the trials in the downloaded archive.  Record the
     # disposition for each one.  Possible dispositions include:
     #
+    # Passed:
+    #    mappings  - dictionary of (cdrId, nctId) tuples, keyed by
+    #                ctrpID, loaded from table of mappings for
+    #                trials already in PDQ at the start of this
+    #                project
+    #
     # out of scope - not maintained by RSS, so we're not interested
     # unmatched    - in scope, but we can't find a corresponding CDR doc
     # new          - in scope, with a match; hasn't been queued before
@@ -194,7 +209,7 @@ INSERT INTO ctrp_download_job (downloaded, job_filename, job_url)
     # failure      - we can't even parse the document to learn more
     #
     #------------------------------------------------------------------
-    def queueTrials(self):
+    def queueTrials(self, mappings):
 
         # Get database IDs for dispositions we'll set.
         self.dispositions = TrialSet.loadDispositions(self.cursor)
@@ -216,7 +231,7 @@ INSERT INTO ctrp_download_job (downloaded, job_filename, job_url)
 
                     # Parse the document.
                     self.processed += 1
-                    trial = Trial(self.archive, docName, self.cursor)
+                    trial = Trial(self.archive, docName, self.cursor, mappings)
 
                     # Determine the trials disposition.
                     if trial.inScope():
@@ -277,7 +292,7 @@ INSERT INTO ctrp_download_job (downloaded, job_filename, job_url)
     def getLastSetDate(cursor):
         cursor.execute("SELECT MAX(job_filename) FROM ctrp_download_job")
         rows = cursor.fetchall()
-        if not rows:
+        if not rows[0][0]:
             return None
         match = re.match(r"CTRP-TRIALS-(\d\d\d\d)-(\d\d)-(\d\d)\.zip",
                          rows[0][0])
@@ -341,6 +356,40 @@ def moveToDownloadDirectory():
     log("CWD: '%s'" % downloadDirectory)
 
 #----------------------------------------------------------------------
+# Load the mapping of IDs for trial documents which were already in
+# PDQ when CTRP took over management of the trials.
+#----------------------------------------------------------------------
+def originalMappings(cursor):
+    cursor.execute("""\
+SELECT m.ctrp_id, m.cdr_id, m.nct_id
+  FROM ctrp_id_mapping m
+  JOIN active_doc a
+    ON a.id = m.cdr_id
+  JOIN doc_type t
+    ON t.id = a.doc_type
+ WHERE t.name = 'CTGovProtocol'""")
+    mappings = {}
+    cdrIds = set()
+    nctIds = set()
+    for ctrpId, cdrId, nctId in cursor.fetchall():
+        if not ctrpId:
+            raise Exception("null CTRP ID")
+        if not cdrId:
+            raise Exception("null CDR ID")
+        if not nctId:
+            raise Exception("null NCT ID")
+        if ctrpId in mappings:
+            raise Exception("duplicate CTRP ID in mapping table: %s" % ctrpId)
+        if cdrId in cdrIds:
+            raise Exception("duplicate CDR ID in mapping table: %s" % cdrId)
+        if nctId in nctIds:
+            raise Exception("duplicate NCT ID in mapping table: %s" % nctId)
+        mappings[ctrpId] = (cdrId, nctId)
+        cdrIds.add(cdrId)
+        nctIds.add(nctId)
+    return mappings
+
+#----------------------------------------------------------------------
 # Walk backwards in time, looking for the most recent trial set
 # available from CTRP.  Unfortunately, they actually told us they
 # were unable to implement a simple service which would tell us
@@ -375,11 +424,12 @@ def main():
     moveToDownloadDirectory()
     conn = cdrdb.connect()
     cursor = conn.cursor()
+    mappings = originalMappings(cursor)
     if len(sys.argv) > 1:
         log("invoked for explicit download of %s" % sys.argv[1])
         try:
             trialSet = TrialSet(sys.argv[1], conn)
-            trialSet.queueTrials()
+            trialSet.queueTrials(mappings)
         except Exception, e:
             log("%s: %s" % (sys.argv[1], e))
     else:
@@ -394,7 +444,7 @@ def main():
         while date > threshold:
             try:
                 trialSet = TrialSet(date, conn)
-                trialSet.queueTrials()
+                trialSet.queueTrials(mappings)
                 return
             except Exception, e:
                 log("%s: %s" % (date, e))
