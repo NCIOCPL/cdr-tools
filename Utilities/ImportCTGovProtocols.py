@@ -5,7 +5,7 @@
 # BZIssue::4667
 # BZIssue::4689
 # BZIssue::4697 (copy citations from transferred InScopeProtocol)
-# BZIssue::4958 (prevent conversion of CTRP trials)
+# BZIssue::4942
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys, xml.sax, re, cdrcgi, xml.dom.minidom, time
@@ -283,6 +283,7 @@ def mergeVersion(newDoc, cdrId, docObject, docVer):
     newDoc = preserveElement('PDQIndexing', newDoc, dom)
     newDoc = preserveElement('PDQAdminInfo', newDoc, dom)
     newDoc = preserveElement('ProtocolProcessingDetails', newDoc, dom)
+    newDoc = preserveElement('CTRPInfo', newDoc, dom)
     newDoc = fixSpecialCategory(newDoc)
     docObject.xml = newDoc
     return str(docObject)
@@ -685,18 +686,6 @@ def isPublishableCtgovProtocolVersion(cdrId, lastPub):
     return cursor.fetchall() and True or False
 
 #----------------------------------------------------------------------
-# Collect IDs for trials to be imported from CTRP, rather than
-# converted to CTGovProtocol documents (see request #4958).
-#----------------------------------------------------------------------
-def collectIdsForCtrpTrials(cursor):
-    cursor.execute("""\
-SELECT doc_id
-  FROM query_term
- WHERE path = '/InScopeProtocol/CTGovOwnershipTransferInfo/ImportTrialFrom'
-   AND value = 'CTRP'""")
-    return set([row[0] for row in cursor.fetchall()])
-
-#----------------------------------------------------------------------
 # Module-scoped data.
 #----------------------------------------------------------------------
 TESTING = len(sys.argv) > 1 and sys.argv[1].upper().startswith('TEST')
@@ -706,7 +695,6 @@ parser  = CTGovHandler(flags)
 spPatt  = re.compile("@@PDQSPONSORSHIP=([^@]*)@@")
 conn    = cdrdb.connect()
 cursor  = conn.cursor()
-ctrpIds = collectIdsForCtrpTrials(cursor)
 session = cdr.login('CTGovImport', '***REMOVED***')
 errors  = cdr.getErrors(session, errorsExpected = False, asSequence = True)
 if errors:
@@ -715,8 +703,6 @@ if errors:
     sys.exit(1)
 cursor.execute("SELECT id FROM ctgov_disposition WHERE name = 'imported'")
 importedDisposition = cursor.fetchall()[0][0]
-cursor.execute("SELECT id FROM ctgov_disposition WHERE name = 'ctrp trial'")
-ctrpDisposition = cursor.fetchall()[0][0]
 cursor.execute("""\
     SELECT c.nlm_id, c.cdr_id
       FROM ctgov_import c
@@ -748,10 +734,6 @@ try:
             if TESTING:
                 print "%d: %s" % (cdrId, docType)
             if docType == 'InScopeProtocol':
-                if cdrId in ctrpIds:
-                    log("not transferring %s; CDR%s is a CTRP trial" %
-                        (nlmId, cdrId))
-                    continue
                 if TESTING:
                     print "SETTING ISTRANSFERRED FLAG"
                     transfersProcessed += 1
