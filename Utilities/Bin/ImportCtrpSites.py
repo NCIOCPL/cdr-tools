@@ -255,10 +255,22 @@ def updateDocument(job, trial, tree):
         else:
             verXml = cwdXml
     if lastPub > 0:
-        if lastPub == lastAny:
-            pubXml = verXml
+        job.cursor.execute("""\
+SELECT t.name
+  FROM doc_type t
+  JOIN doc_version v
+    ON v.doc_type = t.id
+ WHERE v.id = ?
+   AND v.num = ?""", (trial.cdrId, lastPub))
+        docType = job.cursor.fetchall()[0][0]
+        if docType == 'CTGovProtocol':
+            if lastPub == lastAny:
+                pubXml = verXml
+            else:
+                pubXml = getDocXml(job.cursor, trial.cdrId, lastPub)
         else:
-            pubXml = getDocXml(job.cursor, trial.cdrId, lastPub)
+            job.log("Skipping last pub ver (%d) of CDR%d (%s)" %
+                    (lastPub, trial.cdrId, docType))
 
     # Fold the site information into the version(s) to be updated.
     # Could have conditionally optimized away the second call to merge(),
@@ -269,9 +281,10 @@ def updateDocument(job, trial, tree):
         fp = open("ctrptest-%s-cwd.xml" % trial.cdrId, "wb")
         fp.write(newCwdXml)
         fp.close()
-        fp = open("ctrptest-%s-pub.xml" % trial.cdrId, "wb")
-        fp.write(newPubXml)
-        fp.close()
+        if newPubXml:
+            fp = open("ctrptest-%s-pub.xml" % trial.cdrId, "wb")
+            fp.write(newPubXml)
+            fp.close()
         return
 
     # If the CWD has been changed since the last version, capture it.
@@ -343,7 +356,6 @@ def main():
         except Exception, e:
             job.failures += 1
             job.log("Trial '%s': %s" % (trial.ctrpId, e))
-            raise
 
         finally:
             if not TESTING:
