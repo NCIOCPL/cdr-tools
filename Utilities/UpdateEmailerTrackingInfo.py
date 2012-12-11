@@ -9,7 +9,7 @@
 # BZIssue::4977 [fixed indentation bug at bottom of script]
 #
 #----------------------------------------------------------------------
-import xml.dom.minidom, sys, cdr, cdrmailcommon, time
+import xml.dom.minidom, cdr, cdrmailcommon, time, lxml.etree as etree, urllib2
 
 #----------------------------------------------------------------------
 # Logging to mailer-specific logfile.
@@ -19,29 +19,6 @@ def logwrite(what):
     cdr.logwrite(what, cdrmailcommon.LOGFILE)
 
 #----------------------------------------------------------------------
-# Object for a batch of mailers.
-#----------------------------------------------------------------------
-class MailerBatch:
-    def __init__(self, id):
-        self.id      = id
-        self.mailers = {}
-    def updateTrackers(self, conn, cursor, session):
-        failures = 0
-        for key in self.mailers:
-            if not self.mailers[key].updateTracker(session):
-                failures += 1
-        if failures:
-            logwrite("updateTrackers(): batch %s not updated" % self.id)
-        else:
-            logwrite("updateTrackers(): batch %s complete" % self.id)
-            #return True
-            cursor.execute("""\
-                UPDATE emailer_batch
-                   SET updated = NOW()
-                 WHERE recip = %s""", self.id)
-            conn.commit()
-
-#----------------------------------------------------------------------
 # Object for a single document's mailer.
 #----------------------------------------------------------------------
 class Mailer:
@@ -49,13 +26,12 @@ class Mailer:
         self.id                = str(id)
         self.changesCategories = []
     def updateTracker(self, session, date=None):
-        response = cdr.getDoc(session, int(self.id), 'Y', getObject = 1)
+        response = cdr.getDoc(session, int(self.id), 'Y', getObject = True)
         if type(response) in (type(""), type(u"")):
             logwrite("updateTracker(%s): %s" % (self.id, response))
             return False
         if self.alreadyUpdated(response.xml):
             logwrite("updateTracker(%s): already updated" % self.id)
-            #print type(self.id)
             cdr.unlock(session, cdr.normalize(self.id),
                        reason = 'Tracker already updated')
             return True
@@ -140,48 +116,32 @@ class Mailer:
 #----------------------------------------------------------------------
 # Retrieve the tracking information from the emailer's dropbox database.
 #----------------------------------------------------------------------
-#logwrite('UpdateEmailerTrackingInfo')
-conn = cdrmailcommon.emailerConn('dropbox')
-cursor = conn.cursor()
-cursor.execute("""\
-    SELECT d.doc, c.name, b.recip
-      FROM doc_changes_category d
-      JOIN emailer_batch b
-        ON b.recip = d.recip
-      JOIN changes_category c
-        ON c.id = d.category
-     WHERE b.reported IS NOT NULL
-       AND b.updated IS NULL""")
-rows = cursor.fetchall()
-batches = {}
-for doc, category, recip in rows:
-    if not recip in batches:
-        batch = batches[recip] = MailerBatch(recip)
-    else:
-        batch = batches[recip]
-    if doc not in batch.mailers:
-        mailer = batch.mailers[doc] = Mailer(doc)
-    else:
-        mailer = batch.mailers[doc]
-    mailer.changesCategories.append(category)
 session = cdr.login('etracker', '***REMOVED***')
-for key in batches:
-    batches[key].updateTrackers(conn, cursor, session)
 
 #----------------------------------------------------------------------
-# BK 2010-08-30: added support for GP emailers for William (request #4900)
+# Update the row in the emailer server's database table for the mailer
+# to reflect that the mailer response has been recorded in the CDR's
+# tracking document.
 #----------------------------------------------------------------------
-def record(mailerId, date):
+def recordUpdate(mailerId, date):
     data = "mailerId=%s&recorded=%s" % (mailerId, str(date).replace(' ', '+'))
     fp = urllib2.urlopen("%s/recorded-gp.py" % cdr.emailerCgi(), data)
     response = fp.read()
     if not response.startswith('OK'):
-        #print response
         logwrite("mailer %s: %s" % (mailerId, response))
-import lxml.etree as etree, urllib2
+
+#----------------------------------------------------------------------
+# Ask the emailer server to provide us with an XML report showing
+# Genetics Professional mailers which have been completed.
+#----------------------------------------------------------------------
 fp = urllib2.urlopen("%s/completed-gp.py" % cdr.emailerCgi())
 tree = etree.XML(fp.read())
 nodes = [node for node in tree.findall('mailer')]
+
+#----------------------------------------------------------------------
+# For each mailer, update the CDR tracking document for the mailer
+# with information about the response.
+#----------------------------------------------------------------------
 for node in nodes:
     mailer = Mailer(node.get('id'))
     if node.get('completed'):
@@ -198,5 +158,5 @@ for node in nodes:
         date = node.get('expired')
     if date:
         if mailer.updateTracker(session, date):
-            record(mailer.id, date)
+            recordUpdate(mailer.id, date)
 cdr.logout(session)
