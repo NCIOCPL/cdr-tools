@@ -25,10 +25,12 @@ uid	= sys.argv[1]
 pwd  	= sys.argv[2]
 docType = sys.argv[3]
 daysBack= sys.argv[4]
-host    = len(sys.argv) > 5 and sys.argv[5] or cdr.DEFAULT_HOST
+# host    = len(sys.argv) > 5 and sys.argv[5] or cdr.DEFAULT_HOST
+host    = len(sys.argv) > 5 and sys.argv[5] or cdr.h.host['APP'][0]
 port    = len(sys.argv) > 6 and int(sys.argv[6]) or cdr.DEFAULT_PORT
 session = cdr.login(uid, pwd, host=host, port=port)
-conn    = cdrdb.connect('CdrGuest', host)
+# conn    = cdrdb.connect('CdrGuest', host)
+conn    = cdrdb.connect('CdrGuest')
 cursor  = conn.cursor()
 
 cursor.execute("""\

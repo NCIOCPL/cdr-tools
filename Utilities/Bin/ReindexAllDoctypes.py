@@ -15,10 +15,12 @@ if len(sys.argv) < 3:
     sys.exit(1)
 uid	    = sys.argv[1]
 pwd  	= sys.argv[2]
-host    = len(sys.argv) > 3 and sys.argv[3] or cdr.DEFAULT_HOST
+# host    = len(sys.argv) > 3 and sys.argv[3] or cdr.DEFAULT_HOST
+host    = len(sys.argv) > 3 and sys.argv[3] or cdr.h.host['APP'][0]
 port    = len(sys.argv) > 4 and int(sys.argv[4]) or cdr.DEFAULT_PORT
 session = cdr.login(uid, pwd, host=host, port=port)
-conn    = cdrdb.connect('CdrGuest', host)
+# conn    = cdrdb.connect('CdrGuest', host)
+conn    = cdrdb.connect('CdrGuest')
 cursor  = conn.cursor()
 
 cursor.execute("""\
