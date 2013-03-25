@@ -264,7 +264,13 @@ l.write('  %d new studies with Arm/Group information' % len(newTrials))
 machine  = socket.gethostname().split('.')[0]
 server   = '%s.nci.nih.gov' % machine
 sender   = '***REMOVED***'
-subject  = '%s: List of NLM Studies with ArmsOrGroups' % machine.upper()
+if cdr.h.org == 'OCE':
+    subject   = "%s: %s" % (cdr.PUB_NAME.capitalize(),
+                'List of NLM Studies with ArmsOrGroups')
+else:
+    subject   = "%s-%s: %s" %(cdr.h.org, cdr.h.tier,
+                 'List of NLM Studies with ArmsOrGroups')
+
 body     = """\nResult for Directory:
   %s/%s
 
