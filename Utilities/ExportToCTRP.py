@@ -1327,35 +1327,36 @@ class JobControl:
         #--------------------------------------------------------------
         # Find trials in spreadsheet which are published as InScopeProtocols.
         #--------------------------------------------------------------
-        book = ExcelReader.Workbook('d:/Inetpub/wwwroot/report4896.xls')
+        book = ExcelReader.Workbook('d:/cdr/Utilities/report4896.xls')
         trialIds = set(self.__extraIds)
         trials = {}
-        for i in range(2):
-            sheet = book[i]
+        if not trialIds:
+            for i in range(2):
+                sheet = book[i]
+                for row in sheet:
+                    try:
+                        trialIds.add(int(row[0].val))
+                    except:
+                        continue
+            book = ExcelReader.Workbook('d:/cdr/Utilities/CTRP-extras.xls')
+            sheet = book[0]
             for row in sheet:
-                try:
-                    trialIds.add(int(row[0].val))
-                except:
-                    continue
-        book = ExcelReader.Workbook('d:/Inetpub/wwwroot/CTRP-extras.xls')
-        sheet = book[0]
-        for row in sheet:
-            if row[2].val == 'Yes':
-                if not 'is a CTGovProtocol document' in row[1].val:
-                    match = re.search(r'\[NCT\d+] CDR(\d+)', row[1].val)
-                    if match:
-                        trialIds.add(int(match.group(1)))
-        self.__cursor.execute("""\
-SELECT doc_id
-  FROM query_term_pub
- WHERE path = '/InScopeProtocol/ProtocolSources/ProtocolSource/SourceName'
-   AND value IN ('NCI-CTEP', 'NCI-DCP')""", timeout=300)
-        rows = self.__cursor.fetchall()
-        for row in rows:
+                if row[2].val == 'Yes':
+                    if not 'is a CTGovProtocol document' in row[1].val:
+                        match = re.search(r'\[NCT\d+] CDR(\d+)', row[1].val)
+                        if match:
+                            trialIds.add(int(match.group(1)))
             self.__cursor.execute("""\
-SELECT MIN(dt) FROM audit_trail WHERE document = ?""", row[0], timeout=300)
-            if self.__cursor.fetchall()[0][0] >= '2009-01-01':
-                trialIds.add(row[0])
+    SELECT doc_id
+      FROM query_term_pub
+     WHERE path = '/InScopeProtocol/ProtocolSources/ProtocolSource/SourceName'
+       AND value IN ('NCI-CTEP', 'NCI-DCP')""", timeout=300)
+            rows = self.__cursor.fetchall()
+            for row in rows:
+                self.__cursor.execute("""\
+    SELECT MIN(dt) FROM audit_trail WHERE document = ?""", row[0], timeout=300)
+                if self.__cursor.fetchall()[0][0] >= '2009-01-01':
+                    trialIds.add(row[0])
         for trialId in trialIds:
             self.__cursor.execute("""\
                 SELECT d.doc_version, t.name
@@ -1551,7 +1552,7 @@ SELECT MIN(dt) FROM audit_trail WHERE document = ?""", row[0], timeout=300)
                     for line in open(a):
                         docId = int(line.strip())
                         self.__extraIds.append(docId)
-                        self.__logWrite("forcing export of CDR%s" % a)
+                        self.__logWrite("forcing export of CDR%s" % docId)
                 except:
                     self.__usage()
             else:
@@ -1596,10 +1597,14 @@ options:
     -v                  show progress
     -b P                create new output directory as child of base path P
     -m N                maximum number of docs to process (for testing)
+    -i I                force export of document with CDR ID I
+    -I L                force export of documents whose IDs are in file L
     --debugging         turn on debugging
     --verbose           show progress
     --basedir=P         create new output directory as child of base path P
     --maxtestdocs=N     maximum number of docs to process (for testing)
+    --id I              force export of document with CDR ID I
+    --id-list L         force export of documents whose IDs are in file L
     --usage             print this message
 
   * Default base directory for output is %s
