@@ -537,7 +537,7 @@ def fixPdqSponsorship(doc):
 #----------------------------------------------------------------------
 transferredTrialScript = """\
 <?xml version='1.0' encoding='UTF-8'?>
-<xsl:transform                version = '1.0' 
+<xsl:transform                version = '1.0'
                             xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                             xmlns:cdr = 'cips.nci.nih.gov/cdr'>
  <xsl:output                   method = 'xml'/>
@@ -686,6 +686,19 @@ def isPublishableCtgovProtocolVersion(cdrId, lastPub):
     return cursor.fetchall() and True or False
 
 #----------------------------------------------------------------------
+# Determine whether we have CTRP site information in the CTGovProtocol
+# document.  If we do, we can drop the NLM location elements.
+#----------------------------------------------------------------------
+def hasCtrpSites(docId):
+    cursor.execute("""\
+SELECT COUNT(*)
+  FROM query_term
+ WHERE path = '/CTGovProtocol/CTRPInfo/CTRPLocation/CTRPFacility' +
+              '/PDQOrganization/@cdr:ref'
+   AND doc_id = ?""", docId)
+    return cursor.fetchall()[0][0]
+
+#----------------------------------------------------------------------
 # Module-scoped data.
 #----------------------------------------------------------------------
 TESTING = len(sys.argv) > 1 and sys.argv[1].upper().startswith('TEST')
@@ -742,6 +755,7 @@ try:
         doc = cursor.fetchone()[0].encode('utf-8')
         parms = [['newDoc', cdrId and 'N' or 'Y'],
                  ['newlyTransferredDoc', flags.isTransferred and 'Y' or 'N'],
+                 ['hasCtrpSites', hasCtrpSites(cdrId) and "Y" or "N"],
                  ['importDateTime', time.strftime("%Y-%m-%dT%H:%M:%S")]]
         resp = cdr.filterDoc('guest', ['name:Import CTGovProtocol'], doc = doc,
                              parm = parms)
@@ -813,7 +827,7 @@ try:
                 cdr.unlock(session, "CDR%d" % cdrId,
                            reason = 'ImportCTGovProtocols: '
                                     'Unlocking transferred CTGovProtocol doc')
-                
+
         #------------------------------------------------------------------
         # Merge changes into existing doc.
         #------------------------------------------------------------------
