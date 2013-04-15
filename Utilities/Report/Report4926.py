@@ -7,7 +7,7 @@
 # BZIssue::4926
 #
 #----------------------------------------------------------------------
-import ExcelReader, ExcelWriter, lxml.etree as etree, cdrdb, sys
+import ExcelReader, ExcelWriter, lxml.etree as etree, cdrdb, sys, glob, time
 
 def makeBook(name):
     book = ExcelWriter.Workbook()
@@ -33,18 +33,6 @@ def addDoc(sheet, doc, rowNumber):
         if name.pronunciation:
             row.addCell(4, name.pronunciation)
     return rowNumber
-
-def getAcronymDocs():
-    book = ExcelReader.Workbook("glossary-acronyms.xls")
-    sheet = book[0]
-    docIds = set()
-    for row in sheet:
-        try:
-            docIds.add(int(row[0].val))
-        except:
-            sys.stderr.write("skipping %s\n" % repr(row[0].val))
-    sys.stderr.write("collected %d acronymn doc IDs\n" % len(docIds))
-    return docIds
 
 def saveBook(book, name):
     fp = open(name, 'wb')
@@ -81,7 +69,6 @@ class TermNameDoc:
         for nameNode in tree.findall('TranslatedName'):
             self.names.append(TermName(nameNode, 'Spanish'))
 
-acronymDocIds = getAcronymDocs()
 cursor = cdrdb.connect('CdrGuest').cursor()
 cursor.execute("""\
     SELECT d.id
@@ -95,43 +82,40 @@ docIds = [row[0] for row in cursor.fetchall()]
 docIds.sort()
 
 alreadyDone = set()
-for name in sys.argv[1:]:
+names = glob.glob("SpreadsheetsForVanessa/Report4926-20*.xls")
+for name in names:
+    count = 0
     book = ExcelReader.Workbook(name)
     sheet = book[0]
     for row in sheet:
         try:
             alreadyDone.add(int(row[0].val))
+            count += 1
         except:
             print "skipping %s" % (row[0].val)
-    print "collected %d IDs for documents already done" % len(alreadyDone)
-books = [makeBook("B"), makeBook("A")]
-sheets = [book.sheets[0] for book in books]
-rowNumbers = [2, 2]
+    print "collected %d IDs from %s" % (count, name)
+print "collected %d IDs for documents " % len(alreadyDone)
+book = makeBook("A")
+sheet = book.sheets[0]
+rowNumber = 2
 done = 0
+added = 0
 for docId in docIds:
     if docId in alreadyDone:
         continue
-    # special filter added for the 2012-02-07 run.
-    #if isNewlyPublishable(docId, cursor):
-    #    continue
     try:
         doc = TermNameDoc(docId, cursor)
-        which = doc.names[0].pronunciation and 1 or 0
-        rowNumbers[which] = addDoc(sheets[which], doc, rowNumbers[which])
         if doc.names[0].pronunciation:
+            rowNumber = addDoc(sheet, doc, rowNumber)
             alreadyDone.add(docId)
+            added += 1
     except Exception, e:
         sys.stderr.write("\nCDR%d: %s\n" % (docId, e))
     finally:
         done += 1
         sys.stderr.write("\rprocessed %d of %d documents" %
                          (done, len(docIds)))
-which = 1
-for docId in acronymDocIds:
-    if docId in alreadyDone:
-        continue
-    doc = TermNameDoc(docId, cursor)
-    rowNumbers[which] = addDoc(sheets[which], doc, rowNumbers[which])
-    alreadyDone.add(docId)
-saveBook(books[0], "B.xls")
-saveBook(books[1], "A.xls")
+now = time.strftime("%Y%m%d")
+name = "SpreadsheetsForVanessa/Report4926-%s.xls" % now
+saveBook(book, name)
+print "\nsaved %d terms in %s" % (added, name)
