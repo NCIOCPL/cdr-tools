@@ -16,7 +16,7 @@ import sys, cdrdb, ModifyDocs
 class Transform:
     def getDocIds(self):
         cursor = cdrdb.connect("CdrGuest").cursor()
-        cursor.execute("SELECT id FROM xctrp_info_placeholder")
+        cursor.execute("SELECT id FROM xctrp_info_placeholder2")
         return [row[0] for row in cursor.fetchall()]
 
     def run(self, docObj):
