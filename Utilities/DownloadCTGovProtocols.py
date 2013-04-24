@@ -629,7 +629,7 @@ else:
     conditions = ['cancer', 'lymphedema', 'myelodysplastic syndromes',
                   'neutropenia', 'aspergillosis', 'mucositis']
     diseases = ['cancer', 'neoplasm']
-    sponsor = "(National Cancer Institute) [SPONSOR]"
+    sponsor = "(National Cancer Institute) [SPONSOR-COLLABORATORS]"
     conditions = "(%s) [CONDITION]" % " OR ".join(conditions)
     diseases = "(%s) [DISEASE]" % " OR ".join(diseases)
     params = "%s OR %s OR %s&studyxml=true" % (conditions, diseases, sponsor)
