@@ -5,7 +5,6 @@
 # Software to export trial data to the Office of Science Policy for
 # display on the Executive Dashboard.
 #
-# $Log: not supported by cvs2svn $
 #----------------------------------------------------------------------
 import cdr, cdrdb, cPickle, sys, time, xml.dom.minidom, re, xml.sax.saxutils
 
@@ -75,15 +74,6 @@ def loadInterventionTerms(fileName = None):
     if fileName:
         bytes = open(fileName, 'rb').read()
         return cPickle.loads(bytes)
-##     cursor.execute("""\
-##         SELECT doc_id, value
-##           FROM query_term
-##          WHERE path = '/Term/PreferredName'
-##            AND value IN ('Biological therapy',
-##                          'Chemotherapy',
-##                          'Hormone therapy',
-##                          'Radiation therapy',
-##                          'Surgery')""")
     cursor.execute("""\
          SELECT t.doc_id, d.value
            FROM query_term t
@@ -102,53 +92,12 @@ def loadInterventionTerms(fileName = None):
                 terms[childId].append(name)
             else:
                 terms[childId] = [name]
-    #bytes = cPickle.dumps(terms)
-    #fp = open('cancer-interventions.dump', 'wb')
-    #fp.write(bytes)
-    #fp.close()
     return terms
 
 def loadCancerTerms(fileName = None):
     if fileName:
         bytes = open(fileName, 'rb').read()
         return cPickle.loads(bytes)
-##     cursor.execute("""\
-##         SELECT doc_id, value
-##           FROM query_term
-##          WHERE path = '/Term/PreferredName'
-##            AND value IN (
-##                'Bladder cancer',
-##                'Breast cancer',
-##                'Brain and central nervous system tumors',
-##                'Cervical cancer',
-##                'Colorectal cancer',
-##                'Endometrial cancer',
-##                'Esophageal cancer',
-##                'Head and neck cancer',
-##                'Kaposi''s sarcoma',
-##                'Kidney cancer',
-##                'Leukemia',
-##                'Liver cancer',
-##                'Lung cancer',
-##                'Lymphoma',
-##                'Melanoma (skin)',
-##                'Multiple myeloma and plasma cell neoplasm',
-##                'Ovarian cancer',
-##                'Pancreatic cancer',
-##                'Prostate cancer',
-##                'Non-melanomatous skin cancer')""")
-##     cursor.execute("""\
-##          SELECT t.doc_id, n.value, d.value
-##            FROM query_term t
-##            JOIN query_term n
-##              ON n.doc_id = t.doc_id
-## LEFT OUTER JOIN query_term d
-##              ON d.doc_id = t.doc_id
-##             AND LEFT(d.node_loc, 8) = LEFT(t.node_loc, 8)
-##           WHERE t.path = '/Term/MenuInformation/MenuItem/MenuType'
-##             AND n.path = '/Term/PreferredName'
-##             AND d.path = '/Term/MenuInformation/MenuItem/DisplayName'
-##             AND t.value = 'Key cancer type'""")
     cursor.execute("""\
          SELECT t.doc_id, d.value
            FROM query_term t
@@ -161,16 +110,11 @@ def loadCancerTerms(fileName = None):
     rows = cursor.fetchall()
     terms = {}
     for docId, name in rows:
-        # name = name.capitalize()
         for childId in getChildrenOf(docId):
             if childId in terms:
                 terms[childId].append(name)
             else:
                 terms[childId] = [name]
-    #bytes = cPickle.dumps(terms)
-    #fp = open('cancer-terms.dump', 'wb')
-    #fp.write(bytes)
-    #fp.close()
     return terms
 
 #----------------------------------------------------------------------
@@ -237,7 +181,6 @@ class LeadOrg:
                             self.statuses.append(Status(name, date))
             elif child.nodeName == "LeadOrganizationID":
                 if child.getAttribute("cdr:ref") == ccrId:
-                    #sys.stderr.write("found CCR protocol\n")
                     self.isCCR = True
         self.statuses.sort(lambda a, b: cmp(a.startDate, b.startDate))
         for i in range(len(self.statuses)):
@@ -484,11 +427,8 @@ class Protocol:
             year += 1
                 
     def getStatusForDate(self, date):
-        #sys.stderr.write("date=%s\n" % date)
         status = None
         for s in self.statuses:
-            #sys.stderr.write("s.startDate=%s\n" % s.startDate)
-            #sys.stderr.write("s.endDate=%s\n" % s.endDate)
             if s.startDate > date:
                 return status
             if s.startDate <= date and s.endDate >= date:
@@ -625,26 +565,16 @@ for row in rows:
         break
 lines.append(u"</Trials>\n")
 name = time.strftime("ospa-%Y%m%d.xml")
+zipName = time.strftime("ospa-%Y%m%d.zip")
 xmlFile = file(name, 'w')
-xmlFilewrite((u"\n".join(lines)).encode('utf-8'))
+xmlFile.write((u"\n".join(lines)).encode('utf-8'))
 xmlFile.close()
-
-## def writeValues(f, name, dict):
-##     keys = dict.keys()
-##     keys.sort()
-##     f.write('FOUND %s\n' % name)
-##     for k in keys:
-##         f.write("\t%s\n" % k)
-##     f.write('\n')
-
-## f = open('ospa-found-values.txt', 'w')
-## f.write("%d trials parsed\n" % numParsed)
-## f.write("%d trials exported\n" % numTrials)
-## writeValues(f, 'INTERVENTIONS', foundInterventions)
-## writeValues(f, 'TRIAL TYPES', foundTrialTypes)
-## writeValues(f, 'APPROVALS', foundApprovals)
-## writeValues(f, 'STATUSES', foundStatuses)
-## writeValues(f, 'PHASES', foundPhases)
-## writeValues(f, 'OTHER CANCER TYPES', otherCancerTypes)
-## writeValues(f, 'OTHER INTERVENTION TYPES', otherInterventionTypes)
-## f.close()
+result = cdr.runCommand("zip -m %s %s" % (zipName, name))
+if not result.code:
+    result = cdr.runCommand("python Push2Ftp.py %s osp" % zipName)
+    if result.code:
+        raise Exception("Push2Ftp: code=%s output=%s" %
+                        (result.code, result.output))
+else:
+    raise Exception("zip: code=%s output=%s" %
+                    (result.code, result.output))
