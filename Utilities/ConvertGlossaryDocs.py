@@ -9,11 +9,6 @@
 #
 # Information about the data conversion has been discussed in issue 3120.
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2008/08/25 16:00:30  bkline
-# Program to create GlossaryTermConcept and GlossaryTermName documents
-# from the GlossaryTerm documents.
-#
 #----------------------------------------------------------------------
 import cdr, cdrdb, xml.dom.minidom, cPickle, sys, getopt, time, difflib, re, os
 import cgi
