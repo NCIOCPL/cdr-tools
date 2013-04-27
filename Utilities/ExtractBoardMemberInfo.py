@@ -18,9 +18,7 @@
 #   <BoardMembershipDetails>....
 #  </PDQBoardMemberInfo>
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2004/03/04 15:30:08  bkline
-# Utility to populate new PDQBoardMemberInfo documents (issue #1044).
+# BZIssue::1044
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys
@@ -81,9 +79,6 @@ for id, board, path, cipsContact in cursor.fetchall():
     else:
         boardMember = boardMembers[id]
     boardMember.boards.append(Board(board, path))
-##     print "CDR010%d\tCDR010%d\t%s" % (row[0],
-##                                       row[1],
-##                                       mapBoardType(row[2]))
 for id in boardMembers:
     memb = boardMembers[id]
     doc  = u"""\
@@ -116,11 +111,6 @@ for id in boardMembers:
     doc += """\
 </PDQBoardMemberInfo>
 """
-    #name = "BoardMember-%d.xml" % id
-    #file = open(name, "w")
-    #file.write(doc)
-    #file.close()
-    #print name
     response = cdr.addDoc(session, doc = wrapDoc(doc),
                           comment = 'Generated from Person document')
     errors = cdr.getErrors(response, errorsExpected = 0, asSequence = 1)
