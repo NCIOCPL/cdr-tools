@@ -10,6 +10,7 @@
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys, xml.sax, re, cdrcgi, xml.dom.minidom, time
 etree = cdr.importEtree()
+nlmSitesDropped = 0
 
 #----------------------------------------------------------------------
 # Determine whether the clinical center at the main NIH campus is
@@ -690,13 +691,20 @@ def isPublishableCtgovProtocolVersion(cdrId, lastPub):
 # document.  If we do, we can drop the NLM location elements.
 #----------------------------------------------------------------------
 def hasCtrpSites(docId):
+    global nlmSitesDropped
+    if not docId:
+        return 0
     cursor.execute("""\
 SELECT COUNT(*)
   FROM query_term
  WHERE path = '/CTGovProtocol/CTRPInfo/CTRPLocation/CTRPFacility' +
               '/PDQOrganization/@cdr:ref'
    AND doc_id = ?""", docId)
-    return cursor.fetchall()[0][0]
+    count = cursor.fetchall()[0][0]
+    if count > 0:
+        log("CDR%s has CTRP sites; dropping NLM sites" % docId)
+        nlmSitesDropped += 1
+    return count
 
 #----------------------------------------------------------------------
 # Module-scoped data.
@@ -736,10 +744,10 @@ try:
     for nlmId, cdrId in rows:
         flags.clear()
         if TESTING:
-            if processed >= 10:
+            if processed >= 10 and nlmSitesDropped > 0:
                 break
             processed += 1
-            if transfersProcessed > 0:
+            if transfersProcessed > 0 and nlmSitesDropped > 0:
                 break
             print nlmId, cdrId
         if cdrId:
