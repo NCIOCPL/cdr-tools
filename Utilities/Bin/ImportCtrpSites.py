@@ -329,9 +329,6 @@ SELECT t.name
 #----------------------------------------------------------------------
 def main():
 
-    # Temporary code; creates URLs I can paste into Bugzilla for William.
-    fp = open("ctrp-urls.txt", "w")
-
     # Initialize the import job, loading the queue of trials to import.
     job = ImportJob()
 
