@@ -42,9 +42,6 @@ class Mailer:
             return False
         response.xml = newDoc
         doc = str(response)
-        file = open("tracker/tracker-%s.xml" % self.id, "w")
-        file.write(doc)
-        file.close()
         cmt = "Automatic update of electronic mailer tracking document"
         response = cdr.repDoc(session, doc = doc, comment = cmt,
                               checkIn = 'Y', val = 'Y', reason = cmt,
