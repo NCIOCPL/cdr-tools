@@ -15,13 +15,6 @@
 #
 # See the more extensive comments in RunCdrCommands.py
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.2  2002/09/29 14:45:56  bkline
-# Added --guestonly option.
-#
-# Revision 1.1  2002/09/29 14:15:21  bkline
-# Tools for extracting and running commands from the CDR command log.
-#
 #----------------------------------------------------------------------
 import cdrdb, re, sys, time
 
@@ -39,9 +32,14 @@ def usage():
 # Parse the command-line arguments.
 #----------------------------------------------------------------------
 nextArg = 1
-guestOnly = 0
-if len(sys.argv) > nextArg and sys.argv[1] == "--guestonly":
-    guestOnly = 1
+guestOnly = False
+useArchive = False
+while len(sys.argv) > nextArg and sys.argv[nextArg] in ("--guestonly",
+                                                        "--archives"):
+    if sys.argv[nextArg] == "--guestonly":
+        guestOnly = True
+    else:
+        useArchive = True
     nextArg += 1
 if len(sys.argv) <= nextArg:
     usage()
@@ -73,13 +71,21 @@ def decode(xml):
 #----------------------------------------------------------------------
 # Get the rows from the command log.
 #----------------------------------------------------------------------
-conn = cdrdb.connect()
+if useArchive:
+    db = 'cdrArchive'
+    table = 'command_log_history'
+else:
+    db = 'cdr'
+    table = 'command_log'
+sys.stderr.write("db=%s startTime=%s endTime=%s guestOnly=%s\n" %
+                 (db, startTime, endTime, guestOnly))
+conn = cdrdb.connect(db = db)
 cursor = conn.cursor()
 cursor.execute("""\
         SELECT command, thread, received
-          FROM command_log
+          FROM %s
          WHERE received BETWEEN '%s' AND '%s'
-      ORDER BY received""" % (startTime, endTime))
+      ORDER BY received""" % (table, startTime, endTime))
 row = cursor.fetchone()
 
 #----------------------------------------------------------------------
