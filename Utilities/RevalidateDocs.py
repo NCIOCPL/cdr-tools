@@ -5,27 +5,6 @@
 #
 # $Id$
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.7  2007/02/02 01:21:14  ameyer
-# Added --noblocked option.
-# Ordered output by doctype name, cdr id.
-#
-# Revision 1.6  2007/01/30 23:51:06  ameyer
-# Added logging of command line parameters.
-#
-# Revision 1.5  2007/01/30 21:50:13  ameyer
-# Added counter for number of docs of each type, displayed at end.
-#
-# Revision 1.4  2007/01/26 04:29:27  ameyer
-# Added summary of errors by doctype.
-#
-# Revision 1.3  2007/01/26 04:06:52  ameyer
-# Added new parameters.
-# Beefed up logging, now always goes to a file.
-# Allow more than one specific doctypes to be requested, or specific ones
-# to be excluded.
-#
-#
 ####################################################################
 
 import sys, getopt, time, cdr, cdrdb
@@ -274,8 +253,20 @@ for rowDocId, rowDocType in rows:
         errMsgs = cdr.getErrors (resp, 0)
         if len(errMsgs):
 
+            # Was the CWD we validated publishable?
+            lastVers = cdr.lastVersions(session, rowDocId, host, port)
+            if (len(lastVers) == 1):
+                raise Exception("lastVersions error=%s" % lastVers)
+
+            # last version, last pub version, last version == CWD
+            if (lastVers[0] == lastVers[1]) and lastVers[2] == 'N':
+                isPub = " - is publishable!"
+            else:
+                isPub = ''
+
             # Output info
-            log.write("%s: %d:\n%s\n---" % (rowDocType, rowDocId, errMsgs))
+            log.write("%s: %d%s:\n%s\n---" %
+                      (rowDocType, rowDocId, isPub, errMsgs))
             errCount += 1
 
             # Count by doc type
