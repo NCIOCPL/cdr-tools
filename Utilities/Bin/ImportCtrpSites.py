@@ -344,10 +344,6 @@ def main():
             if job.findMappingProblems(doc):
                 job.recordMappingGaps(trial.ctrpId)
             else:
-                fp.write("http://bach.nci.nih.gov/cgi-bin/cdr/"
-                         "show-cdr-doc.py?id=%d\n" % trial.cdrId)
-                fp.write("http://bach.nci.nih.gov/cgi-bin/cdr/"
-                         "show-ctrp-doc.py?id=%s\n" % trial.ctrpId)
                 updateDocument(job, trial, doc)
 
         except Exception, e:
@@ -361,7 +357,6 @@ def main():
     # Log the summary of what we did.
     job.log("Updated %d trials" % job.imported)
     job.log("Skipped %d trials" % (job.failures + job.locked))
-    fp.close()
 
 if __name__ == "__main__":
     if "--test" not in sys.argv and "--live" not in sys.argv:
