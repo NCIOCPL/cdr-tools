@@ -12,6 +12,16 @@
 import xml.dom.minidom, cdr, cdrmailcommon, time, lxml.etree as etree, urllib2
 
 #----------------------------------------------------------------------
+# Get the host name used by the CDR Windows server to talk to the
+# emailers Linux server.  Some CDR servers in the OCE environment
+# won't have cdr.h yet.
+#----------------------------------------------------------------------
+try:
+    EMAILERSWEB = "https://%s.%s/cgi-bin" % tuple(cdr.h.host["EMAILERSWEB"])
+except:
+    EMAILERSWEB = cdr.emailerCgi()
+
+#----------------------------------------------------------------------
 # Logging to mailer-specific logfile.
 #----------------------------------------------------------------------
 def logwrite(what):
@@ -122,7 +132,7 @@ session = cdr.login('etracker', '***REMOVED***')
 #----------------------------------------------------------------------
 def recordUpdate(mailerId, date):
     data = "mailerId=%s&recorded=%s" % (mailerId, str(date).replace(' ', '+'))
-    fp = urllib2.urlopen("%s/recorded-gp.py" % cdr.emailerCgi(), data)
+    fp = urllib2.urlopen("%s/recorded-gp.py" % EMAILERSWEB, data)
     response = fp.read()
     if not response.startswith('OK'):
         logwrite("mailer %s: %s" % (mailerId, response))
@@ -131,7 +141,7 @@ def recordUpdate(mailerId, date):
 # Ask the emailer server to provide us with an XML report showing
 # Genetics Professional mailers which have been completed.
 #----------------------------------------------------------------------
-fp = urllib2.urlopen("%s/completed-gp.py" % cdr.emailerCgi())
+fp = urllib2.urlopen("%s/completed-gp.py" % EMAILERSWEB)
 tree = etree.XML(fp.read())
 nodes = [node for node in tree.findall('mailer')]
 
