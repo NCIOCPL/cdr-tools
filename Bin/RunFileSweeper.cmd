@@ -1,3 +1,3 @@
 d:
-cd \cdr\Utilities
+cd \cdr\Utilities\bin
 python FileSweeper.py FileSweeper.cfg
