@@ -7,7 +7,7 @@
 # Parameters:
 #   UserID, password, mode ('test' or 'live'), maxDocs
 #
-# BZIssue::5029
+# BZIssue::5290
 #
 #                                           Alan Meyer
 #                                           May, 2013
@@ -200,4 +200,3 @@ For example, the following maxDocs transforms 50 docs per run:
         sys.exit(1)
     except:
         sys.stderr.write("An exception occurred")
-
