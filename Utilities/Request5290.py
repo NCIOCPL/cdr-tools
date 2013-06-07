@@ -91,6 +91,20 @@ class OneOffGlobal:
             # Return unchanged XML.  ModifyDocs will not store it
             return ptDocObject.xml
 
+        # Get the language, we'll check for correspondence with HP
+        langElems = ptRoot.xpath("/Summary/SummaryMetaData/SummaryLanguage")
+        if not langElems:
+            # This is required
+            self.log(ptDocObject.id, None,
+                     "PatientSummary has no SummaryLanguage element")
+            return ptDocObject.xml
+        else:
+            ptLanguage = langElems[0].text
+            if not ptLanguage:
+                self.log(ptDocObject.id, None,
+                    "Patient Summary has SummaryLanguage element, but no text")
+                return ptDocObject.xml
+
         # Locate the corresponding HP Summary
         hpRef = ptRoot.xpath('/Summary/PatientVersionOf')
         if not hpRef:
@@ -126,6 +140,25 @@ class OneOffGlobal:
             self.log(ptDocObject.id, hpDocObject.id,
                 "HP Summary has PurposeText element, but no text")
             return ptDocObject.xml
+
+        # Get the language
+        langElems = hpRoot.xpath("/Summary/SummaryMetaData/SummaryLanguage")
+        if not langElems:
+            self.log(ptDocObject.id, hpDocObject.id,
+                     "HP Summary has no SummaryLanguage element")
+        else:
+            hpLanguage = langElems[0].text
+            if not hpLanguage:
+                self.log(ptDocObject.id, hpDocObject.id,
+                    "HP Summary has SummaryLanguage element, but no text")
+                return ptDocObject.xml
+
+        # Do the languages match?  This is a common error
+        if ptLanguage != hpLanguage:
+                self.log(ptDocObject.id, hpDocObject.id,
+                    "Patient language=%s but HP language=%s"
+                    % (ptLanguage, hpLanguage))
+                return ptDocObject.xml
 
         # Create an element to put into the PtSummary
         ptPurposeText = lx.Element("PurposeText")
