@@ -10,11 +10,11 @@
 import os, sys, xml.dom.minidom, cdr, cdrdb, re, socket, cdrcgi, getopt, time
 import xml.sax.saxutils, cdrdocobject, ExcelReader
 
-OUTPUTBASE         = "d:/tmp"
+OUTPUTBASE         = cdr.BASEDIR + "/tmp"
 COLLECTION_NAME    = "study_collection.xml"
 LOGNAME            = "clinical_trials.log"
 TARNAME            = "clinical_trials.tar.bz2"
-TARCMD             = "d:\\cygwin\\bin\\tar.exe"
+TARCMD             = cdr.WORK_DRIVE + ":\\cygwin\\bin\\tar.exe"
 BLOCKPATH          = "/InScopeProtocol/BlockedFromCTGov"
 INTERVENTIONS      = "@@INTERVENTIONS-START@@(.*)@@INTERVENTIONS-END@@"
 STUDY_DESIGN       = "@@STUDY-DESIGN-START@@(.*)@@STUDY-DESIGN-END@@"
@@ -1291,7 +1291,7 @@ class JobControl:
     __nonDigitsPattern = re.compile(NON_DIGITS)
     __statusPattern    = re.compile(STATUS)
     __verifPattern     = re.compile(VERIFICATION_DATE)
-    __conn             = cdrdb.connect()
+    __conn             = cdrdb.connect('CdrGuest')
     __cursor           = __conn.cursor()
 
     def __init__(self, argv):
@@ -1327,7 +1327,7 @@ class JobControl:
         #--------------------------------------------------------------
         # Find trials in spreadsheet which are published as InScopeProtocols.
         #--------------------------------------------------------------
-        book = ExcelReader.Workbook('d:/cdr/Utilities/report4896.xls')
+        book = ExcelReader.Workbook('report4896.xls')
         trialIds = set(self.__extraIds)
         trials = {}
         if not trialIds:
@@ -1338,7 +1338,7 @@ class JobControl:
                         trialIds.add(int(row[0].val))
                     except:
                         continue
-            book = ExcelReader.Workbook('d:/cdr/Utilities/CTRP-extras.xls')
+            book = ExcelReader.Workbook('CTRP-extras.xls')
             sheet = book[0]
             for row in sheet:
                 if row[2].val == 'Yes':
@@ -1488,7 +1488,7 @@ class JobControl:
             ver = docVersion and ("version %d" % docVersion) or "CWD"
             raise Exception("Unable to find %s for CDR%d\n", (ver, docId))
         docXml = rows[0][0].encode('utf-8')
-        name = "d:/tmp/CDR%d-%d.xml" % (docId, docVersion or 0)
+        name = cdr.WORK_DRIVE + ":/tmp/CDR%d-%d.xml" % (docId, docVersion or 0)
         return xml.dom.minidom.parseString(docXml)
 
     @classmethod
