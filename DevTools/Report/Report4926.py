@@ -7,36 +7,33 @@
 # BZIssue::4926
 #
 #----------------------------------------------------------------------
-import ExcelReader, ExcelWriter, lxml.etree as etree, cdrdb, sys, glob, time
+import ExcelReader, xlwt, lxml.etree as etree, cdrdb, sys, glob, time
 
-def makeBook(name):
-    book = ExcelWriter.Workbook()
-    sheet = book.addWorksheet(name)
-    row = sheet.addRow(1)
-    row.addCell(1, "CDR ID")
-    row.addCell(2, "Term Name")
-    row.addCell(3, "Language")
-    row.addCell(4, "Pronunciation")
-    row.addCell(5, "Filename")
-    row.addCell(6, "Notes (Vanessa)")
-    row.addCell(7, "Approved?")
-    row.addCell(8, "Notes (NCI)")
-    return book
+def makeSheet(book, name):
+    sheet = book.add_sheet(name)
+    sheet.write(0, 0, "CDR ID")
+    sheet.write(0, 1, "Term Name")
+    sheet.write(0, 2, "Language")
+    sheet.write(0, 3, "Pronunciation")
+    sheet.write(0, 4, "Filename")
+    sheet.write(0, 5, "Notes (Vanessa)")
+    sheet.write(0, 6, "Approved?")
+    sheet.write(0, 7, "Notes (NCI)")
+    return sheet
 
 def addDoc(sheet, doc, rowNumber):
     for name in doc.names:
-        row = sheet.addRow(rowNumber)
-        rowNumber += 1
-        row.addCell(1, doc.docId)
-        row.addCell(2, name.string)
-        row.addCell(3, name.language)
+        sheet.write(rowNumber, 0, doc.docId)
+        sheet.write(rowNumber, 1, name.string)
+        sheet.write(rowNumber, 2, name.language)
         if name.pronunciation:
-            row.addCell(4, name.pronunciation)
+            sheet.write(rowNumber, 3, name.pronunciation) 
+        rowNumber += 1
     return rowNumber
 
 def saveBook(book, name):
     fp = open(name, 'wb')
-    book.write(fp, True)
+    book.save(fp)
     fp.close()
 
 def isNewlyPublishable(docId, cursor, cutoff="2012-02-04"):
@@ -95,9 +92,9 @@ for name in names:
             print "skipping %s" % (row[0].val)
     print "collected %d IDs from %s" % (count, name)
 print "collected %d IDs for documents " % len(alreadyDone)
-book = makeBook("A")
-sheet = book.sheets[0]
-rowNumber = 2
+book = xlwt.Workbook(encoding="UTF-8")
+sheet = makeSheet(book, "A")
+rowNumber = 1
 done = 0
 added = 0
 for docId in docIds:
