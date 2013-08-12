@@ -8,6 +8,7 @@
 # BZIssue::4516
 # BZIssue::4747
 # BZIssue::4817
+# BZIssue::5294 (OCECDR-3595)
 #
 #----------------------------------------------------------------------
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
@@ -44,8 +45,13 @@ def loadDispositions(cursor):
 # Collect the CDR and NCT IDs of trials in the Oncore database.
 #----------------------------------------------------------------------
 def getOncoreNctIds():
-    url = "http://%s/u/oncore-id-mappings" % cdr.emailerHost()
+
     ids = {}
+
+    # Oncore project has been discontinued.
+    return ids
+
+    url = "http://%s/u/oncore-id-mappings" % cdr.emailerHost()
     try:
         urlobj = urllib.urlopen(url)
         page   = urlobj.read()
@@ -245,6 +251,11 @@ class Doc:
     #------------------------------------------------------------------
     cdrIdFormat = re.compile(r"^CDR(\d{10})$", re.IGNORECASE)
 
+    #------------------------------------------------------------------
+    # Added for BZIssue::5294 (OCECDR-3595)
+    #------------------------------------------------------------------
+    ctrpIdFormat = re.compile(r"^NCI-20\d\d-\d{5}$")
+
     def __init__(self, xmlFile, name):
         self.name           = name
         self.xmlFile        = unicode(xmlFile, 'utf-8')
@@ -267,9 +278,19 @@ class Doc:
         self.phase          = None
         self.forcedDownload = False
         self.newCtgovOwner  = None
+        self.ctrpId         = None
         for node in self.dom.documentElement.childNodes:
             if node.nodeName == "id_info":
                 for child in node.childNodes:
+
+                    # Added for BZIssue::5294 (OCECDR-3595)
+                    if not self.ctrpId:
+                        if child.nodeName in ("org_study_id", "secondary_id"):
+                            anId = cdr.getTextContent(child).strip()
+                            match = Doc.ctrpIdFormat.match(anId)
+                            if match:
+                                self.ctrpId = match.group(0)
+                            
                     if child.nodeName == "org_study_id":
                         self.orgStudyId = cdr.getTextContent(child).strip()
                         match = Doc.cdrIdFormat.match(self.orgStudyId)
@@ -840,7 +861,8 @@ for name in nameList:
                        dt = GETDATE(),
                        verified = ?,
                        changed = ?,
-                       phase = ?
+                       phase = ?,
+                       ctrp_id = ?
                  WHERE nlm_id = ?""",
                            (doc.title[:255],
                             doc.xmlFile,
@@ -848,6 +870,7 @@ for name in nameList:
                             doc.verified,
                             doc.lastChanged,
                             doc.phase,
+                            doc.ctrpId,
                             doc.nlmId), timeout = 300)
             conn.commit()
             stats.updates += 1
@@ -875,8 +898,9 @@ for name in nameList:
         try:
             cursor.execute("""\
         INSERT INTO ctgov_import (nlm_id, title, xml, downloaded, cdr_id,
-                                  disposition, dt, verified, changed, phase)
-             VALUES (?, ?, ?, GETDATE(), ?, ?, GETDATE(), ?, ?, ?)""",
+                                  disposition, dt, verified, changed, phase,
+                                  ctrp_id)
+             VALUES (?, ?, ?, GETDATE(), ?, ?, GETDATE(), ?, ?, ?, ?)""",
                            (doc.nlmId,
                             doc.title[:255],
                             doc.xmlFile,
@@ -884,7 +908,8 @@ for name in nameList:
                             disp,
                             doc.verified,
                             doc.lastChanged,
-                            doc.phase), timeout = 300)
+                            doc.phase,
+                            doc.ctrpId), timeout = 300)
             conn.commit()
             if replacedDoc:
                 stats.transfers += 1
