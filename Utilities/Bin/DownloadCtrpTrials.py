@@ -159,7 +159,7 @@ class TrialSet:
             server = urllib2.urlopen(self.url)
             doc = server.read()
         except Exception, e:
-            message = "Failure retrieving %s: %s" % (url, repr(e))
+            message = "Failure retrieving %s: %s" % (self.url, repr(e))
             log(message)
             raise cdr.Exception(message)
 
