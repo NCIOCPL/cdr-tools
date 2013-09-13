@@ -22,7 +22,7 @@ import zipfile, cStringIO
 
 CDRNS = "cips.nci.nih.gov/cdr"
 NSMAP = { "cdr" : CDRNS }
-LOGFILE = "d:/cdr/log/Request4926.log"
+LOGFILE = "%s/Request4926.log" % cdr.DEFAULT_LOGDIR
 
 def log(me):
     sys.stderr.write("%s\n" % me)
@@ -175,7 +175,7 @@ def collectInfo(zipNames):
     Create a nested dictionary for all of the sound files found in all
     of the zipfiles identified on the command line.  The top level of
     the dictionary is indexed by the CDR ID for the GlossaryTermName
-    document with which the sound file belongs.  Withing a given
+    document with which the sound file belongs.  Within a given
     GlossaryTermName document is a nested dictionary indexed by the
     term name string.  Because Spanish and English often spell the
     term name the same way, each entry in this dictionary is in turn
@@ -223,15 +223,15 @@ def collectInfo(zipNames):
                 break
     return nameDocs
 
-if len(sys.argv) < 6:
+if len(sys.argv) < 4:
     sys.stderr.write(
-        "usage: %s uid pwd cdr-host db-host zipfile [zipfile ...]\n" %
+        "usage: %s uid pwd zipfile [zipfile ...]\n" %
         sys.argv[0])
     sys.exit(1)
-uid, pwd, cdrHost, dbHost = sys.argv[1:5]
-zipnames = sys.argv[5:]
-session = cdr.login(uid, pwd, cdrHost)
-cursor = cdrdb.connect('CdrGuest', dbHost).cursor()
+uid, pwd = sys.argv[1:3]
+zipnames = sys.argv[3:]
+session = cdr.login(uid, pwd)
+cursor = cdrdb.connect('CdrGuest').cursor()
 cursor.execute("""\
 SELECT DISTINCT doc_id
            FROM query_term
