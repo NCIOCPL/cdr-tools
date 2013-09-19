@@ -199,7 +199,7 @@ if __name__ == "__main__":
     obj.userId = uid
 
     # Debug
-    job.setMaxDocs(50)
+    # job.setMaxDocs(50)
 
     job.run()
     try:
