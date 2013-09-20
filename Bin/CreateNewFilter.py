@@ -2,8 +2,8 @@
 #
 # $Id$
 #
-# Creates a new stub filter document on Bach.  See description below in
-# createOptionParser.
+# Creates a new stub filter document in the CDR.  See description below
+# in createOptionParser.
 #
 #----------------------------------------------------------------------
 import cdr, optparse, sys, cgi
@@ -13,14 +13,16 @@ import cdr, optparse, sys, cgi
 # and the options and arguments accepted/required.
 #----------------------------------------------------------------------
 def createOptionParser():
-    op = optparse.OptionParser(usage='%prog [options] UID PWD "TITLE"',
+    op = optparse.OptionParser(usage='%prog UID PWD "TITLE"',
                                description="""\
-This program creates a new stub filter document on Bach.  A file is created
-in the current working directory containing the XML content for the stub
-document under the name CDR9999999999.xml (where 9999999999 is replaced
-by the actual 10-digit version of the newly created document's CDR ID).
-This document can be edited and installed in the version control system.""")
-    op.add_option("-s", "--server", default=cdr.PROD_HOST, help="for debugging")
+This program creates a new stub filter document in the CDR.  The program
+is intended to be run on the production server to get the CDR ID to be
+used for the filter's version control file name (though it can be run
+on lower tiers for testing).  A file is created in the current working
+directory containing the XML content for the stub document under the
+name CDR9999999999.xml (where 9999999999 is replaced by the actual
+10-digit version of the newly created document's CDR ID).  This document
+can be edited and installed in the version control system.""")
     return op
 
 #----------------------------------------------------------------------
@@ -31,7 +33,7 @@ This document can be edited and installed in the version control system.""")
 # for the first argument.
 #----------------------------------------------------------------------
 def checkForProblems(response, optionsParser):
-    errors = cdr.getErrors(response, errorsExpected = False, asSequence = True)
+    errors = cdr.getErrors(response, errorsExpected=False, asSequence=True)
     if errors:
         for error in errors:
             sys.stderr.write("%s\n" % error)
@@ -44,7 +46,7 @@ def main():
         op.print_help()
         op.exit(2)
     uid, pwd, title = args
-    session = cdr.login(uid, pwd, options.server)
+    session = cdr.login(uid, pwd)
     checkForProblems(session, op)
     stub = """\
 <?xml version='1.0' encoding='utf-8'?>
@@ -71,16 +73,16 @@ def main():
 """ % cgi.escape(title)
     docObj = cdr.Doc(stub, 'Filter', { 'DocTitle': title })
     doc = str(docObj)
-    cdrId = cdr.addDoc(session, doc = doc, host = options.server)
+    cdrId = cdr.addDoc(session, doc=doc)
     checkForProblems(cdrId, op)
-    response = cdr.unlock(session, cdrId, host = options.server)
+    response = cdr.unlock(session, cdrId)
     checkForProblems(response, op)
     name = cdrId + ".xml"
-    fp = open(name, "w")
+    fp = open(name, "wb")
     fp.write(stub)
     fp.close()
     print "Created %s" % name
-    cdr.logout(session, host = options.server)
+    cdr.logout(session)
 
 if __name__ == '__main__':
     main()
