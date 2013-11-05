@@ -12,16 +12,16 @@ import ModifyDocs, lxml.etree as etree, cdrdb, sys
 COMMENT = "Set Public attribute for thesaurus codes (OCECDR-3588)"
 
 class Transform:
-    def __init__(self, liveCodes):
+    def __init__(self, codes):
         self.docIds = set()
-        self.liveCodes = liveCodes
+        self.codes = codes
         cursor = cdrdb.connect("CdrGuest").cursor()
         cursor.execute("""\
 SELECT doc_id, value
   FROM query_term
  WHERE path = '/Term/NCIThesaurusConcept'""")
         for docId, code in cursor.fetchall():
-            if code.strip() in liveCodes:
+            if code.strip() in codes:
                 self.docIds.add(docId)
                 # Debugging
                 # if len(self.docIds) >= 10:
@@ -32,15 +32,17 @@ SELECT doc_id, value
         tree = etree.XML(docObj.xml)
         for node in tree.findall("NCIThesaurusConcept"):
             code = node.text.strip()
-            if code in self.liveCodes:
-                node.set("Public", "Yes")
+            if code in self.codes:
+                node.set("Public", self.codes[code])
         return etree.tostring(tree, encoding="utf-8")
 
 def loadCodes(codeFile):
-    codes = set()
+    codes = {}
     for line in open(codeFile):
         if line.startswith("LIVE "):
-            codes.add(line[5:].strip())
+            codes[line[5:].strip()] = "Yes"
+        elif line.startswith("DEAD "):
+            codes[line[5:].strip()] = "No"
     return codes
 
 def main():
@@ -49,8 +51,8 @@ def main():
         sys.exit(1)
     uid, pwd, codeFile = sys.argv[1:4]
     testMode = sys.argv[4] == "test"
-    liveCodes = loadCodes(codeFile)
-    transform = Transform(liveCodes)
+    codes = loadCodes(codeFile)
+    transform = Transform(codes)
     job = ModifyDocs.Job(uid, pwd, transform, transform, COMMENT,
                          validate=True, testMode=testMode)
     job.run()
