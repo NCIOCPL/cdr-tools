@@ -70,7 +70,7 @@ class OneOffGlobal:
      ORDER BY q.doc_id
 """
         try:
-            conn = cdrdb.connect()
+            conn = cdrdb.connect("CdrGuest")
             cursor = conn.cursor()
             cursor.execute(qry)
             rows = cursor.fetchall()
