@@ -1,3 +1,3 @@
 d:
 cd \cdr\publishing
-python LicenseeList.py --email
+python LicenseeList.py --email --testmode
