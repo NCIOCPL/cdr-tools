@@ -4,27 +4,10 @@
 #
 # Script for installing a new version of an XSL/T filter in the CDR.
 #
+# JIRA::OCECDR-3694
+#
 #----------------------------------------------------------------------
 import cdr, optparse, sys, cdrdb, re
-
-#----------------------------------------------------------------------
-# Find the filter document ID on the target server which matches the
-# title found on the production server for the given production filter
-# document ID.
-#----------------------------------------------------------------------
-def findTargetCdrId(prodCdrId, server):
-    cursor = cdrdb.connect('CdrGuest', dataSource=cdr.PROD_HOST).cursor()
-    cursor.execute("SELECT title FROM document WHERE id = ?", prodCdrId)
-    title = cursor.fetchall()[0][0]
-    cursor = cdrdb.connect('CdrGuest', dataSource=server).cursor()
-    cursor.execute("""\
-        SELECT d.id
-          FROM document d
-          JOIN doc_type t
-            ON t.id = d.doc_type
-         WHERE t.name = 'Filter'
-           AND d.title = ?""", title)
-    return cursor.fetchall()[0][0]
 
 #----------------------------------------------------------------------
 # Find out if the response to a CDR client-server command indicates
@@ -47,27 +30,28 @@ def checkForProblems(response, optionsParser):
 def createOptionParser():
     op = optparse.OptionParser(usage="%prog [options] UID PWD FILE",
                                description="""\
-This program stores a new version of a filter on the target CDR server.
+This program stores a new version of a filter on the CDR server.
 
-The default target server is the server on which the program is invoked.
 The new version of the filter is obtained by reading the file named on
 the command line, and the name of the file is expected to be in the format
 "CDR9999999999.xml" where 9999999999 is the CDR ID of the filter as stored
-on the production server.  The document ID of the filter for the target
-server, if not provided as a command-line argument, is determined by
-looking up the document's title on the production server using the document
-ID extracted from the filename, and then looking up the filter document ID
-matching that title on the target CDR server.  
+on the production server.  If the document ID for the filter is different
+on the tier on which this script is being run from the filter's ID on the
+production tier, the document ID for the filter on the non-production tier
+must be supplied on the command line.
+
 It is common to provide the version control revision number of the 
 filter in the comment option as well as the Bugzilla issue number, 
 particularly when storing a new version of the filter on the production 
 server.
+
    Sample comment:   R4321 (Bug 1234): Adding Vendor Info""")
-    op.add_option("-s", "--server", default="localhost", help="target server")
+
     op.add_option("-i", "--docid", type="int", help="CDR ID on target server")
     op.add_option("-t", "--title", help="replacement title for filter")
     op.add_option("-v", "--version", default="Y", help="create version [Y/N]")
-    op.add_option("-p", "--publishable", default="N", help="create pup version [Y/N]")
+    op.add_option("-p", "--publishable", default="N",
+                  help="create pub version [Y/N]")
     op.add_option("-c", "--comment", help="description of new version",
                   default="")
     return op
@@ -94,13 +78,8 @@ def main():
         op.error("incorrect number of arguments")
     uid, pwd, filename = args
     prodCdrId = int(re.sub("[^\\d]+", "", filename))
-    if '.' not in options.server and 'localhost' not in options.server:
-        options.server += cdr.DOMAIN_NAME
     if not options.docid:
-        if options.server.upper() == cdr.PROD_HOST:
-            options.docid = prodCdrId
-        else:
-            options.docid = findTargetCdrId(prodCdrId, options.server)
+        options.docid = prodCdrId
     if not options.publishable:
         options.publishable = 'N'
     elif options.publishable == 'Y':
@@ -125,15 +104,14 @@ def main():
     #------------------------------------------------------------------
     # 3. Log into the CDR on the target server.
     #------------------------------------------------------------------
-    session = cdr.login(uid, pwd, options.server)
+    session = cdr.login(uid, pwd)
     checkForProblems(session, op)
 
     #------------------------------------------------------------------
     # 4. Check out the document from the target CDR server.
     #------------------------------------------------------------------
     cdrId = "CDR%010d" % options.docid
-    docObj = cdr.getDoc(session, cdrId, checkout='Y', host=options.server,
-                        getObject=True)
+    docObj = cdr.getDoc(session, cdrId, checkout='Y', getObject=True)
     checkForProblems(docObj, op)
 
     #------------------------------------------------------------------
@@ -147,19 +125,16 @@ def main():
     print 'Versioned: %s, Publishable: %s' % (options.version,
                                               options.publishable)
 
-    cdrId = cdr.repDoc(session, doc=doc, host=options.server, checkIn="Y",
+    cdrId = cdr.repDoc(session, doc=doc, checkIn="Y", setLinks="N",
                        reason=options.comment, comment=options.comment,
-                       ver=options.version, verPublishable=options.publishable,
-                       setLinks="N")
+                       ver=options.version, verPublishable=options.publishable)
     checkForProblems(cdrId, op)
 
     #------------------------------------------------------------------
     # 6. Report the number of the new version.
     #------------------------------------------------------------------
-    versions = cdr.lastVersions(session, cdrId, options.server)
-    print "stored version %d of filter %d on %s" % (versions[0],
-                                                    options.docid,
-                                                    options.server)
+    versions = cdr.lastVersions(session, cdrId)
+    print "stored version %d of filter %d" % (versions[0], options.docid)
 
 if __name__ == '__main__':
     main()

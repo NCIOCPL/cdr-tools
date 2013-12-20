@@ -9,6 +9,7 @@
 # the title stored in the document on disk and in the production database.
 #
 # BZIssue::4652
+# JIRA::OCECDR-3694
 #--------------------------------------------------------------
 import sys, optparse, cdr, cdrdb
 etree = cdr.importEtree()
