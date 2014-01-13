@@ -2,7 +2,12 @@
 #
 # $Id$
 #
-# Script for installing a new version of an XSL/T filter in the CDR.
+# Script for changing a CDR filter document.  Must be used on each
+# tier where the filter exists in order to bring the filter titles
+# on all tiers in sync.  Changing a filter title should be rare,
+# except perhaps in the very early stages of a new filter, since
+# once a filter is in production there is like to be other software
+# which relies on the stability of that filter's title.
 #
 # JIRA::OCECDR-3694
 #
@@ -28,21 +33,25 @@ def checkForProblems(response, optionsParser):
 # and the options and arguments accepted/required.
 #----------------------------------------------------------------------
 def createOptionParser():
-    op = optparse.OptionParser(usage="%prog [options] UID PWD FILE",
+    op = optparse.OptionParser(usage="%prog [options] UID PWD CDRID FILE",
                                description="""\
-This program stores a new version of a filter on the CDR server.
+This program changes the title of a CDR filter document.  To use the program,
+you must first change the filter title comment embedded in the document file
+named as the final argument to the script.  That comment has the format:
 
-The new version of the filter is obtained by reading the file named on
-the command line, and the name of the file is expected to be in the format
-"CDR9999999999.xml" where 9999999999 is the CDR ID of the filter as stored
-on the production server.
+  <!-- Filter title: FILTER-TITLE -->
 
-It is common to provide the version control revision number of the 
-filter in the comment option as well as the JIRA ticket number, 
-particularly when storing a new version of the filter on the production 
-server.
+The program will extract the title from that comment, strip leading and
+trailing whitespace, and replace the document title stored in the CDR
+for the filter with this new title.
 
-   Sample comment:   R13277 (JIRA::OCECDR-3702): Adding Vendor Info""")
+IMPORTANT: You must use this script on ALL tiers where the filter has
+been installed to make the filter's title match on all the servers.
+
+Changing a filter title should be rare, except perhaps in the very early
+stages of development for a new filter, since once a filter is in production,
+there will likely be a body of software which relies on the stability of
+the filter's title.""")
 
     op.add_option("-v", "--version", default="Y", help="create version [Y/N]")
     op.add_option("-p", "--publishable", default="N",
@@ -52,41 +61,26 @@ server.
     return op
 
 #----------------------------------------------------------------------
-# Extract the filter title from the document, and look up the CDR
-# document ID which matches the title.
+# Extract the filter title from the document.
 #----------------------------------------------------------------------
-def getDocId(doc):
+def getNewTitle(doc):
 
-    # Extract the filter title.
     match = re.search("<!--\\s*filter title:(.*?)-->", doc, re.I)
     if not match:
         raise Exception("Filter title comment not found")
     title = match.group(1).strip()
     if not title:
         raise Exception("Filter title in document comment is empty")
-    cursor = cdrdb.connect("CdrGuest").cursor()
-    cursor.execute("""\
-SELECT d.id
-  FROM document d
-  JOIN doc_type t
-    ON t.id = d.doc_type
- WHERE t.name = 'filter'
-   AND d.title = ?""", title)
-    rows = cursor.fetchall()
-    if not rows:
-        raise Exception(u"Filter '%s' not found" % title)
-    if len(rows) > 1:
-        raise Exception(u"Ambiguous filter title '%s'" % title)
-    return rows[0][0]
+    return title
 
 #----------------------------------------------------------------------
 # Store the new version of the filter.  Processing steps:
 #
 #  1. Parse the command-line options and arguments.
 #  2. Load the new version of the filter from the file system.
-#  3. Find the CDR ID which matches the filter title
-#  4. Log into the CDR on the target server.
-#  5. Check out the document from the target CDR server.
+#  3. Log into the CDR on the target server.
+#  4. Check out the document from the target CDR server.
+#  5. Plug in the new title for the filter.
 #  6. Store the new version on the target CDR server.
 #  7. Report the number of the new version.
 #
@@ -98,20 +92,21 @@ def main():
     #------------------------------------------------------------------
     op = createOptionParser()
     (options, args) = op.parse_args()
-    if len(args) != 3:
+    if len(args) != 4:
         op.error("incorrect number of arguments")
-    uid, pwd, filename = args
+    uid, pwd, idArg, filename = args
     if not options.publishable:
         options.publishable = 'N'
     elif options.publishable == 'Y':
         options.version = 'Y'
+    fullId, intId, fragId = cdr.exNormalize(idArg)
 
     # If no comment is specified the last comment used (from the
     # all_docs table) would be stored.
     # Setting the comment to something to overwrite the last comment
     # -----------------------------------------------------------------
     if not options.comment:
-        options.comment = 'Replaced w/o user comment'
+        options.comment = "Filter title changed"
 
     #------------------------------------------------------------------
     # 2. Load the new version of the filter from the file system.
@@ -123,27 +118,25 @@ def main():
         op.error("CdrDoc wrapper must be stripped from the file")
 
     #------------------------------------------------------------------
-    # 3. Find out what the filter's document ID is.
-    #------------------------------------------------------------------
-    docId = getDocId(docXml)
-
-    #------------------------------------------------------------------
-    # 4. Log into the CDR on the target server.
+    # 3. Log into the CDR on the target server.
     #------------------------------------------------------------------
     session = cdr.login(uid, pwd)
     checkForProblems(session, op)
 
     #------------------------------------------------------------------
-    # 5. Check out the document from the target CDR server.
+    # 4. Check out the document from the target CDR server.
     #------------------------------------------------------------------
-    cdrId = "CDR%010d" % docId
-    docObj = cdr.getDoc(session, cdrId, checkout='Y', getObject=True)
+    docObj = cdr.getDoc(session, fullId, checkout='Y', getObject=True)
     checkForProblems(docObj, op)
+
+    #------------------------------------------------------------------
+    # 5. Plug in the new title for the filter.
+    #------------------------------------------------------------------
+    docObj.ctrl['DocTitle'] = getNewTitle(docXml)
 
     #------------------------------------------------------------------
     # 6. Store the new version on the target CDR server.
     #------------------------------------------------------------------
-    docObj.xml = docXml
     doc = str(docObj)
     print 'Versioned: %s, Publishable: %s' % (options.version,
                                               options.publishable)
@@ -160,10 +153,8 @@ def main():
         print "CWD for %s updated" % cdrId
     else:
         print "Latest version of %s is %d" % (cdrId, versions[0])
-    if cdr.isProdHost():
-        print ""
-        print "DON'T FORGET TO UPDATE d:/cdr/prod-filters ON THE LOWER TIERS."
-        print "(See oce_cdr/trunk/Filters/collect-prod-filters.py.)"
+    print ""
+    print "DON'T FORGET TO CHANGE THE TITLE OF THIS FILTER ON ALL TIERS!"
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: DenormalizeDocs.py,v 1.1 2002/09/15 19:08:04 bkline Exp $
+# $Id$
 #
 # $Log: DenormalizeDocs.py,v $
 # Revision 1.1  2002/09/15 19:08:04  bkline

@@ -5,6 +5,8 @@
 # Creates a new stub filter document in the CDR.  See description below
 # in createOptionParser.
 #
+# OCECDR-3694
+#
 #----------------------------------------------------------------------
 import cdr, optparse, sys, cgi
 
@@ -22,7 +24,12 @@ on lower tiers for testing).  A file is created in the current working
 directory containing the XML content for the stub document under the
 name CDR9999999999.xml (where 9999999999 is replaced by the actual
 10-digit version of the newly created document's CDR ID).  This document
-can be edited and installed in the version control system.""")
+can be edited and installed in the version control system.
+
+Enclose the title argument in double quote marks if it contains any
+embedded spaces (which it almost certainly will).  The filter title
+will be included in the document as an XML comment, and therefore
+cannot contain the substring --.""")
     return op
 
 #----------------------------------------------------------------------
@@ -46,6 +53,15 @@ def main():
         op.print_help()
         op.exit(2)
     uid, pwd, title = args
+    title = title.strip()
+    if not title:
+        sys.stderr.write("Empty title argument.\n")
+        op.print_help()
+        op.exit(2)
+    if "--" in title:
+        sys.stderr.write("Filter title cannot contain --\n")
+        op.print_help()
+        op.exit(2)
     session = cdr.login(uid, pwd)
     checkForProblems(session, op)
     stub = """\

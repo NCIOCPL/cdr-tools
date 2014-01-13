@@ -1,7 +1,7 @@
 ##
 # Validate a previous version of a document against current rules.
 #
-# $Id: valDocVersion.py,v 1.1 2005/05/25 00:42:18 ameyer Exp $
+# $Id$
 #
 # $Log: valDocVersion.py,v $
 # Revision 1.1  2005/05/25 00:42:18  ameyer
