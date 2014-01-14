@@ -36,7 +36,7 @@ def createOptionParser():
     Create an option parser and associated usage, help, etc.
     """
     parser = optparse.OptionParser(
-      usage = """%prog {--server} userid password filterfile
+      usage = """%prog userid password filterfile
 
   args:
     userid     = CDR user id.
@@ -136,6 +136,18 @@ SELECT d.id
 #----------------------------------------------------------
 if __name__ == "__main__":
 
+    # Args
+    op = createOptionParser()
+    (options, args) = op.parse_args()
+
+    if len(args) != 3:
+        op.print_help()
+        op.exit(2)
+
+    userid = args[0]
+    passwd = args[1]
+    fname  = args[2]
+
     # Make sure we're not on the production server.
     if cdr.isProdHost():
         fatal("""
@@ -145,17 +157,6 @@ Use CreateFilter.py to create the filter in the production database, then
   use InstallFilter.py to install it in test or development with the same
   title/name and (almost certainly) a different local CDR ID.
 """)
-
-# Args
-    op = createOptionParser()
-    (options, args) = op.parse_args()
-
-    if len(args) != 3:
-        fatal("Missing required args", op)
-
-    userid = args[0]
-    passwd = args[1]
-    fname  = args[2]
 
     # Load the document
     doc = DocDesc(fname)
