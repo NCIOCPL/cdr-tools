@@ -28,9 +28,9 @@ pdqLog  = '/pdq/prod/log'
 ftpFile = '%s/getchanges.ftp' % tmpDir
 pubDir  = '/u/ftp/pub/pdq/full'
 
-FTPSERVER = 'cipsftp.nci.nih.gov'
-FTPUSER   = 'operator'
-FTPPWD    = '***REMOVED***'  # 'mars56'
+# FTPSERVER = 'cipsftp.nci.nih.gov'
+# FTPUSER   = 'operator'
+# FTPPWD    = '***REMOVED***'  # 'mars56'
 
 now     = time.time()
 lastWk  = time.time() - 5 * 24 * 60 * 60
