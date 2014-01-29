@@ -32,7 +32,7 @@ for line in request.read().splitlines():
 done = 0
 for name in sorted(names):
     path = "%s\\%s" % (PATH, name)
-    request = urllib2.urlopen("%s?p=%s" % (BASE, path))
+    request = urllib2.urlopen("%s?c=100000000&p=%s" % (BASE, path))
     script = request.read()
     fp = open("%s/%s" % (DIR, name), "wb")
     fp.write(fix(script))
