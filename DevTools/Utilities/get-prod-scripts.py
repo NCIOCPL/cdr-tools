@@ -31,12 +31,15 @@ for line in request.read().splitlines():
         names.append(pieces[4])
 done = 0
 for name in sorted(names):
-    path = "%s\\%s" % (PATH, name)
-    request = urllib2.urlopen("%s?c=100000000&p=%s" % (BASE, path))
-    script = request.read()
-    fp = open("%s/%s" % (DIR, name), "wb")
-    fp.write(fix(script))
-    fp.close()
+    path = "%s\\%s" % (PATH, name.replace(" ", "+"))
+    try:
+        request = urllib2.urlopen("%s?c=100000000&p=%s" % (BASE, path))
+        script = request.read()
+        fp = open("%s/%s" % (DIR, name), "wb")
+        fp.write(fix(script))
+        fp.close()
+    except Exception, e:
+        sys.stderr.write("\n%s: %s\n" % (path, e))
     done += 1
     sys.stderr.write("\rretrieved %d of %d" % (done, len(names)))
 sys.stderr.write("\n")
