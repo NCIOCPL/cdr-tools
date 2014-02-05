@@ -6,19 +6,6 @@
 #----------------------------------------------------------------------
 import re, sys, urllib2
 
-#----------------------------------------------------------------------
-# Replace encoded character with itself.
-#----------------------------------------------------------------------
-def unescape(match):
-    return chr(int(match.group(0)[1:], 16))
-
-#----------------------------------------------------------------------
-# Strip extra lines added by log-tail.py, normalize space, and remove
-# encoding.
-#----------------------------------------------------------------------
-def fix(me):
-    return "\n".join(re.sub("%..", unescape, me).splitlines()[2:-1]) + "\n"
-
 PATH = len(sys.argv) > 1 and sys.argv[1] or r"d:\Inetpub\wwwroot\cgi-bin\cdr"
 BASE = "https://cdr.cancer.gov/cgi-bin/cdr/log-tail.py"
 DIR  = len(sys.argv) > 2 and sys.argv[2] or "cgi-prod"
@@ -33,10 +20,10 @@ done = 0
 for name in sorted(names):
     path = "%s\\%s" % (PATH, name.replace(" ", "+"))
     try:
-        request = urllib2.urlopen("%s?c=100000000&p=%s" % (BASE, path))
+        request = urllib2.urlopen("%s?r=1&p=%s" % (BASE, path))
         script = request.read()
         fp = open("%s/%s" % (DIR, name), "wb")
-        fp.write(fix(script))
+        fp.write(script)
         fp.close()
     except Exception, e:
         sys.stderr.write("\n%s: %s\n" % (path, e))
