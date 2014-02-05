@@ -2,13 +2,19 @@
 # $Id$
 #
 # Tool for pulling scripts from a production directory down to the
-# local file system.  Doesn't recurse.  Doesn't handle binary files.
+# local file system.  Doesn't recurse.  Handles binary files.
 #----------------------------------------------------------------------
-import re, sys, urllib2
+import os, re, sys, urllib2
 
 PATH = len(sys.argv) > 1 and sys.argv[1] or r"d:\Inetpub\wwwroot\cgi-bin\cdr"
 BASE = "https://cdr.cancer.gov/cgi-bin/cdr/log-tail.py"
 DIR  = len(sys.argv) > 2 and sys.argv[2] or "cgi-prod"
+
+try:
+    os.makedirs(DIR)
+    sys.stderr.write("created %s\n" % DIR)
+except:
+    sys.stderr.write("%s already created\n" % DIR)
 
 request = urllib2.urlopen("%s?p=%s\\*" % (BASE, PATH))
 names = []
@@ -26,6 +32,9 @@ for name in sorted(names):
         fp.write(script)
         fp.close()
     except Exception, e:
+        fp = open("get-prod-scripts.err", "a")
+        fp.write("%s: %s\n" % (path, e))
+        fp.close()
         sys.stderr.write("\n%s: %s\n" % (path, e))
     done += 1
     sys.stderr.write("\rretrieved %d of %d" % (done, len(names)))
