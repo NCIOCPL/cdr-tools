@@ -8,6 +8,9 @@
 #----------------------------------------------------------------------
 import cdr, sys, time, socket, os, win32file, pywintypes
 
+CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
+MANIFEST_PATH    = "%s/%s" % (CLIENT_FILES_DIR, cdr.MANIFEST_NAME)
+
 class File:
     def __init__(self, path, timestamp = None):
         self.name      = path
@@ -59,7 +62,7 @@ def createFilelist(files):
     return fragmentXml + u" </FileList>"
 
 def writeManifest(manifestXml, manifestTime):
-    manifestFile = file(cdr.MANIFEST_PATH, 'w')
+    manifestFile = file(MANIFEST_PATH, 'w')
     manifestFile.write(manifestXml)
     manifestFile.close()
 
@@ -72,7 +75,7 @@ def writeManifest(manifestXml, manifestTime):
 
 def refreshManifest(where):
     try:
-        os.unlink(cdr.MANIFEST_PATH)
+        os.unlink(MANIFEST_PATH)
     except:
         pass
     os.chdir(where)
@@ -97,5 +100,4 @@ def refreshManifest(where):
             print result.output
 
 if __name__ == "__main__":
-    where = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
-    refreshManifest(where)
+    refreshManifest(CLIENT_FILES_DIR)
