@@ -3,55 +3,41 @@
 @REM ----------------------------------------------------------------------
 
 @ECHO OFF
-ECHO Building CDR Client Files.
 SETLOCAL
-
-REM ----------------------------------------------------------------------
-REM Make Microsoft's compiler available.
-REM ----------------------------------------------------------------------
-CALL d:\bin\vcvars32.bat > NUL 2>&1
-
-REM ----------------------------------------------------------------------
-REM Create the target localtion.
-REM ----------------------------------------------------------------------
-SET CLIENTFILES=d:\tmp\ClientFiles
-RMDIR /S /Q %CLIENTFILES%
-MKDIR %CLIENTFILES%
-
-SET SVNBRANCH=https://ncisvn.nci.nih.gov/svn/oce_cdr/trunk
-SET CYGDATE=d:\cygwin\bin\date.exe
-CALL :pull_svn_files
-CALL :make_working_dir
-CALL :build_tools
-CALL :build_loader
-IF %ERRORLEVEL% GEQ 1 @exit /b 1
-@CALL :build_dll
-IF %ERRORLEVEL% GEQ 1 @exit /b 1
-CD %WORKDIR%\AnthillPro
-python CheckDtds.py %CLIENTFILES% >CheckDtds.log 2>CheckDtds.err
-ECHO DTDs successfully generated.
-python RefreshManifest.py %CLIENTFILES% >RefreshManifest.err 2>&1
-ECHO Manifest successfully built.
-CD %CLIENTFILES%
-d:\cygwin\bin\chmod -R 777 *
-ECHO Build complete.
+CALL :init              || EXIT /B
+CALL :pull_svn_files    || EXIT /B
+CALL :build_tools       || EXIT /B
+CALL :build_loader      || EXIT /B
+CALL :build_dll         || EXIT /B
+CALL :build_dtds        || EXIT /B
+CALL :build_manifest    || EXIT /B
+CALL :cleanup           || EXIT /B
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
-REM Build any troubleshooting tools used on the client machine.
+REM Create work spaces and set environment variables.
 REM ----------------------------------------------------------------------
-:build_tools
-ECHO Building client diagnostic tools.
+:init
+ECHO Building CDR Client Files.
+D:
+SET CLIENTFILES=d:\tmp\ClientFiles
+SET SVNBRANCH=https://ncisvn.nci.nih.gov/svn/oce_cdr/trunk
+SET CYGDATE=d:\cygwin\bin\date.exe
+SET STAMP=
+FOR /F %%s IN ('%CYGDATE% +%%Y%%m%%d%%H%%M%%S') DO SET STAMP=%%s
+IF NOT DEFINED STAMP ECHO %CYGDATE% failure && EXIT /B 1
+SET WORKDIR=d:\tmp\client-%STAMP%
+SET CDRLOADER=CdrClient-%STAMP%.exe
+MKDIR %WORKDIR% || ECHO Failure creating %WORKDIR% && EXIT /B 1
 CD %WORKDIR%
-svn export -q %SVNBRANCH%/XMetaL/Tools
-CD Tools
-nmake > nmake.log 2>nmake.err
-IF NOT EXIST ShowTimestamp.exe (
-    ECHO Tools Build Failed
-    EXIT /B 1
-)
-COPY *.exe %CLIENTFILES%\ > NUL 2>&1
-ECHO Tools built successfully.
+ECHO Created working directory.
+svn export -q %SVNBRANCH%/Build/AnthillPro || ECHO Failed export && EXIT /B 1
+ECHO AnthillPro tools successfully fetched.
+CALL d:\bin\vcvars32.bat > NUL 2>&1 || ECHO Failed VC Init && EXIT /B 1
+ECHO Compiler successfully initialized.
+RMDIR /S /Q %CLIENTFILES%
+MKDIR %CLIENTFILES% || ECHO Failed creating %CLIENTFILES% && EXIT /B 1
+ECHO Environment successfully initialized.
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
@@ -60,66 +46,89 @@ REM ----------------------------------------------------------------------
 :pull_svn_files
 ECHO Exporting files from Subversion.
 CD %CLIENTFILES%
-svn export -q %SVNBRANCH%/XMetaL/Display
-svn export -q %SVNBRANCH%/XMetaL/Forms
-svn export -q %SVNBRANCH%/XMetaL/Icons
-svn export -q %SVNBRANCH%/XMetaL/Macros
-svn export -q %SVNBRANCH%/XMetaL/Rules
-svn export -q %SVNBRANCH%/XMetaL/Template
-ECHO Client configuration files pulled from Subversion.
+svn export -q %SVNBRANCH%/XMetaL/Display   || ECHO Failed export && EXIT /B 1
+svn export -q %SVNBRANCH%/XMetaL/Forms     || ECHO Failed export && EXIT /B 1
+svn export -q %SVNBRANCH%/XMetaL/Icons     || ECHO Failed export && EXIT /B 1
+svn export -q %SVNBRANCH%/XMetaL/Macros    || ECHO Failed export && EXIT /B 1
+svn export -q %SVNBRANCH%/XMetaL/Rules     || ECHO Failed export && EXIT /B 1
+svn export -q %SVNBRANCH%/XMetaL/Template  || ECHO Failed export && EXIT /B 1
+ECHO Client configuration files pulled successfully from Subversion.
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
-REM Build a working directory based on current date/time.
+REM Build any troubleshooting tools used on the client machine.
 REM ----------------------------------------------------------------------
-:make_working_dir
-D:
-SET WORKDIR=
-FOR /F %%i IN ('%CYGDATE% +d:\tmp\client-%%Y%%m%%d%%H%%M%%S') DO (
-    SET WORKDIR=%%i
-)
-MKDIR %WORKDIR%
+:build_tools
+ECHO Building client diagnostic tools.
 CD %WORKDIR%
-svn export -q %SVNBRANCH%/Build/AnthillPro
-ECHO Created working directory.
-EXIT /B 0
-
-REM ----------------------------------------------------------------------
-REM Build the DLL used by the XMetaL client.
-REM ----------------------------------------------------------------------
-:build_dll
-CD %WORKDIR%
-ECHO Building Client DLL.
-svn export -q %SVNBRANCH%/XMetaL/DLL
-CD DLL
-nmake > nmake.log 2>nmake.err
-IF NOT EXIST ReleaseUMinDependency\Cdr.dll (
-    ECHO DLL Build Failed.
-    EXIT /B 1
-)
-MKDIR %CLIENTFILES%\Cdr
-COPY ReleaseUMinDependency\Cdr.dll %CLIENTFILES%\Cdr\Cdr.dll > NUL 2>&1
-ECHO DLL successfully built.
+svn export -q %SVNBRANCH%/XMetaL/Tools || ECHO Failed export && EXIT /B 1
+CD Tools
+nmake > nmake.log 2>nmake.err || ECHO Tools Build Failed && EXIT /B 1
+COPY *.exe %CLIENTFILES%\ > NUL 2>&1
+ECHO Tools built successfully.
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
 REM Build the program which launches XMetaL.
 REM ----------------------------------------------------------------------
 :build_loader
-CD %WORKDIR%
 ECHO Building Client CDR Loader.
-svn export -q %SVNBRANCH%/XMetaL/CdrClient
+CD %WORKDIR%
+svn export -q %SVNBRANCH%/XMetaL/CdrClient || ECHO Failed export && EXIT /B 1
 CD CdrClient
-nmake > nmake.log 2>nmake.err
-IF NOT EXIST Release\CdrClient.exe (
-    ECHO Loader Build Failed.
-    EXIT /B 1
-)
-FOR /F %%i IN ('%CYGDATE% +CdrClient-%%Y%%m%%d%%H%%M%%S.exe') DO (
-    SET CDRLOADER=%%i
-)
+nmake > nmake.log 2>nmake.err || ECHO Failed building loader && EXIT /B 1
 COPY Release\CdrClient.exe %CLIENTFILES%\%CDRLOADER% > NUL 2>&1
 CD %CLIENTFILES%
 python %WORKDIR%\AnthillPro\make-cdr-loader-scripts.py %CDRLOADER%
 ECHO Loader successfully built.
+EXIT /B 0
+
+REM ----------------------------------------------------------------------
+REM Build the DLL used by the XMetaL client.
+REM ----------------------------------------------------------------------
+:build_dll
+ECHO Building Client DLL.
+CD %WORKDIR%
+svn export -q %SVNBRANCH%/XMetaL/DLL || ECHO Failed export && EXIT /B 1
+CD DLL
+nmake > nmake.log 2>nmake.err || ECHO DLL build failure && EXIT /B 1
+MKDIR %CLIENTFILES%\Cdr
+COPY ReleaseUMinDependency\Cdr.dll %CLIENTFILES%\Cdr\Cdr.dll > NUL 2>&1
+ECHO DLL successfully built.
+EXIT /B 0
+
+REM ----------------------------------------------------------------------
+REM Generate the DTDs from the repository's schemas.
+REM ----------------------------------------------------------------------
+:build_dtds
+ECHO Building DTDs.
+CD %WORKDIR%\AnthillPro
+python CheckDtds.py %CLIENTFILES% >CheckDtds.log 2>CheckDtds.err
+IF ERRORLEVEL 1 ECHO Failure generating DTDs && EXIT /B 1
+ECHO DTDs successfully generated.
+EXIT /B 0
+
+REM ----------------------------------------------------------------------
+REM Generate the manifest for the client files.
+REM ----------------------------------------------------------------------
+:build_manifest
+ECHO Building fresh manifest file.
+CD %WORKDIR%\AnthillPro
+python RefreshManifest.py %CLIENTFILES% >RefreshManifest.err 2>&1
+IF ERRORLEVEL 1 ECHO Failure building manifest && EXIT /B 1
+ECHO Manifest successfully built.
+EXIT /B 0
+
+REM ----------------------------------------------------------------------
+REM Set file permissions and drop our working intermediate files.
+REM ----------------------------------------------------------------------
+:cleanup
+ECHO Setting file permssions.
+CD %CLIENTFILES%
+d:\cygwin\bin\chmod -R 777 * || ECHO Can't set permissions && EXIT /B 1
+ECHO File permissions successfully set.
+ECHO Cleaning up temporary files.
+CD \
+RMDIR /S /Q %WORKDIR% || ECHO Cleanup failure && EXIT /B 1
+ECHO Build complete.
 EXIT /B 0
