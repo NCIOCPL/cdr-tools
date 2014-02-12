@@ -8,9 +8,9 @@
 # BZIssue::5294 (OCECDR-3595)
 #
 #----------------------------------------------------------------------
-import cdrdb, lxml.etree as etree, re, datetime, sys
+import cdrdb, lxml.etree as etree, re, datetime, sys, cdr
 
-LOGFILE = "d:/cdr/log/Request5294.log"
+LOGFILE = "%s/Request5294.log" % cdr.DEFAULT_LOGDIR
 PATTERN = re.compile(r"^NCI-20\d\d-\d{5}$")
 
 def logWrite(what):
