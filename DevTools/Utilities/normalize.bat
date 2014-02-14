@@ -7,6 +7,6 @@ sabcmd %XSLT% %1
 goto done
 :usage
 echo Normalize indentation and whitespace in an XML file.
-echo usage: normalize filename.xml => stdout
+echo usage: normalize filename.xml =^> stdout
 
 :done
