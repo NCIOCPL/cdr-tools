@@ -49,7 +49,9 @@ def main():
     outputDir = time.strftime('DevFiles-%Y%m%d%H%M%S')
     cursor = cdrdb.connect("CdrGuest").cursor()
     os.mkdir(outputDir)
-    for table in ("doc_type", "filter_set", "filter_set_member"):
+    for table in ("doc_type", "filter_set", "filter_set_member",
+                  "query_term_def", "link_type", "link_xml", "link_target",
+                  "link_prop_type", "link_properties"):
         saveTable(cursor, outputDir, table)
     for docType in ["Filter", "PublishingSystem", "Schema"] + sys.argv[1:]:
         saveDocs(cursor, outputDir, docType)
