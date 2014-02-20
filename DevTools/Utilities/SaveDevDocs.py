@@ -4,7 +4,12 @@
 #
 # Pulls control documents and tables which need to be preserved from the
 # development server in preparation for refreshing the CDR database from
-# the production server.
+# the production server.  If the development server has any document
+# types which don't exist at all and for which documents exist which need
+# to be preserved, name those document types on the command line.
+#
+# Usage:
+#   SaveDevDocs.py [newdoctype [newdoctype ...] ]
 #
 #----------------------------------------------------------------------
 import cdrdb, os, sys, time
@@ -22,6 +27,8 @@ SELECT d.id, d.title, d.xml
     ON t.id = d.doc_type
  WHERE t.name = ?""", docType)
     row = cursor.fetchone()
+    if not row:
+        raise Exception("no documents found of type %s" % docType)
     while row:
         fp = open("%s/%s/%d.cdr" % (outputDir, docType, row[0]), "w")
         fp.write(repr(row))
@@ -49,6 +56,7 @@ def main():
     outputDir = time.strftime('DevFiles-%Y%m%d%H%M%S')
     cursor = cdrdb.connect("CdrGuest").cursor()
     os.mkdir(outputDir)
+    print "Saving files to %s" % outputDir
     for table in ("doc_type", "filter_set", "filter_set_member",
                   "query_term_def", "link_type", "link_xml", "link_target",
                   "link_prop_type", "link_properties"):
