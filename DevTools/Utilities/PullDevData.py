@@ -53,7 +53,7 @@ def saveTable(cursor, outputDir, tableName):
 # Do the work.
 #----------------------------------------------------------------------
 def main():
-    outputDir = time.strftime('DevFiles-%Y%m%d%H%M%S')
+    outputDir = time.strftime('DevData-%Y%m%d%H%M%S')
     cursor = cdrdb.connect("CdrGuest").cursor()
     os.makedirs("%s/tables" % outputDir)
     print "Saving files to %s" % outputDir
