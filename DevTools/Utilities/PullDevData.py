@@ -43,7 +43,7 @@ SELECT d.id, d.title, d.xml
 def saveTable(cursor, outputDir, tableName):
     print "Saving %s table" % tableName
     cursor.execute("SELECT * FROM %s" % tableName)
-    fp = open("%s/%s.table" % (outputDir, tableName), "w")
+    fp = open("%s/tables/%s" % (outputDir, tableName), "w")
     fp.write("%s\n" % repr([col[0] for col in cursor.description]))
     for row in cursor.fetchall():
         fp.write("%s\n" % repr(row))
@@ -55,11 +55,13 @@ def saveTable(cursor, outputDir, tableName):
 def main():
     outputDir = time.strftime('DevFiles-%Y%m%d%H%M%S')
     cursor = cdrdb.connect("CdrGuest").cursor()
-    os.mkdir(outputDir)
+    os.makedirs("%s/tables" % outputDir)
     print "Saving files to %s" % outputDir
-    for table in ("doc_type", "filter_set", "filter_set_member",
-                  "query_term_def", "link_type", "link_xml", "link_target",
-                  "link_prop_type", "link_properties"):
+    for table in ("action", "active_status", "doc_type", "filter_set",
+                  "filter_set_member", "format", "grp", "grp_action",
+                  "grp_usr", "import_disposition", "link_prop_type",
+                  "link_properties", "link_target", "link_type", "link_xml",
+                  "query", "query_term_def", "query_term_rule", "usr"):
         saveTable(cursor, outputDir, table)
     for docType in ["Filter", "PublishingSystem", "Schema"] + sys.argv[1:]:
         saveDocs(cursor, outputDir, docType)
