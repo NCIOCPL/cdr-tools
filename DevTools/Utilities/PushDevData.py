@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id: PushDevDocs.py,v 1.9 2008-10-27 18:30:05 venglisc Exp $
+# $Id$
 #
 # Replaces copies of CDR control documents which have been preserved
 # from the development server, after a refresh of the database on
