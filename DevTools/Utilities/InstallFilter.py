@@ -122,7 +122,7 @@ SELECT d.id
     ON d.doc_type = t.id
  WHERE title = ?
    AND t.name = 'Filter'
-""", self.title)
+""", unicode(self.title, "utf-8"))
             rows = cursor.fetchall()
             cursor.close()
         except cdrdb.Error, info:

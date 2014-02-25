@@ -53,7 +53,7 @@ def main():
         op.print_help()
         op.exit(2)
     uid, pwd, title = args
-    title = title.strip()
+    title = unicode(title.strip(), "latin-1").encode("utf-8")
     if not title:
         sys.stderr.write("Empty title argument.\n")
         op.print_help()
@@ -87,7 +87,7 @@ def main():
 
 </xsl:transform>
 """ % cgi.escape(title)
-    docObj = cdr.Doc(stub, 'Filter', { 'DocTitle': title })
+    docObj = cdr.Doc(stub, 'Filter', { 'DocTitle': title }, encoding="utf-8")
     doc = str(docObj)
     cdrId = cdr.addDoc(session, doc=doc)
     checkForProblems(cdrId, op)

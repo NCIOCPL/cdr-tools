@@ -71,7 +71,7 @@ SELECT d.id
   JOIN doc_type t
     ON t.id = d.doc_type
  WHERE t.name = 'filter'
-   AND d.title = ?""", title)
+   AND d.title = ?""", unicode(title, "utf-8"))
     rows = cursor.fetchall()
     if not rows:
         raise Exception(u"Filter '%s' not found" % title)
