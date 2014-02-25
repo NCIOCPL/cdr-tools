@@ -114,7 +114,7 @@ def main():
     fp = open(filename, 'r')
     docXml = fp.read()
     fp.close()
-    if u']]>' in docXml:
+    if ']]>' in docXml:
         op.error("CdrDoc wrapper must be stripped from the file")
 
     #------------------------------------------------------------------
