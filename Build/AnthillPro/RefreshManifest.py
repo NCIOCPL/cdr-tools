@@ -13,7 +13,7 @@ MANIFEST_PATH    = "%s/%s" % (CLIENT_FILES_DIR, cdr.MANIFEST_NAME)
 
 class File:
     def __init__(self, path, timestamp = None):
-        self.name      = path
+        self.name      = unicode(path, "latin-1")
         self.timestamp = timestamp or self.__getTimestamp()
     def __getTimestamp(self):
         try:
@@ -24,7 +24,7 @@ class File:
             h.Close()
             return t[-1].Format("%Y-%m-%dT%H:%M:%S")
         except Exception, e:
-            print "failure:", self.name, str(e)
+            print "failure:", repr(self.name), str(e)
             sys.exit(1)
     def __cmp__(self, other):
         return cmp(self.name, other.name)
@@ -33,6 +33,7 @@ def gatherFiles(dirPath):
     files = []
     for name in os.listdir(dirPath):
         thisPath = os.path.join(dirPath, name)
+        #print repr(name), repr(thisPath)
         if os.path.isdir(thisPath):
             files += gatherFiles(thisPath)
         else:
@@ -53,6 +54,7 @@ def createTicket():
 def createFilelist(files):
     fragmentXml = u" <FileList>\n"
     for f in files:
+        #print repr(f.name), repr(f.timestamp)
         fragmentXml += u"""\
   <File>
    <Name>%s</Name>
