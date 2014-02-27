@@ -7,29 +7,325 @@
 # the development server from the production server.  This allows us
 # to work with the users' current production documents without losing
 # work done by developers on the development server.
+#
 #----------------------------------------------------------------------
-import cdr, cdrdb, glob, re, sys
+import cdr
+import cdrdb
+import cdrutil
+import cdr_dev_data
+import glob
+import re
+import sys
 
 #----------------------------------------------------------------------
-# Capture processing information.  Optional argument indicates whether
-# information should be displayed as well (default is no).
+# Top-level program logic.
+#
+#  1. Initialization
+#  2. Restore control documents
+#  3. Restore new document types (with their documents)
 #----------------------------------------------------------------------
-def log(msg, show = 0):
-    logFile.write("%s\n" % msg)
-    if show:
-        sys.stderr.write("%s\n" % msg)
+def main():
+
+    # 1. Initialization
+    job = Job()
+
+    # 2. Restore control documents
+    job.restore_control_docs()
+
+    # 3. Restore new document types
+    job.restore_doctypes()
+
+    # 4. Clean up after ourselves.
+    job.clean_up()
 
 #----------------------------------------------------------------------
-# Returns the integer corresponding to a CDR document ID.
+# Job control.
 #----------------------------------------------------------------------
-def extractId(name):
-    return int(re.sub('[^\d]', '', name))
-    
-#----------------------------------------------------------------------
-# Find out who (if anyone) has a specified document checked out.
-#----------------------------------------------------------------------
-def findLocker(cursor, id):
-    cursor.execute("""\
+class Job:
+    """
+    Object which performs the work of restoring CDR documents on DEV.
+    """
+
+    DEVELOPERS = "Developers"
+    COMMENT = "preserving work on development server"
+
+    def __init__(self):
+        """
+        Constructs job control object for restoring data on CDR DEV server.
+
+        1. Make sure we're running on the DEV tier.
+        2. Get the parameters for this job.
+        3. Create the control object for the job.
+        """
+
+        # Safety check.
+        if cdrutil.getTier() != "DEV":
+            sys.stderr.write("This script must only be run on the DEV tier.\n")
+            sys.exit(1)
+
+        # Check for required command line arguments.
+        if len(sys.argv) != 4:
+            sys.stderr.write("usage: PushDevDocs cdr-uid cdr-pwd directory\n")
+            sys.stderr.write(" e.g.: PushDevDocs joe vewy-secwet")
+            sys.stderr.write(" DevData-20140227073812\n")
+            sys.exit(1)
+        self._uid = sys.argv[1]
+        self._pwd = sys.argv[2]
+        self._dir = sys.argv[3]
+
+        # Create objects used to do the job's work.
+        self._conn = cdrdb.connect('CdrGuest')
+        self._cursor = self._conn.cursor()
+        self._old = cdr_dev_data.Data(self._dir)
+        # XXX DEBUG
+        #self._new = cdr_dev_data.Data("ProdData-20140221080438", self._old)
+        self._new = cdr_dev_data.Data(self._cursor, self._old)
+        self._session = cdr.login(self._uid, self._pwd)
+        self._log = cdr.Log("PushDevData.log")
+        err = cdr.checkErr(self._session)
+        if err:
+            self._log.write("%s" % repr(err), stderr=True)
+            sys.exit(1)
+        self._log.write("session %s" % self._session, stdout=True)
+        self._log.write("using data preserved in %s" % self._dir, stdout=True)
+        self._new_doc_types = []
+
+    def restore_control_docs(self):
+        """
+        Restores the documents for document types which already exist.
+
+        Documents which are new are created.  Documents which are found
+        in the repository (by unique document title) are modified with
+        a new version.
+        """
+
+        # Walk through the preserved documents by type.
+        self._log.write("restoring docs for control doctypes", stdout=True)
+        for doc_type in sorted(self._old.docs):
+
+            # 'Old' docs were on DEV before refresh; 'new' are post refresh.
+            old = self._old.docs[doc_type].docs
+            new = self._new.docs[doc_type].docs
+            if new:
+                self._log.write("restoring %s docs" % repr(doc_type),
+                                stdout=True)
+
+                # Documents are keyed by unique title.
+                for key in old:
+                    old_id, old_title, old_xml = old[key]
+
+                    # If PROD didn't have the document, (re-)create it.
+                    if key not in new:
+                        self._add_doc(doc_type, old_title, old_xml)
+                    else:
+
+                        # PROD had it; if it differs, restore what was on DEV.
+                        new_id, new_title, new_xml = new[key]
+                        if self._compare(old_xml, new_xml):
+                            self._mod_doc(doc_type, old_title, old_xml, new_id)
+            else:
+
+                # Defer documents for types we have to re-create
+                self._log.write("deferring %s docs" % repr(doc_type),
+                                stdout=True)
+                self._new_doc_types.append(doc_type)
+
+    def restore_doctypes(self):
+        """
+        Re-create documents whose doctype was not in the PROD repository.
+
+        First re-create the document type, then add each of the documents
+        for that document type which had been on DEV.
+        """
+        self._log.write("restoring new document types", stdout=True)
+        for doc_type in self._new_doc_types:
+            if self._create_doctype(doc_type):
+                docs = self._old.docs[doc_type].docs
+                for key in docs:
+                    doc_id, doc_title, doc_xml = docs[key]
+                    self._add_doc(doc_type, doc_title, doc_xml)
+
+    def clean_up(self):
+        """
+        Don't leave an open CDR session hanging around.
+        """
+        cdr.logout(self._session)
+        self._log.write("restoration complete", stdout=True)
+
+    def _create_doctype(self, name):
+        """
+        Create a document type which had been on DEV but not on PROD.
+
+        1. Extract the information about the doctype from the saved table.
+        2. Plug in the doctype's title filter, if any.
+        3. Add permissions for developers to work with docs of this type.
+        """
+
+        # The preserved doc_type table and filter and schema docs have
+        # the information we need.
+        self._log.write("creating %s doctype" % repr(name), stdout=True)
+        table = self._old.tables["doc_type"]
+        row = table.names[name]
+        filter_id = self._get_filter_id(row["title_filter"])
+        comment = row["comment"]
+        schema_id = row["xml_schema"]
+        schema = self._old.docs["Schema"].map[schema_id]
+        info = cdr.dtinfo(name, "xml", "Y", schema=schema, comment=comment)
+        # XXX DEBUG
+        #self._log.write("comment is %s" % repr(comment), stdout=True)
+        #self._log.write("schema is %s" % repr(schema), stdout=True)
+        #return True
+        info = cdr.AddDoctype(self._session, info)
+        if info.error:
+            self._log.write("unable to create doctype %s: %s" %
+                            (repr(name), info.error), stderr=True)
+            return False
+
+        # Plug in the document type's title filter, if any.
+        if filter_id:
+            self._cursor.execute("""\
+                UPDATE doc_type
+                   SET title_filter = ?
+                 WHERE name = ?""", (filter_id, name))
+            self._conn.commit()
+
+        # Let developers work with the new document type on DEV.
+        group = cdr.getGroup(self._session, Job.DEVELOPERS)
+        for action in ('ADD DOCUMENT',     'DELETE DOCTYPE', 
+                       'DELETE DOCUMENT',  'FILTER DOCUMENT', 
+                       'FORCE CHECKIN',    'FORCE CHECKOUT',
+                       'GET DOCTYPE',      'GET SCHEMA', 
+                       'MODIFY DOCTYPE',   'MODIFY DOCUMENT', 
+                       'PUBLISH DOCUMENT', 'VALIDATE DOCUMENT'):
+            group.actions[action].append(name)
+        errors = cdr.putGroup(self._session, Job.DEVELOPERS, group)
+        if errors:
+            self._log.write("unable to update permissions for doctype %s: %s" %
+                            (repr(name), errors), stderr=True)
+            sys.exit(1)
+
+    def _get_filter_id(self, old_id):
+        """
+        Look up the CDR ID for a document type's filter.
+
+        We do this by finding the filter document's title, and then
+        looking up the ID by this unique title.  This is necessary
+        because the filter document may have disappeared and thus
+        had to be re-created.
+        """
+
+        filter_title = self._old.docs["Filter"].map[old_id]
+        self._cursor.execute("""\
+            SELECT d.id
+              FROM document d
+              JOIN doc_type t
+                ON t.id = d.doc_type
+             WHERE t.name = 'Filter'
+               AND d.title = ?""", filter_title)
+
+    def _add_doc(self, doc_type, doc_title, doc_xml):
+        """
+        Add a document which was lost because it was not on PROD.
+        """
+
+        self._log.write("adding %s document %s" %
+                       (repr(doc_type), repr(doc_title)), stdout=True)
+        # XXX DEBUG
+        # return
+
+        # Wrap the document XML in the CdrDoc wrapper and create it.
+        doc = makeCdrDoc(doc_xml, doc_type)
+        doc_id = cdr.addDoc(self._session, doc=doc, checkIn="N",
+                            comment=Job.COMMENT, reason=Job.COMMENT)
+        err = checkErr(doc_id)
+        if err:
+            self._log.write("failure creating document: %s" % err, stderr=True)
+            return
+
+        # Newly created document need to be versioned and unlocked separately.
+        doc = self._lock_doc(doc_id)
+        if doc:
+            response = cdr.repDoc(self._session, doc=str(doc), checkIn="Y",
+                                  val="Y", ver="Y", reason=Job.COMMENT,
+                                  comment=Job.COMMENT)
+            err = cdr.checkErr(response)
+            if err:
+                self._log.write("failure unlocking %s: %s" % (doc_id, err),
+                                stderr=True)
+
+    def _mod_doc(self, doc_type, doc_title, doc_xml, doc_id):
+        """
+        Add a new version for a document which was different on the two tiers.
+        """
+        self._log.write("updating %s document %s (CDR%d)" %
+                       (repr(doc_type), repr(doc_title), doc_id), stdout=True)
+        # XXX DEBUG
+        # return
+
+        # Lock the document, breaking any existing locks if necessary.
+        doc = self._lock_doc(doc_id)
+        if doc:
+
+            # Plug in the preserved XML from PROD and create the new version.
+            doc.xml = doc_xml.encode("utf-8")
+            doc.ctrl["DocTitle"] = doc_title.encode("utf-8")
+            response = cdr.repDoc(self._session, doc=str(doc), checkIn="Y",
+                                  val="Y", ver="Y", reason=Job.COMMENT,
+                                  comment=Job.COMMENT)
+            err = cdr.checkErr(response)
+            if err:
+                self._log.write("failure saving %s: %s" %
+                                (cdr.normalize(doc_id), err), stderr=True)
+
+    def _lock_doc(self, doc_id):
+        """
+        Check out an existing CDR document.
+        """
+
+        # If someone else has the document locked, break the lock.
+        locker = self._find_locker(self, doc_id)
+        if locker.lower() != self._uid.lower():
+            if not self._unlock_doc(doc_id):
+                return None
+
+        # Fetch the document with a lock.
+        doc = cdr.getDoc(self._session, doc_id, checkout="Y", getObject=True)
+        err = cdr.checkErr(doc)
+        if not err:
+            return doc
+        self._log.write("failure locking %s: %s" %
+                        (cdr.normalize(doc_id), repr(err)), stderr=True)
+        return None
+
+    def _unlock_doc(self, doc_id):
+        """
+        Break an existing lock on a CDR document.
+        """
+        id_string = cdr.normalize(doc_id)
+        response = cdr.unlock(self._session, id_string, Job.COMMENT)
+        if response:
+            self._log.write("failure unlocking %s: %s" %
+                            (id_string, response), stderr=True)
+            return False
+        return True
+
+    def _compare(self, old, new):
+        """
+        Compare two versions of a CDR document.
+        """
+        return cmp(self._normalize(old), self._normalize(new))
+
+    def _normalize(self, xml):
+        """
+        Eliminate differences in line ending sequences for a document.
+        """
+        return xml.replace("\r", "")
+
+    def _find_locker(self, id):
+        """
+        Find out who (if anyone) has a specified document checked out.
+        """
+        self.cursor.execute("""\
             SELECT u.name
               FROM usr u
               JOIN checkout c
@@ -37,199 +333,10 @@ def findLocker(cursor, id):
              WHERE c.id = ?
                AND c.dt_in IS NULL
           ORDER BY dt_out DESC""", id)
-    rows = cursor.fetchall()
-    if rows: return rows[0][0]
-    else: return None
+        rows = cursor.fetchall()
+        return rows and rows[0][0] or None
 
 #----------------------------------------------------------------------
-# Initialize parameters for the job.
+# Entry point.
 #----------------------------------------------------------------------
-if len(sys.argv) != 4:
-    sys.stderr.write("usage: PushDevDocs uid pwd dev-machine\n")
-    sys.stderr.write(" e.g.: PushDevDocs melvyn lead.pudding MAHLER\n")
-    sys.exit(1)
-uid      = sys.argv[1]
-pwd      = sys.argv[2]
-devGroup = 'Developers'
-server   = sys.argv[3]
-conn     = cdrdb.connect('CdrGuest', dataSource = server)
-cursor   = conn.cursor()
-logFile  = open("PushDevDocs.log", "w")
-session  = cdr.login(uid, pwd, host = server)
-reason   = 'preserving work on development server'
-
-#----------------------------------------------------------------------
-# Walk through the documents in the RepDocs subdirectory.  For each
-# document, if the document is locked by someone other than the 
-# operator, break the lock.  Then check the document out and check
-# the current working version preserved from the development server
-# back in.
-#----------------------------------------------------------------------
-log('Updating existing documents ...', 1)
-for name in glob.glob("RepDocs/*.xml"):
-    try:
-        id = extractId(name)
-        idString = "CDR%010d" % id
-        locker = findLocker(cursor, id)
-        if locker:
-            if locker.upper() != uid.upper():
-                resp = cdr.unlock(session, idString,
-                        abandon = 'Y',
-                        force = 'Y', 
-                        reason = reason,
-                        host = server)
-                if resp:
-                    log("Failure unlocking %s: %s" % (idString, resp), 1)
-                    continue
-
-                # Note: this can fail if someone sneaks in a lock.
-                # That's extremely unlikely, and it will be logged.
-                doc = cdr.getDoc(session, idString, 'Y', host = server)
-                if doc.startswith("<Err"):
-                    log("Failure locking %s: %s" % (idString, doc), 1)
-                    continue
-        else:
-            doc = cdr.getDoc(session, idString, 'Y', host = server)
-            if doc.startswith("<Err"):
-                log("Failure locking %s: %s" % (idString, doc), 1)
-                continue
-        doc = open(name, 'rb').read()
-        resp = cdr.repDoc(session, doc = doc, checkIn = 'Y', ver = 'Y', 
-                          reason = reason, host = server, val = 'Y')
-        if not resp.startswith("CDR"):
-            log("Failure saving %s: %s" % (idString, resp), 1)
-        else:
-            log("Replaced %s on %s" % (resp, server))
-    except:
-        cdr.logout(session, host = server)
-        raise
-
-# ---------------------------------------------------------------------
-# Before we can add the new documents we have to make sure that the 
-# new document types exist in the doc_type table.
-# We have captured the necessary information in the file 
-# NewDocTypes.tab.  Use the information to add the entries in the table
-# with the addDoctype() function.
-# ---------------------------------------------------------------------
-log('Creating new DocType entries...', 1)
-def unFix(s):
-    if not s: return None
-    return s.replace("@@TAB", "\t").replace("@@NL@@", "\n")
-
-newDocTypes = open("NewDocTypes.tab").readlines()
-
-# If the file is empty we don't need to add more docTypes 
-# and skip this section.
-# -------------------------------------------------------------------
-if newDocTypes:
-    log("Adding new document types.", 1)
-    # Get the group information.  This needs to be modified to allow
-    # the user (presumably a member of the Developers group) to store
-    # the documents for the new document types
-    # ---------------------------------------------------------------
-    grp = cdr.getGroup(session, devGroup)
-    
-    titleFilters = {}
-    for docTypeInfo in newDocTypes:
-        fields = docTypeInfo.split("\t")
-
-        # We will have a problem if the name of the schema file doesn't 
-        # match the name of the DocType.  We probably should extract 
-        # that name along with the doc_type information in the future.
-        # -------------------------------------------------------------
-        dtinfo = cdr.addDoctype(session, cdr.dtinfo(
-                                         type       = fields[1],
-                                         format     = 'xml',
-                                         versioning = fields[4],
-                                         schema     = fields[1] + '.xml',
-                                         comment    = unFix(fields[9])))
-
-        # Populate the titleFilters dictionary to update the doc_type
-        # table once all new documents have been added.
-        # --------------------------------------------------------------
-        titleFilters[fields[1]] = fields[10]
-
-        # We encountered an error creating the document type
-        # --------------------------------------------------
-        if dtinfo.error: 
-            log("*** Failure creating docType: %s" % fields[1], 1)
-            log("*** %s" % dtinfo.error, 1)
-            if dtinfo.error.startswith('Document type already exists:'):
-                pass
-            else:
-                sys.exit(1)
-
-        # Need to add permissions for the new docType to the grp/user 
-        # running this update so we're able to add/modify/... documents
-        # -------------------------------------------------------------
-        for act in ('ADD DOCUMENT',     'DELETE DOCTYPE', 
-                    'DELETE DOCUMENT',  'FILTER DOCUMENT', 
-                    'FORCE CHECKIN',    'FORCE CHECKOUT',
-                    'GET DOCTYPE',      'GET SCHEMA', 
-                    'MODIFY DOCTYPE',   'MODIFY DOCUMENT', 
-                    'PUBLISH DOCUMENT', 'VALIDATE DOCUMENT'):
-            grp.actions[act].append(fields[1])
-
-    # Save the permissions allowing the group to make changes to the 
-    # new document types to be added.
-    # --------------------------------------------------------------
-    errmsg = cdr.putGroup(session, devGroup, grp)
-    if errmsg:
-        log("Failure saving group permissions: %s" % errmsg)
-        sys.exit(1)
-
-    #----------------------------------------------------------------------
-    # Update the doc_type table to set the correct title filter for the 
-    # newly added document types
-    #----------------------------------------------------------------------
-    log("Updating doc_type table with title filters", 1)
-    conn     = cdrdb.connect('cdr', dataSource = server)
-    cursor   = conn.cursor()
-    for docType in titleFilters:
-        cursor.execute("""\
-           UPDATE doc_type SET title_filter = (SELECT id
-                                                 FROM document
-                                                WHERE title = '%s')
-            WHERE name = '%s'""" % (titleFilters[docType], docType))
-    conn.commit()
-else:
-    log("Document types up-to-date.", 1)
-
-
-#----------------------------------------------------------------------
-# We're waiting to add new documents until the docTypes have been added.
-#
-# For each document in the AddDocs subdirectory, add the document,
-# check it out (to get the version with the document ID embedded),
-# and check it back in.
-#----------------------------------------------------------------------
-log('Adding new documents ...', 1)
-for name in glob.glob("AddDocs/*.xml"):
-    try:
-        id = extractId(name)
-        idString = "CDR%010d" % id
-        doc = open(name, 'rb').read()
-        resp = cdr.addDoc(session, doc = doc, checkIn = 'N', 
-                          reason = reason, host = server)
-        if not resp.startswith("CDR"):
-            log("Failure saving %s: %s" % (idString, resp), 1)
-            continue
-        doc = cdr.getDoc(session, resp, 'Y', host = server)
-        if doc.startswith("<Err"):
-            log("Failure locking %s: %s" % (idString, doc), 1)
-            continue
-        resp = cdr.repDoc(session, doc = doc, checkIn = 'Y', ver = 'Y', 
-                          reason = reason, host = server, val = 'Y')
-        if not resp.startswith("CDR"):
-            log("Failure saving %s: %s" % (idString, resp), 1)
-        else:
-            log("Added old file %s as %s to %s" % (name, resp, server))
-    except:
-        cdr.logout(session, host = server)
-        raise
-
-#----------------------------------------------------------------------
-# Don't leave a mess behind.
-#----------------------------------------------------------------------
-log('Done', 1)
-cdr.logout(session, host = server)
+main()
