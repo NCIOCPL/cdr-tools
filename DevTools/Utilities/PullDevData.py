@@ -18,7 +18,8 @@ import cdrdb, os, sys, time
 # Save all documents of a given type.
 #----------------------------------------------------------------------
 def saveDocs(cursor, outputDir, docType):
-    print "Saving %s documents" % docType
+    docType = unicode(docType, "latin-1")
+    print (u"Saving %s documents" % docType).encode("utf-8")
     os.mkdir("%s/%s" % (outputDir, docType))
     cursor.execute("""\
 SELECT d.id, d.title, d.xml
@@ -28,9 +29,9 @@ SELECT d.id, d.title, d.xml
  WHERE t.name = ?""", docType)
     row = cursor.fetchone()
     if not row:
-        raise Exception("no documents found of type %s" % docType)
+        raise Exception(u"no documents found of type %s" % docType)
     while row:
-        fp = open("%s/%s/%d.cdr" % (outputDir, docType, row[0]), "w")
+        fp = open(u"%s/%s/%d.cdr" % (outputDir, docType, row[0]), "w")
         fp.write(repr(row))
         fp.close()
         row = cursor.fetchone()
