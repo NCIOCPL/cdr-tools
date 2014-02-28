@@ -17,14 +17,15 @@ import glob
 import re
 import sys
 
-#----------------------------------------------------------------------
-# Top-level program logic.
-#
-#  1. Initialization
-#  2. Restore control documents
-#  3. Restore new document types (with their documents)
-#----------------------------------------------------------------------
 def main():
+    """
+    Top-level program logic.
+
+    1. Initialization
+    2. Restore control documents
+    3. Restore new document types (with their documents)
+    4. Release resources
+    """
 
     # 1. Initialization
     job = Job()
@@ -38,9 +39,6 @@ def main():
     # 4. Clean up after ourselves.
     job.clean_up()
 
-#----------------------------------------------------------------------
-# Job control.
-#----------------------------------------------------------------------
 class Job:
     """
     Object which performs the work of restoring CDR documents on DEV.
@@ -66,7 +64,7 @@ class Job:
         # Check for required command line arguments.
         if len(sys.argv) != 4:
             sys.stderr.write("usage: PushDevDocs cdr-uid cdr-pwd directory\n")
-            sys.stderr.write(" e.g.: PushDevDocs joe vewy-secwet")
+            sys.stderr.write(" e.g.: PushDevDocs elmer vewy-secwet")
             sys.stderr.write(" DevData-20140227073812\n")
             sys.exit(1)
         self._uid = sys.argv[1]
@@ -77,8 +75,6 @@ class Job:
         self._conn = cdrdb.connect('CdrGuest')
         self._cursor = self._conn.cursor()
         self._old = cdr_dev_data.Data(self._dir)
-        # XXX DEBUG
-        #self._new = cdr_dev_data.Data("ProdData-20140221080438", self._old)
         self._new = cdr_dev_data.Data(self._cursor, self._old)
         self._session = cdr.login(self._uid, self._pwd)
         self._log = cdr.Log("PushDevData.log")
@@ -171,10 +167,6 @@ class Job:
         schema_id = row["xml_schema"]
         schema = self._old.docs["Schema"].map[schema_id]
         info = cdr.dtinfo(name, "xml", "Y", schema=schema, comment=comment)
-        # XXX DEBUG
-        #self._log.write("comment is %s" % repr(comment), stdout=True)
-        #self._log.write("schema is %s" % repr(schema), stdout=True)
-        #return True
         info = cdr.AddDoctype(self._session, info)
         if info.error:
             self._log.write("unable to create doctype %s: %s" %
@@ -230,8 +222,6 @@ class Job:
 
         self._log.write("adding %s document %s" %
                        (repr(doc_type), repr(doc_title)), stdout=True)
-        # XXX DEBUG
-        # return
 
         # Wrap the document XML in the CdrDoc wrapper and create it.
         doc = makeCdrDoc(doc_xml, doc_type)
@@ -259,8 +249,6 @@ class Job:
         """
         self._log.write("updating %s document %s (CDR%d)" %
                        (repr(doc_type), repr(doc_title), doc_id), stdout=True)
-        # XXX DEBUG
-        # return
 
         # Lock the document, breaking any existing locks if necessary.
         doc = self._lock_doc(doc_id)
@@ -299,7 +287,7 @@ class Job:
 
     def _unlock_doc(self, doc_id):
         """
-        Break an existing lock on a CDR document.
+        Release an existing lock on a CDR document.
         """
         id_string = cdr.normalize(doc_id)
         response = cdr.unlock(self._session, id_string, Job.COMMENT)
@@ -339,4 +327,5 @@ class Job:
 #----------------------------------------------------------------------
 # Entry point.
 #----------------------------------------------------------------------
-main()
+if __name__ == "__main__":
+    main()
