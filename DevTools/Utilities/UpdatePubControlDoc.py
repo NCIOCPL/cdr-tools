@@ -139,10 +139,9 @@ def main():
     # 6. Store the new version on the target CDR server.
     #------------------------------------------------------------------
     docObj.xml = docXml
-    doc = str(docObj)
     print 'Versioned: %s, Publishable: %s' % (options.version,
                                               options.publishable)
-    cdrId = cdr.repDoc(session, doc=doc, checkIn="Y", val="Y",
+    cdrId = cdr.repDoc(session, doc=str(docObj), checkIn="Y", val="Y",
                        reason=options.comment, comment=options.comment,
                        ver=options.version, verPublishable=options.publishable)
     checkForProblems(cdrId, op)
