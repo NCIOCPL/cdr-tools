@@ -167,7 +167,7 @@ class Job:
         schema_id = row["xml_schema"]
         schema = self._old.docs["Schema"].map[schema_id]
         info = cdr.dtinfo(name, "xml", "Y", schema=schema, comment=comment)
-        info = cdr.AddDoctype(self._session, info)
+        info = cdr.addDoctype(self._session, info)
         if info.error:
             self._log.write("unable to create doctype %s: %s" %
                             (repr(name), info.error), stderr=True)
@@ -195,6 +195,9 @@ class Job:
             self._log.write("unable to update permissions for doctype %s: %s" %
                             (repr(name), errors), stderr=True)
             sys.exit(1)
+
+        # Report success.
+        return True
 
     def _get_filter_id(self, old_id):
         """
@@ -224,10 +227,10 @@ class Job:
                        (repr(doc_type), repr(doc_title)), stdout=True)
 
         # Wrap the document XML in the CdrDoc wrapper and create it.
-        doc = makeCdrDoc(doc_xml, doc_type)
+        doc = cdr.makeCdrDoc(doc_xml, doc_type, ctrl={"DocTitle": doc_title})
         doc_id = cdr.addDoc(self._session, doc=doc, checkIn="N",
                             comment=Job.COMMENT, reason=Job.COMMENT)
-        err = checkErr(doc_id)
+        err = cdr.checkErr(doc_id)
         if err:
             self._log.write("failure creating document: %s" % err, stderr=True)
             return
@@ -271,8 +274,8 @@ class Job:
         """
 
         # If someone else has the document locked, break the lock.
-        locker = self._find_locker(self, doc_id)
-        if locker.lower() != self._uid.lower():
+        locker = self._find_locker(doc_id)
+        if locker and locker.lower() != self._uid.lower():
             if not self._unlock_doc(doc_id):
                 return None
 
@@ -313,15 +316,15 @@ class Job:
         """
         Find out who (if anyone) has a specified document checked out.
         """
-        self.cursor.execute("""\
+        self._cursor.execute("""\
             SELECT u.name
               FROM usr u
               JOIN checkout c
                 ON c.usr = u.id
              WHERE c.id = ?
                AND c.dt_in IS NULL
-          ORDER BY dt_out DESC""", id)
-        rows = cursor.fetchall()
+          ORDER BY dt_out DESC""", cdr.exNormalize(id)[1])
+        rows = self._cursor.fetchall()
         return rows and rows[0][0] or None
 
 #----------------------------------------------------------------------
