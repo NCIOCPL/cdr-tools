@@ -66,7 +66,7 @@ def getDocId(path):
     query = cdrdb.Query("document d", "d.id")
     query.join("doc_type t", "t.id = d.doc_type")
     query.where("t.name = 'PublishingSystem'")
-    query.where("d.title = ?", title)
+    query.where(query.Condition("d.title", title))
     rows = query.execute().fetchall()
     if not rows:
         raise Exception(u"Control document %s not found" % repr(title))
