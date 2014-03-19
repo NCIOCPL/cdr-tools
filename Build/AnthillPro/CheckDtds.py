@@ -46,12 +46,12 @@ for docType in docTypes:
         docTypeResponses.append(getDocTypeResponses(docType))
         #sys.stderr.write("new DTD retrieved\n")
         if not dtInfo.dtd:
-            sys.stderr.write("Can't get new DTD for %s\n" % docType)
+            sys.stderr.write("Can't get new DTD for %s\n" % repr(docType))
             continue
         start = dtInfo.dtd.find("<!ELEMENT")
         #sys.stderr.write("new start is at %d\n" % start)
         if start == -1:
-            sys.stderr.write("Malformed DTD for %s type\n" % docType)
+            sys.stderr.write("Malformed DTD for %s type\n" % repr(docType))
             #print dtInfo.dtd
             continue
         newDtd = dtInfo.dtd[start:]
@@ -87,11 +87,11 @@ docTypeResponses.append('</DocTypeResponses>\n')
 docTypeResponses = "".join(docTypeResponses)
 try:
     if loadDocTypeResponses(docTypeFilePath) != docTypeResponses:
-        print "%s changed" % docTypeFileName
+        print "%s changed" % repr(docTypeFileName)
         saveDocTypeResponses(docTypeFilePath, docTypeResponses)
     else:
-        print "%s unchanged" % docTypeFileName
+        print "%s unchanged" % repr(docTypeFileName)
 except:
-    print "saving new %s" % docTypeFileName
+    print "saving new %s" % repr(docTypeFileName)
     saveDocTypeResponses(docTypeFilePath, docTypeResponses)
 print "*** DON'T FORGET TO RUN RefreshManifest.py IF APPROPRIATE! ***"
