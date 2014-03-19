@@ -168,7 +168,8 @@ def compare_docs(old, new):
                 print "<p class='ok'>&#x2713;</p>"
             else:
                 print "  <ul>"
-                print "   " + "\n   ".join(["<li>%s</li>" % i for i in items])
+                print "   " + "\n   ".join(["<li>%s</li>" % i.encode("utf-8")
+                                            for i in items])
                 print "  </ul>"
 
 if len(sys.argv) > 1:
