@@ -8,12 +8,12 @@
 # file
 # Intermediate files are stored in the $PDQLOG directory.
 # ------------------------------------------------------------------
-# $Author: venglisc $      
+# $Author$      
 # Created:              Volker Englisch  - 2006-03-20
 # $Locker:  $
 # 
 # $Source: /usr/local/cvsroot/production/prod/bin/get_stats.py,v $
-# $Revision: 1.2 $
+# $Revision$
 #
 # History:
 # $Log: $
