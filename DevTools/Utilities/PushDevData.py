@@ -217,6 +217,8 @@ class Job:
                 ON t.id = d.doc_type
              WHERE t.name = 'Filter'
                AND d.title = ?""", filter_title)
+        rows = self._cursor.fetchall()
+        return rows and rows[0][0] or None
 
     def _add_doc(self, doc_type, doc_title, doc_xml):
         """
