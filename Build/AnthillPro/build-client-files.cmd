@@ -25,12 +25,13 @@ IF "%1." == "." (
     ECHO  e.g.: CALL %SCRIPTNAME% branches/patch-2.3
     EXiT /B 1
 )
+SET SVNOPTS=-q --trust-server-cert --non-interactive
 IF "%2." == "." (
-    SET SVNEXP=svn export -q
+    SET SVNEXP=svn export %SVNOPTS%
 ) ELSE IF "%3." == "." (
-    SET SVNEXP=svn export -q --password %2
+    SET SVNEXP=svn export %SVNOPTS% --password %2
 ) ELSE (
-    SET SVNEXP=svn export -q --username %3 --password %2
+    SET SVNEXP=svn export %SVNOPTS% --username %3 --password %2
 )
 D:
 SET CLIENTFILES=d:\tmp\ClientFiles
