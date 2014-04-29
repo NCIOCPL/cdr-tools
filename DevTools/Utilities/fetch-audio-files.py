@@ -8,7 +8,7 @@ import paramiko, datetime, sys
 audio = "/ciat/Audio/Audio_Transferred"
 host = "cancerinfo.nci.nih.gov"
 port = 22
-uid, pwd = "testftp", "***REMOVED***"
+uid, pwd = "testftp", "***REMOVED***" # "***REMOVED***"
 transport = paramiko.Transport((host, port))
 transport.connect(username=uid, password=pwd)
 sftp = paramiko.SFTPClient.from_transport(transport)
