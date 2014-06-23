@@ -473,7 +473,7 @@ def fixPdqSponsorship(doc):
                       FROM doc_type t
                       JOIN document d
                         ON d.doc_type = t.id
-                     WHERE d.id = ?""", docId)
+                     WHERE d.id = ?""", docId, timeout=600)
                 rows = cursor.fetchall()
                 docType = rows and rows[0][0] or None
                 if docType == "Person":
@@ -484,7 +484,7 @@ def fixPdqSponsorship(doc):
                         SELECT value
                           FROM query_term
                          WHERE path = '/Organization/OrganizationType'
-                           AND doc_id = ?""", docId)
+                           AND doc_id = ?""", docId, timeout=600)
                     rows = cursor.fetchall()
                     orgType = rows and rows[0][0].strip().upper() or None
                     if collaborator and orgType != NIH_INSTITUTE:
@@ -499,7 +499,7 @@ def fixPdqSponsorship(doc):
                              WHERE path = '/Organization'
                                         + '/OrganizationNameInformation'
                                         + '/OfficialName/Name'
-                               AND doc_id = ?""", docId)
+                               AND doc_id = ?""", docId, timeout=600)
                         rows = cursor.fetchall()
                         if rows:
                             orgName = rows[0][0].strip().upper()
@@ -665,7 +665,7 @@ def getDocumentType(cdrId):
           FROM doc_type t
           JOIN document d
             ON d.doc_type = t.id
-         WHERE d.id = ?""", cdrId)
+         WHERE d.id = ?""", cdrId, timeout=600)
     rows = cursor.fetchall()
     return rows and rows[0][0] or None
 
@@ -683,7 +683,7 @@ def isPublishableCtgovProtocolVersion(cdrId, lastPub):
          WHERE v.publishable = 'Y'
            AND v.id = ?
            AND v.num = ?
-           AND t.name = 'CTGovProtocol'""", (docId, lastPub))
+           AND t.name = 'CTGovProtocol'""", (docId, lastPub), timeout=600)
     return cursor.fetchall() and True or False
 
 #----------------------------------------------------------------------
@@ -699,7 +699,7 @@ SELECT COUNT(*)
   FROM query_term
  WHERE path = '/CTGovProtocol/CTRPInfo/CTRPLocation/CTRPFacility' +
               '/PDQOrganization/@cdr:ref'
-   AND doc_id = ?""", docId)
+   AND doc_id = ?""", docId, timeout=600)
     count = cursor.fetchall()[0][0]
     if count > 0:
         log("CDR%s has CTRP sites; dropping NLM sites" % docId)
