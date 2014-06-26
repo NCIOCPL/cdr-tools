@@ -35,7 +35,7 @@ def log(what, traceback = False):
 def loadDispositions(cursor):
     dispNames = {}
     dispCodes = {}
-    cursor.execute("SELECT id, name FROM ctgov_disposition", timeout = 300)
+    cursor.execute("SELECT id, name FROM ctgov_disposition", timeout=500)
     for row in cursor.fetchall():
         dispNames[row[0]] = row[1]
         dispCodes[row[1]] = row[0]
@@ -111,7 +111,7 @@ def normalizeXml(doc):
     return response[0]
 
 #----------------------------------------------------------------------
-# Compare two versions of a CTGovProtocol doc; return non-zero if 
+# Compare two versions of a CTGovProtocol doc; return non-zero if
 # different.
 #----------------------------------------------------------------------
 def compareXml(a, b):
@@ -134,7 +134,7 @@ def getEmailRecipients(cursor, includeDeveloper = False):
              WHERE g.name = 'CTGov Publishers'
                AND u.expired IS NULL
                AND u.email IS NOT NULL
-               AND u.email <> ''""", timeout = 300)
+               AND u.email <> ''""", timeout=500)
         recips = [row[0] for row in cursor.fetchall()]
         if includeDeveloper and developer not in recips:
             recips.append(developer)
@@ -153,8 +153,8 @@ def sendReport(recips, subject, body):
 #----------------------------------------------------------------------
 # Send a failure report; include the developer.
 #----------------------------------------------------------------------
-def reportFailure(context, message):
-    log(message)
+def reportFailure(message):
+    log(message, True)
     recips = getEmailRecipients(cursor, includeDeveloper = True)
     subject = "CTGov Download Failure Report"
     sendReport(recips, subject, message)
@@ -200,7 +200,7 @@ class IdProblem:
             desc += (u"; even after removing %s doc will have multiple IDs"
                      % u" & ".join(nctIdsToRemove))
         self.description = desc.encode('utf-8')
-                                 
+
 #----------------------------------------------------------------------
 # Check to see if we'll end up with too many NCT Ids; see comment #13
 # by Lakshmi in request #3250.
@@ -235,10 +235,10 @@ def findNewlyTransferredDocs(nlmId):
            AND i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
            AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
            AND t.value = 'ClinicalTrials.gov ID'
-           AND i.value = ?""", nlmId, timeout = 300)
+           AND i.value = ?""", nlmId, timeout=500)
     rows = cursor.fetchall()
     return [row[0] for row in rows]
-            
+
 #----------------------------------------------------------------------
 # Object representing interesting components of a CTGov trial document.
 #----------------------------------------------------------------------
@@ -290,7 +290,7 @@ class Doc:
                             match = Doc.ctrpIdFormat.match(anId)
                             if match:
                                 self.ctrpId = match.group(0)
-                            
+
                     if child.nodeName == "org_study_id":
                         self.orgStudyId = cdr.getTextContent(child).strip()
                         match = Doc.cdrIdFormat.match(self.orgStudyId)
@@ -301,7 +301,7 @@ class Doc:
       FROM doc_type t
       JOIN document d
         ON d.doc_type = t.id
-     WHERE d.id = ?""", self.orgStudyCdrId)
+     WHERE d.id = ?""", self.orgStudyCdrId, timeout=500)
                             rows = cursor.fetchall()
                             if rows:
                                 self.orgStudyCdrDt = rows[0][0]
@@ -311,7 +311,7 @@ class Doc:
       FROM query_term
      WHERE path = '/InScopeProtocol/CTGovOwnershipTransferInfo'
                 + '/CTGovOwnerOrganization'
-       AND doc_id = ?""", self.orgStudyCdrId)
+       AND doc_id = ?""", self.orgStudyCdrId, timeout=500)
                                 rows = cursor.fetchall()
                                 if rows:
                                     self.newCtgovOwner = rows[0][0]
@@ -346,12 +346,12 @@ class Doc:
                 cursor.execute("""\
             SELECT xml, cdr_id, disposition, force
               FROM ctgov_import
-             WHERE nlm_id = ?""", self.nlmId, timeout = 300)
+             WHERE nlm_id = ?""", self.nlmId, timeout=500)
                 row = cursor.fetchone()
             except Exception, e:
                 msg = ("Failure selecting from ctgov_import for %s\n"
                        % self.nlmId)
-                reportFailure(cursor, msg)
+                reportFailure(msg)
             if row:
                 self.oldXml, self.cdrId, self.disposition, forced = row
                 if forced == 'Y':
@@ -384,7 +384,7 @@ class NctIdInserter:
         Modify the XML document passed by inserting an OtherID element
         for the new NCT ID (if present) and/or dropping any obsolete NCT
         IDs identified.
-        
+
         Pre-condition:
             Caller will have determined that at least one of self.newId
             or self.obsoleteIds is present, and that if self.newId is present
@@ -394,7 +394,7 @@ class NctIdInserter:
         filt = ["""\
 <?xml version='1.0' encoding='UTF-8'?>
 
-<xsl:transform                version = '1.0' 
+<xsl:transform                version = '1.0'
                             xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                             xmlns:cdr = 'cips.nci.nih.gov/cdr'>
 
@@ -488,7 +488,7 @@ def getNctIds(cdrId):
          WHERE i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
            AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
            AND t.value = 'ClinicalTrials.gov ID'
-           AND i.doc_id = ?""", cdrId, timeout = 300)
+           AND i.doc_id = ?""", cdrId, timeout=500)
     return set([row[0] for row in cursor.fetchall()])
 
 #----------------------------------------------------------------------
@@ -499,7 +499,7 @@ def getForcedDownloadIds(cursor):
     conn = cdrdb.connect('CdrGuest')
     cursor = conn.cursor()
     cursor.execute("SELECT nlm_id FROM ctgov_import WHERE force = 'Y'",
-                   timeout = 300)
+                   timeout=500)
     return [row[0] for row in cursor.fetchall()]
 
 #----------------------------------------------------------------------
@@ -518,10 +518,10 @@ def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
         SELECT COUNT(*)
           FROM query_term
          WHERE path = '/CTGovProtocol/IDInfo/NCTID'
-           AND value = ?""", nlmId)
+           AND value = ?""", nlmId, timeout=500)
     if cursor.fetchall()[0][0] < 1:
         return
-    
+
     comment = (u"Trial blocked because it is a duplicate of %s"
                % nlmId).encode('utf-8')
     for obsoleteId in obsoleteIds:
@@ -532,9 +532,9 @@ def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
               JOIN active_doc a
                 ON a.id = q.doc_id
              WHERE q.path = '/CTGovProtocol/IDInfo/NCTID'
-               AND q.value = ?""", obsoleteId, timeout = 300)
+               AND q.value = ?""", obsoleteId, timeout=500)
         for row in cursor.fetchall():
-            
+
             # [Kim, 2008-06-17] Create a new version and put comment there.
             # cdr.setDocStatus(session, row[0], 'I', comment = comment)
             doc = cdr.getDoc(session, row[0], 'Y')
@@ -555,58 +555,61 @@ def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
 #----------------------------------------------------------------------
 # Seed the table with documents we know to be duplicates.
 #----------------------------------------------------------------------
-tooManyReplacedDocs = []
-ModifyDocs._testMode = False
-conn = cdrdb.connect()
-cursor = conn.cursor()
-logger = Logger()
-dispNames, dispCodes = loadDispositions(cursor)
-oldOncoreNctIds = getOncoreNctIds()
-newOncoreNctIds = {}
-expr = re.compile(r"CDR0*(\d+)\s+(NCT\d+)\s*")
-for line in open('ctgov-dups.txt'):
-    match = expr.match(line)
-    if match:
-        cdrId, nlmId = match.groups()
-        cdrId = int(cdrId)
-        cursor.execute("""\
-            SELECT cdr_id, disposition
-              FROM ctgov_import
-             WHERE nlm_id = ?""", nlmId, timeout = 300)
-        row = cursor.fetchone()
-        if row:
-            if row[0] != dispCodes['duplicate']:
-                if row[0] == dispCodes['imported']:
-                    log('duplicate %s already imported as CDR%d\n' %
-                        (nlmId, row[1]))
-                else:
-                    try:
-                        cursor.execute("""\
-                    UPDATE ctgov_import
-                       SET disposition = ?,
-                           dt = GETDATE(),
-                           cdr_id = ?,
-                           comment = 'Marked as duplicate by download job'
-                     WHERE nlm_id = ?""", (dispCodes['duplicate'],
-                                           cdrId,
-                                           nlmId), timeout = 300)
-                        conn.commit()
-                    except:
-                        log('Unable to update row for %s/CDR%d\n' %
-                            (nlmId, cdrId))
-        else:
-            try:
-                cursor.execute("""\
-            INSERT INTO ctgov_import (nlm_id, cdr_id, disposition, dt,
-                                      comment)
-                 VALUES (?, ?, ?, GETDATE(),
-                         'Marked as duplicate by download job')""",
-                           (nlmId, cdrId, dispCodes['duplicate']),
-                               timeout = 300)
-                conn.commit()
-            except:
-                log('Unable to insert row for %s/CDR%d\n' %
-                    (nlmId, cdrId))
+try:
+    tooManyReplacedDocs = []
+    ModifyDocs._testMode = False
+    conn = cdrdb.connect()
+    cursor = conn.cursor()
+    logger = Logger()
+    dispNames, dispCodes = loadDispositions(cursor)
+    oldOncoreNctIds = getOncoreNctIds()
+    newOncoreNctIds = {}
+    expr = re.compile(r"CDR0*(\d+)\s+(NCT\d+)\s*")
+    for line in open('ctgov-dups.txt'):
+        match = expr.match(line)
+        if match:
+            cdrId, nlmId = match.groups()
+            cdrId = int(cdrId)
+            cursor.execute("""\
+                SELECT cdr_id, disposition
+                  FROM ctgov_import
+                 WHERE nlm_id = ?""", nlmId, timeout=500)
+            row = cursor.fetchone()
+            if row:
+                if row[0] != dispCodes['duplicate']:
+                    if row[0] == dispCodes['imported']:
+                        log('duplicate %s already imported as CDR%d\n' %
+                            (nlmId, row[1]))
+                    else:
+                        try:
+                            cursor.execute("""\
+                        UPDATE ctgov_import
+                           SET disposition = ?,
+                               dt = GETDATE(),
+                               cdr_id = ?,
+                               comment = 'Marked as duplicate by download job'
+                         WHERE nlm_id = ?""", (dispCodes['duplicate'],
+                                               cdrId,
+                                               nlmId), timeout=500)
+                            conn.commit()
+                        except:
+                            log('Unable to update row for %s/CDR%d\n' %
+                                (nlmId, cdrId))
+            else:
+                try:
+                    cursor.execute("""\
+                INSERT INTO ctgov_import (nlm_id, cdr_id, disposition, dt,
+                                          comment)
+                     VALUES (?, ?, ?, GETDATE(),
+                             'Marked as duplicate by download job')""",
+                               (nlmId, cdrId, dispCodes['duplicate']),
+                                   timeout=500)
+                    conn.commit()
+                except:
+                    log('Unable to insert row for %s/CDR%d\n' %
+                        (nlmId, cdrId))
+except Exception, e:
+    reportFailure("Failure seeding table with duplicates: %s" % e)
 
 def getForcedDocs(base, params, counter, cursor):
     params.append('&studyxml=true')
@@ -619,7 +622,7 @@ def getForcedDocs(base, params, counter, cursor):
         page   = urlobj.read()
     except Exception, e:
         msg = "Failure downloading %s: %s" % (name, str(e))
-        reportFailure(cursor, msg)
+        reportFailure(msg)
     try:
         fp = open(name, "wb")
         fp.write(page)
@@ -627,11 +630,11 @@ def getForcedDocs(base, params, counter, cursor):
         log("%s downloaded\n" % name)
     except Exception, e:
         msg = "Failure storing %s: %s" % (name, str(e))
-        reportFailure(cursor, msg)
+        reportFailure(msg)
     result = cdr.runCommand("unzip -o %s" % name)
     if result.code:
         msg = "Failure unpacking %s: %s" % (name, result.output)
-        reportFailure(cursor, msg)
+        reportFailure(msg)
 
 #----------------------------------------------------------------------
 # Decide whether we're really downloading or working from an existing
@@ -640,30 +643,32 @@ def getForcedDocs(base, params, counter, cursor):
 if len(sys.argv) > 1:
     name = sys.argv[1]
 else:
-    now = time.strftime("%Y%m%d%H%M%S")
-    curdir = os.getcwd()
-    basedir = os.path.join(curdir, "CTGovDownloads")
-    workdir = os.path.join(basedir, "work-%s" % now)
-    os.makedirs(workdir)
-    os.chdir(workdir)
-    log("workdir is '%s'\n" % workdir)
-    conditions = ['cancer', 'lymphedema', 'myelodysplastic syndromes',
-                  'neutropenia', 'aspergillosis', 'mucositis']
-    diseases = ['cancer', 'neoplasm']
-    sponsor = "(National Cancer Institute) [SPONSOR-COLLABORATORS]"
-    conditions = "(%s) [CONDITION]" % " OR ".join(conditions)
-    diseases = "(%s) [DISEASE]" % " OR ".join(diseases)
-    params = "%s OR %s OR %s&studyxml=true" % (conditions, diseases, sponsor)
-    params = "term=%s" % params.replace(" ", "+")
-    base  = "http://clinicaltrials.gov/ct2/results"
-    url = "%s?%s" % (base, params)
-    print url
+    try:
+        now = time.strftime("%Y%m%d%H%M%S")
+        curdir = os.getcwd()
+        basedir = os.path.join(curdir, "CTGovDownloads")
+        workdir = os.path.join(basedir, "work-%s" % now)
+        os.makedirs(workdir)
+        os.chdir(workdir)
+        log("workdir is '%s'\n" % workdir)
+        conditions = ['cancer', 'lymphedema', 'myelodysplastic syndromes',
+                      'neutropenia', 'aspergillosis', 'mucositis']
+        diseases = ['cancer', 'neoplasm']
+        sponsor = "(National Cancer Institute) [SPONSOR-COLLABORATORS]"
+        conditions = "(%s) [CONDITION]" % " OR ".join(conditions)
+        diseases = "(%s) [DISEASE]" % " OR ".join(diseases)
+        params = "%s OR %s OR %s&studyxml=true" % (conditions, diseases, sponsor)
+        params = "term=%s" % params.replace(" ", "+")
+        base  = "http://clinicaltrials.gov/ct2/results"
+        url = "%s?%s" % (base, params)
+    except Exception, e:
+        reportFailure("Failure preparing for CT.gov download: %s" % e)
     try:
         urlobj = urllib.urlopen(url)
         page   = urlobj.read()
     except Exception, e:
         msg = "Failure downloading core set using %s: %s" % (url, e)
-        reportFailure(cursor, msg)
+        reportFailure(msg)
     try:
         fp = open("core-set.zip", "wb")
         fp.write(page)
@@ -671,15 +676,18 @@ else:
         log("core set downloaded\n")
     except Exception, e:
         msg = "Failure storing downloaded trials: %s" % str(e)
-        reportFailure(cursor, msg)
+        reportFailure(msg)
     result = cdr.runCommand("unzip -o core-set.zip")
     if result.code:
         msg = "Failure unpacking core set: %s" % result.output
-        reportFailure(cursor, msg)
+        reportFailure(msg)
     downloaded = set([n[:-4].upper() for n in glob.glob("*.xml")])
     connector = ''
     params = ["term="]
-    forcedIds = getForcedDownloadIds(cursor)
+    try:
+        forcedIds = getForcedDownloadIds(cursor)
+    except Exception, e:
+        reportFailure("Failure retrieving forced download IDs: %s" % e)
     counter = 1
     for nctId in forcedIds:
         if nctId.upper() not in downloaded:
@@ -705,7 +713,7 @@ else:
     result = cdr.runCommand("zip ../%s *.xml" % name)
     if result.code:
         msg = "Failure repacking trials: %s" % result.output
-        reportFailure(cursor, msg)
+        reportFailure(msg)
     os.chdir(curdir)
     name = "CTGovDownloads/%s" % name
     log("full set in '%s'\n" % name)
@@ -718,7 +726,7 @@ try:
     nameList = file.namelist()
 except Exception, e:
     msg = "Failure opening %s: %s" % (name, str(e))
-    reportFailure(cursor, msg)
+    reportFailure(msg)
 stats      = Stats()
 docsInSet  = set()
 logDropped = 1
@@ -728,254 +736,267 @@ if len(sys.argv) > 2:
 #----------------------------------------------------------------------
 # Walk through the archive and process each document in it.
 #----------------------------------------------------------------------
-for name in nameList:
-    wanted = 0
-    xmlFile = file.read(name)
-    doc = Doc(xmlFile, name)
-    if doc.newCtgovOwner:
-        log(u"New CT.gov owner for %s is %s\n" % (doc.nlmId, doc.newCtgovOwner))
+try:
+    for name in nameList:
+        wanted = 0
+        xmlFile = file.read(name)
+        doc = Doc(xmlFile, name)
+        if doc.newCtgovOwner:
+            log(u"New CT.gov owner for %s is %s\n" %
+                (doc.nlmId, doc.newCtgovOwner))
 
-    #------------------------------------------------------------------
-    # Added for enhancement request #4132.
-    # Turned off while the requirements get settled.
-    #------------------------------------------------------------------
-    if doc.obsoleteIds and doc.nlmId:
-        blockObsoleteCtgovDocs(doc.obsoleteIds, cursor, session, doc.nlmId)
+        #------------------------------------------------------------------
+        # Added for enhancement request #4132.
+        # Turned off while the requirements get settled.
+        #------------------------------------------------------------------
+        if doc.obsoleteIds and doc.nlmId:
+            blockObsoleteCtgovDocs(doc.obsoleteIds, cursor, session, doc.nlmId)
 
-    #------------------------------------------------------------------
-    # Handle some really unexpected problems.
-    #------------------------------------------------------------------
-    if logDropped and doc.nlmId:
-        docsInSet.add(doc.nlmId)
-    if not doc.nlmId:
-        log("Skipping document without NLM ID\n")
-    elif not doc.title:
-        log("Skipping %s, which has no title\n" % doc.nlmId)
-    #elif doc.nciSponsored:
-    #    log("Skipping %s, which is NCI sponsored\n" % doc.nlmId)
+        #------------------------------------------------------------------
+        # Handle some really unexpected problems.
+        #------------------------------------------------------------------
+        if logDropped and doc.nlmId:
+            docsInSet.add(doc.nlmId)
+        if not doc.nlmId:
+            log("Skipping document without NLM ID\n")
+        elif not doc.title:
+            log("Skipping %s, which has no title\n" % doc.nlmId)
+        #elif doc.nciSponsored:
+        #    log("Skipping %s, which is NCI sponsored\n" % doc.nlmId)
 
-    #------------------------------------------------------------------
-    # Skip documents they got from us in the first place.
-    # Request #1374: pick up the NCT IDs for these documents.
-    # Request #4516: handle trials whose ownership has been transferred
-    #                from PDQ to CT.gov
-    #------------------------------------------------------------------
-    elif doc.isOwnedByPdq():
-        
-        cdrId = doc.orgStudyCdrId
-        if cdrId in oldOncoreNctIds and oldOncoreNctIds[cdrId] != doc.nlmId:
-            newOncoreNctIds[cdrId] = doc.nlmId
-        log("Skipping %s, which is owned by PDQ as CDR%s\n" %
-            (doc.nlmId, cdrId))
-        stats.pdqCdr += 1
-        try:
-            locked = False
-            nctIds = getNctIds(cdrId)
+        #------------------------------------------------------------------
+        # Skip documents they got from us in the first place.
+        # Request #1374: pick up the NCT IDs for these documents.
+        # Request #4516: handle trials whose ownership has been transferred
+        #                from PDQ to CT.gov
+        #------------------------------------------------------------------
+        elif doc.isOwnedByPdq():
 
-            # See if we need to insert the current NCT ID.
-            nctIdToInsert = None
-            if doc.nlmId not in nctIds:
-                log("Inserting NCT ID %s into CDR%s\n" % (doc.nlmId, cdrId))
-                nctIdToInsert = doc.nlmId
-                stats.nctAdded += 1
-
-            # Request #3250: remove obsolete NCT IDs.
-            nctIdsToRemove = []
-            if doc.orgStudyCdrDt == 'InScopeProtocol':
-                for obsoleteId in doc.obsoleteIds:
-                    if obsoleteId in nctIds:
-                        log("Removing NCT ID %s from CDR%s\n" % (obsoleteId,
-                                                                 cdrId))
-                        nctIdsToRemove.append(obsoleteId)
-                        stats.nctRemoved += 1
-
-            # See comment #13 of request #3250.
-            idProblem = findIdProblem(cdrId, nctIds, nctIdToInsert,
-                                      nctIdsToRemove)
-            if idProblem:
-                log(idProblem.description)
-                idProblems.append(idProblem)
-            elif nctIdToInsert or nctIdsToRemove:
-                inserter = NctIdInserter(nctIdToInsert, nctIdsToRemove)
-                locked = True
-                cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
-                cdrDoc.saveChanges(cursor, logger)
-                cdr.unlock(session, "CDR%010d" % cdrId)
-                locked = False
-        except Exception, e:
-            if locked:
-                cdr.unlock(session, "CDR%010d" % cdrId)
-            log("Failure adjusting NCT IDs in CDR%s: %s\n" % (cdrId, str(e)),
-                True)
-
-    #------------------------------------------------------------------
-    # We don't want closed or completed trials.
-    #------------------------------------------------------------------
-    elif (not doc.cdrId and
-          not doc.forcedDownload and
-          doc.newCtgovOwner is None and
-          (not doc.status or doc.status.upper() not in ("NOT YET RECRUITING",
-                                                        "RECRUITING"))):
-        log("Skipping %s, which has a status of %s\n" % (doc.nlmId,
-                                                         doc.status))
-
-        # 2004-02-12, request (#1106) from Lakshmi: drop the row if it exists.
-        if doc.disposition is not None:
+            cdrId = doc.orgStudyCdrId
+            if (cdrId in oldOncoreNctIds and
+                oldOncoreNctIds[cdrId] != doc.nlmId):
+                newOncoreNctIds[cdrId] = doc.nlmId
+            log("Skipping %s, which is owned by PDQ as CDR%s\n" %
+                (doc.nlmId, cdrId))
+            stats.pdqCdr += 1
             try:
-                cursor.execute("DELETE ctgov_import WHERE nlm_id = ?",
-                               doc.nlmId, timeout = 300)
-                conn.commit()
-                log("dropped existing row for %s\n" % doc.nlmId)
+                locked = False
+                nctIds = getNctIds(cdrId)
+
+                # See if we need to insert the current NCT ID.
+                nctIdToInsert = None
+                if doc.nlmId not in nctIds:
+                    log("Inserting NCT ID %s into CDR%s\n" %
+                        (doc.nlmId, cdrId))
+                    nctIdToInsert = doc.nlmId
+                    stats.nctAdded += 1
+
+                # Request #3250: remove obsolete NCT IDs.
+                nctIdsToRemove = []
+                if doc.orgStudyCdrDt == 'InScopeProtocol':
+                    for obsoleteId in doc.obsoleteIds:
+                        if obsoleteId in nctIds:
+                            log("Removing NCT ID %s from CDR%s\n" %
+                                (obsoleteId, cdrId))
+                            nctIdsToRemove.append(obsoleteId)
+                            stats.nctRemoved += 1
+
+                # See comment #13 of request #3250.
+                idProblem = findIdProblem(cdrId, nctIds, nctIdToInsert,
+                                          nctIdsToRemove)
+                if idProblem:
+                    log(idProblem.description)
+                    idProblems.append(idProblem)
+                elif nctIdToInsert or nctIdsToRemove:
+                    inserter = NctIdInserter(nctIdToInsert, nctIdsToRemove)
+                    locked = True
+                    cdrDoc = ModifyDocs.Doc(cdrId, session, inserter, comment)
+                    cdrDoc.saveChanges(cursor, logger)
+                    cdr.unlock(session, "CDR%010d" % cdrId)
+                    locked = False
             except Exception, e:
-                log("failure dropping row for %s: %s\n" % (doc.nlmId, str(e)))
+                if locked:
+                    cdr.unlock(session, "CDR%010d" % cdrId)
+                log("Failure adjusting NCT IDs in CDR%s: %s\n" %
+                    (cdrId, str(e)),
+                    True)
 
-        stats.closed += 1
+        #------------------------------------------------------------------
+        # We don't want closed or completed trials.
+        #------------------------------------------------------------------
+        elif (not doc.cdrId and
+              not doc.forcedDownload and
+              doc.newCtgovOwner is None and
+              (not doc.status or
+               doc.status.upper() not in ("NOT YET RECRUITING",
+                                          "RECRUITING"))):
+            log("Skipping %s, which has a status of %s\n" % (doc.nlmId,
+                                                             doc.status))
 
-    #------------------------------------------------------------------
-    # Handle the documents we've already got.
-    #------------------------------------------------------------------
-    elif doc.disposition:
-        disp = doc.disposition
-        dispName = dispNames[disp]
-        if dispName in ('out of scope', 'duplicate'):
-            log("Skipping %s, disposition is %s\n" % (doc.nlmId, dispName))
-            if dispName == 'out of scope':
-                stats.outOfScope += 1
-            else:
-                stats.duplicates += 1
-            continue
-        elif not compareXml(doc.oldXml, doc.xmlFile):
-            log("Skipping %s (already imported, unchanged at NLM)\n" 
-                % doc.nlmId)
-            stats.unchanged += 1
-            continue
-        if dispName == 'imported':
-            disp = dispCodes['import requested']
-        try:
-            cursor.execute("""\
-                UPDATE ctgov_import
-                   SET title = ?,
-                       xml = ?,
-                       downloaded = GETDATE(),
-                       disposition = ?,
-                       dt = GETDATE(),
-                       verified = ?,
-                       changed = ?,
-                       phase = ?,
-                       ctrp_id = ?
-                 WHERE nlm_id = ?""",
-                           (doc.title[:255],
-                            doc.xmlFile,
-                            disp,
-                            doc.verified,
-                            doc.lastChanged,
-                            doc.phase,
-                            doc.ctrpId,
-                            doc.nlmId), timeout = 300)
-            conn.commit()
-            stats.updates += 1
-            log("Updated %s with disposition %s\n" % (doc.nlmId,
-                                                      dispNames[disp]))
-        except Exception, info:
-            log("Failure updating %s: %s\n" % (doc.nlmId, str(info)))
+            # 2004-02-12, request (#1106) from Lakshmi: drop the row if
+            # it exists.
+            if doc.disposition is not None:
+                try:
+                    cursor.execute("DELETE ctgov_import WHERE nlm_id = ?",
+                                   doc.nlmId, timeout=500)
+                    conn.commit()
+                    log("dropped existing row for %s\n" % doc.nlmId)
+                except Exception, e:
+                    log("failure dropping row for %s: %s\n" %
+                        (doc.nlmId, str(e)))
 
-    #------------------------------------------------------------------
-    # Process new trials.
-    #------------------------------------------------------------------
-    else:
-        replacedDocs = findNewlyTransferredDocs(doc.nlmId)
-        if len(replacedDocs) > 1:
-            msg = ("Skipping %s: too many replaced docs (%s)" % (doc.nlmId,
-                                                                 replacedDocs))
-            tooManyReplacedDocs.append(msg)
-            log(msg)
-            continue
-        replacedDoc = replacedDocs and replacedDocs[0] or None
-        if doc.forcedDownload or replacedDoc:
-            disp = dispCodes['import requested']
+            stats.closed += 1
+
+        #------------------------------------------------------------------
+        # Handle the documents we've already got.
+        #------------------------------------------------------------------
+        elif doc.disposition:
+            disp = doc.disposition
+            dispName = dispNames[disp]
+            if dispName in ('out of scope', 'duplicate'):
+                log("Skipping %s, disposition is %s\n" % (doc.nlmId, dispName))
+                if dispName == 'out of scope':
+                    stats.outOfScope += 1
+                else:
+                    stats.duplicates += 1
+                continue
+            elif not compareXml(doc.oldXml, doc.xmlFile):
+                log("Skipping %s (already imported, unchanged at NLM)\n"
+                    % doc.nlmId)
+                stats.unchanged += 1
+                continue
+            if dispName == 'imported':
+                disp = dispCodes['import requested']
+            try:
+                cursor.execute("""\
+                    UPDATE ctgov_import
+                       SET title = ?,
+                           xml = ?,
+                           downloaded = GETDATE(),
+                           disposition = ?,
+                           dt = GETDATE(),
+                           verified = ?,
+                           changed = ?,
+                           phase = ?,
+                           ctrp_id = ?
+                     WHERE nlm_id = ?""",
+                               (doc.title[:255],
+                                doc.xmlFile,
+                                disp,
+                                doc.verified,
+                                doc.lastChanged,
+                                doc.phase,
+                                doc.ctrpId,
+                                doc.nlmId), timeout=500)
+                conn.commit()
+                stats.updates += 1
+                log("Updated %s with disposition %s\n" % (doc.nlmId,
+                                                          dispNames[disp]))
+            except Exception, info:
+                log("Failure updating %s: %s\n" % (doc.nlmId, str(info)))
+
+        #------------------------------------------------------------------
+        # Process new trials.
+        #------------------------------------------------------------------
         else:
-            disp = dispCodes['not yet reviewed']
-        try:
-            cursor.execute("""\
-        INSERT INTO ctgov_import (nlm_id, title, xml, downloaded, cdr_id,
-                                  disposition, dt, verified, changed, phase,
-                                  ctrp_id)
-             VALUES (?, ?, ?, GETDATE(), ?, ?, GETDATE(), ?, ?, ?, ?)""",
-                           (doc.nlmId,
-                            doc.title[:255],
-                            doc.xmlFile,
-                            replacedDoc,
-                            disp,
-                            doc.verified,
-                            doc.lastChanged,
-                            doc.phase,
-                            doc.ctrpId), timeout = 300)
-            conn.commit()
-            if replacedDoc:
-                stats.transfers += 1
-                log("Transferred %s as CDR%d\n" % (doc.nlmId, replacedDoc))
+            replacedDocs = findNewlyTransferredDocs(doc.nlmId)
+            if len(replacedDocs) > 1:
+                msg = ("Skipping %s: too many replaced docs (%s)" %
+                       (doc.nlmId, replacedDocs))
+                tooManyReplacedDocs.append(msg)
+                log(msg)
+                continue
+            replacedDoc = replacedDocs and replacedDocs[0] or None
+            if doc.forcedDownload or replacedDoc:
+                disp = dispCodes['import requested']
             else:
-                stats.newTrials += 1
-                log("Added %s with disposition %s\n" % (doc.nlmId,
-                                                        dispNames[disp]))
-        except Exception, info:
-            log("Failure inserting %s: %s\n" % (doc.nlmId, str(info)))
+                disp = dispCodes['not yet reviewed']
+            try:
+                cursor.execute("""\
+    INSERT INTO ctgov_import (nlm_id, title, xml, downloaded, cdr_id,
+                              disposition, dt, verified, changed, phase,
+                              ctrp_id)
+         VALUES (?, ?, ?, GETDATE(), ?, ?, GETDATE(), ?, ?, ?, ?)""",
+                               (doc.nlmId,
+                                doc.title[:255],
+                                doc.xmlFile,
+                                replacedDoc,
+                                disp,
+                                doc.verified,
+                                doc.lastChanged,
+                                doc.phase,
+                                doc.ctrpId), timeout=500)
+                conn.commit()
+                if replacedDoc:
+                    stats.transfers += 1
+                    log("Transferred %s as CDR%d\n" % (doc.nlmId, replacedDoc))
+                else:
+                    stats.newTrials += 1
+                    log("Added %s with disposition %s\n" % (doc.nlmId,
+                                                            dispNames[disp]))
+            except Exception, info:
+                log("Failure inserting %s: %s\n" % (doc.nlmId, str(info)))
+except Exception, e:
+    reportFailure("Failure in main CTGov download loop: %s" % e)
 
 #----------------------------------------------------------------------
-# Send the Oncore server any new NCT IDs we've collected.
+# Send the Oncore server any new NCT IDs we've collected. ** OBSOLETE **
 #----------------------------------------------------------------------
-if newOncoreNctIds:
-    postNctIdsToOncore(newOncoreNctIds)
+#if newOncoreNctIds:
+#    postNctIdsToOncore(newOncoreNctIds)
 
 #----------------------------------------------------------------------
 # Find out which trials are no longer being sent by NLM.
 #----------------------------------------------------------------------
-droppedDocs = {}
-if logDropped:
-    class DroppedDoc:
-        def __init__(self, nlmId, cdrId, disposition):
-            self.nlmId       = nlmId
-            self.cdrId       = cdrId
-            self.disposition = disposition
-    cursor.execute("""\
-        SELECT nlm_id, disposition, cdr_id, dropped, reason_dropped
-          FROM ctgov_import""", timeout = 300)
-    rows = cursor.fetchall()
-    for row in rows:
-        dispName = dispNames[row[1]]
-        dropped = 'N'
-        if row[0] not in docsInSet and dispName != 'duplicate':
-            dropped = 'Y'
-            if row[3] is None:
-                droppedDocs[row[0]] = DroppedDoc(row[0], row[2], dispName)
-        if dropped != row[3]:
-            try:
-                cursor.execute("""\
-                    UPDATE ctgov_import
-                       SET dropped = ?
-                     WHERE nlm_id = ?""", (dropped, row[0]), timeout = 300)
-                conn.commit()
-            except Exception, e:
-                log("Failure setting dropped flag to '%s' for %s: %s\n",
-                    (dropped, row[0], str(e)))
+try:
+    droppedDocs = {}
+    if logDropped:
+        class DroppedDoc:
+            def __init__(self, nlmId, cdrId, disposition):
+                self.nlmId       = nlmId
+                self.cdrId       = cdrId
+                self.disposition = disposition
+        cursor.execute("""\
+            SELECT nlm_id, disposition, cdr_id, dropped, reason_dropped
+              FROM ctgov_import""", timeout=500)
+        rows = cursor.fetchall()
+        for row in rows:
+            dispName = dispNames[row[1]]
+            dropped = 'N'
+            if row[0] not in docsInSet and dispName != 'duplicate':
+                dropped = 'Y'
+                if row[3] is None:
+                    droppedDocs[row[0]] = DroppedDoc(row[0], row[2], dispName)
+            if dropped != row[3]:
+                try:
+                    cursor.execute("""\
+                        UPDATE ctgov_import
+                           SET dropped = ?
+                         WHERE nlm_id = ?""", (dropped, row[0]), timeout=500)
+                    conn.commit()
+                except Exception, e:
+                    log("Failure setting dropped flag to '%s' for %s: %s\n",
+                        (dropped, row[0], str(e)))
+except Exception, e:
+    reportFailure("Failure logging dropped documents: %s" % e)
 
 #----------------------------------------------------------------------
 # Log the download statistics.
 #----------------------------------------------------------------------
-totals = stats.totals()
-log("                 New trials: %5d\n" % stats.newTrials)
-log("         Transferred trials: %5d\n" % stats.transfers)
-log("             Updated trials: %5d\n" % stats.updates)
-log("   Skipped unchanged trials: %5d\n" % stats.unchanged)
-log("Skipped trials from PDQ/CDR: %5d\n" % stats.pdqCdr)
-log("   Skipped duplicate trials: %5d\n" % stats.duplicates)
-log("Skipped out of scope trials: %5d\n" % stats.outOfScope)
-log("      Skipped closed trials: %5d\n" % stats.closed)
-log("               Total trials: %5d\n" % totals)
-log("   Added NCT IDs for trials: %5d\n" % stats.nctAdded)
-log("Removed NCT IDs from trials: %5d\n" % stats.nctRemoved)
-log("   NCT ID problems detected: %5d\n" % len(idProblems))
 try:
+    totals = stats.totals()
+    log("                 New trials: %5d\n" % stats.newTrials)
+    log("         Transferred trials: %5d\n" % stats.transfers)
+    log("             Updated trials: %5d\n" % stats.updates)
+    log("   Skipped unchanged trials: %5d\n" % stats.unchanged)
+    log("Skipped trials from PDQ/CDR: %5d\n" % stats.pdqCdr)
+    log("   Skipped duplicate trials: %5d\n" % stats.duplicates)
+    log("Skipped out of scope trials: %5d\n" % stats.outOfScope)
+    log("      Skipped closed trials: %5d\n" % stats.closed)
+    log("               Total trials: %5d\n" % totals)
+    log("   Added NCT IDs for trials: %5d\n" % stats.nctAdded)
+    log("Removed NCT IDs from trials: %5d\n" % stats.nctRemoved)
+    log("   NCT ID problems detected: %5d\n" % len(idProblems))
     cursor.execute("""\
         INSERT INTO ctgov_download_stats (dt, total_trials, new_trials,
                                           transferred,
@@ -984,57 +1005,60 @@ try:
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                    (when, totals, stats.newTrials, stats.transfers,
                     stats.updates,
-                    stats.unchanged, stats.pdqCdr, stats.duplicates, 
-                    stats.outOfScope, stats.closed), timeout = 300)
+                    stats.unchanged, stats.pdqCdr, stats.duplicates,
+                    stats.outOfScope, stats.closed), timeout=500)
     conn.commit()
 except Exception, e:
-    log("Failure logging download statistics: %s\n" % str(e))
+    log("Failure logging download statistics: %s\n" % e, True)
 
 #----------------------------------------------------------------------
 # Send out an immediate email report.
 #----------------------------------------------------------------------
-subject = "CTGov trials downloaded %s on %s" % (when, server)
-recips  = getEmailRecipients(cursor)
-if recips:
-    body = """\
-                            New trials: %5d
-                    Transferred trials: %5d
-                        Updated trials: %5d
-              Skipped unchanged trials: %5d
-           Skipped trials from PDQ/CDR: %5d
-              Skipped duplicate trials: %5d
-           Skipped out of scope trials: %5d
-   Skipped closed and completed trials: %5d
-                          Total trials: %5d
-              Added NCT IDs for trials: %5d
-           Removed NCT IDs from trials: %5d
-              NCT ID problems detected: %5d
-     CT.gov transfer problems detected: %5d
+try:
+    subject = "CTGov trials downloaded %s on %s" % (when, server)
+    recips  = getEmailRecipients(cursor)
+    if recips:
+        body = """\
+                                New trials: %5d
+                        Transferred trials: %5d
+                            Updated trials: %5d
+                  Skipped unchanged trials: %5d
+               Skipped trials from PDQ/CDR: %5d
+                  Skipped duplicate trials: %5d
+               Skipped out of scope trials: %5d
+       Skipped closed and completed trials: %5d
+                              Total trials: %5d
+                  Added NCT IDs for trials: %5d
+               Removed NCT IDs from trials: %5d
+                  NCT ID problems detected: %5d
+         CT.gov transfer problems detected: %5d
 
-""" % (stats.newTrials, stats.transfers, stats.updates,
-       stats.unchanged, stats.pdqCdr, 
-       stats.duplicates, stats.outOfScope, stats.closed, totals,
-       stats.nctAdded, stats.nctRemoved, len(idProblems),
-       len(tooManyReplacedDocs))
-    if droppedDocs:
-        keys = droppedDocs.keys()
-        keys.sort()
-        for key in keys:
-            droppedDoc = droppedDocs[key]
-            if droppedDoc.cdrId:
-                body += """\
-Trial %s [disposition '%s'] (imported as CDR%d) dropped by NLM.
-""" % (droppedDoc.nlmId, droppedDoc.disposition, droppedDoc.cdrId)
-            else:
-                body += """\
-Trial %s [disposition %s] dropped by NLM.
-""" % (droppedDoc.nlmId, droppedDoc.disposition)
-    for idProblem in idProblems:
-        body += idProblem.description + "\n"
-    for tooMany in tooManyReplacedDocs:
-        body += tooMany + "\n"
-    sendReport(recips, subject, body)
-    log("Mailed download stats to %s\n" % str(recips))
-else:
-    log("Warning: no email addresses found for report\n")
+    """ % (stats.newTrials, stats.transfers, stats.updates,
+           stats.unchanged, stats.pdqCdr,
+           stats.duplicates, stats.outOfScope, stats.closed, totals,
+           stats.nctAdded, stats.nctRemoved, len(idProblems),
+           len(tooManyReplacedDocs))
+        if droppedDocs:
+            keys = droppedDocs.keys()
+            keys.sort()
+            for key in keys:
+                droppedDoc = droppedDocs[key]
+                if droppedDoc.cdrId:
+                    body += """\
+    Trial %s [disposition '%s'] (imported as CDR%d) dropped by NLM.
+    """ % (droppedDoc.nlmId, droppedDoc.disposition, droppedDoc.cdrId)
+                else:
+                    body += """\
+    Trial %s [disposition %s] dropped by NLM.
+    """ % (droppedDoc.nlmId, droppedDoc.disposition)
+        for idProblem in idProblems:
+            body += idProblem.description + "\n"
+        for tooMany in tooManyReplacedDocs:
+            body += tooMany + "\n"
+        sendReport(recips, subject, body)
+        log("Mailed download stats to %s\n" % str(recips))
+    else:
+        log("Warning: no email addresses found for report\n")
+except Exception, e:
+    log("Failure sending out CT.gov download report: %s" % e, True)
 cdr.logout(session)
