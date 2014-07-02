@@ -14,6 +14,7 @@
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
 import socket, ModifyDocs, glob
 
+TIMEOUT   = 60 * 15
 LOGFILE   = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
 developer = '***REMOVED***' # for error reports
 server    = socket.gethostname()
@@ -35,7 +36,7 @@ def log(what, traceback = False):
 def loadDispositions(cursor):
     dispNames = {}
     dispCodes = {}
-    cursor.execute("SELECT id, name FROM ctgov_disposition", timeout=500)
+    cursor.execute("SELECT id, name FROM ctgov_disposition", timeout=TIMEOUT)
     for row in cursor.fetchall():
         dispNames[row[0]] = row[1]
         dispCodes[row[1]] = row[0]
@@ -134,7 +135,7 @@ def getEmailRecipients(cursor, includeDeveloper = False):
              WHERE g.name = 'CTGov Publishers'
                AND u.expired IS NULL
                AND u.email IS NOT NULL
-               AND u.email <> ''""", timeout=500)
+               AND u.email <> ''""", timeout=TIMEOUT)
         recips = [row[0] for row in cursor.fetchall()]
         if includeDeveloper and developer not in recips:
             recips.append(developer)
@@ -235,7 +236,7 @@ def findNewlyTransferredDocs(nlmId):
            AND i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
            AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
            AND t.value = 'ClinicalTrials.gov ID'
-           AND i.value = ?""", nlmId, timeout=500)
+           AND i.value = ?""", nlmId, timeout=TIMEOUT)
     rows = cursor.fetchall()
     return [row[0] for row in rows]
 
@@ -301,7 +302,7 @@ class Doc:
       FROM doc_type t
       JOIN document d
         ON d.doc_type = t.id
-     WHERE d.id = ?""", self.orgStudyCdrId, timeout=500)
+     WHERE d.id = ?""", self.orgStudyCdrId, timeout=TIMEOUT)
                             rows = cursor.fetchall()
                             if rows:
                                 self.orgStudyCdrDt = rows[0][0]
@@ -311,7 +312,7 @@ class Doc:
       FROM query_term
      WHERE path = '/InScopeProtocol/CTGovOwnershipTransferInfo'
                 + '/CTGovOwnerOrganization'
-       AND doc_id = ?""", self.orgStudyCdrId, timeout=500)
+       AND doc_id = ?""", self.orgStudyCdrId, timeout=TIMEOUT)
                                 rows = cursor.fetchall()
                                 if rows:
                                     self.newCtgovOwner = rows[0][0]
@@ -346,7 +347,7 @@ class Doc:
                 cursor.execute("""\
             SELECT xml, cdr_id, disposition, force
               FROM ctgov_import
-             WHERE nlm_id = ?""", self.nlmId, timeout=500)
+             WHERE nlm_id = ?""", self.nlmId, timeout=TIMEOUT)
                 row = cursor.fetchone()
             except Exception, e:
                 msg = ("Failure selecting from ctgov_import for %s\n"
@@ -488,7 +489,7 @@ def getNctIds(cdrId):
          WHERE i.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDString'
            AND t.path = '/InScopeProtocol/ProtocolIDs/OtherID/IDType'
            AND t.value = 'ClinicalTrials.gov ID'
-           AND i.doc_id = ?""", cdrId, timeout=500)
+           AND i.doc_id = ?""", cdrId, timeout=TIMEOUT)
     return set([row[0] for row in cursor.fetchall()])
 
 #----------------------------------------------------------------------
@@ -499,7 +500,7 @@ def getForcedDownloadIds(cursor):
     conn = cdrdb.connect('CdrGuest')
     cursor = conn.cursor()
     cursor.execute("SELECT nlm_id FROM ctgov_import WHERE force = 'Y'",
-                   timeout=500)
+                   timeout=TIMEOUT)
     return [row[0] for row in cursor.fetchall()]
 
 #----------------------------------------------------------------------
@@ -518,7 +519,7 @@ def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
         SELECT COUNT(*)
           FROM query_term
          WHERE path = '/CTGovProtocol/IDInfo/NCTID'
-           AND value = ?""", nlmId, timeout=500)
+           AND value = ?""", nlmId, timeout=TIMEOUT)
     if cursor.fetchall()[0][0] < 1:
         return
 
@@ -532,7 +533,7 @@ def blockObsoleteCtgovDocs(obsoleteIds, cursor, session, nlmId):
               JOIN active_doc a
                 ON a.id = q.doc_id
              WHERE q.path = '/CTGovProtocol/IDInfo/NCTID'
-               AND q.value = ?""", obsoleteId, timeout=500)
+               AND q.value = ?""", obsoleteId, timeout=TIMEOUT)
         for row in cursor.fetchall():
 
             # [Kim, 2008-06-17] Create a new version and put comment there.
@@ -573,7 +574,7 @@ try:
             cursor.execute("""\
                 SELECT cdr_id, disposition
                   FROM ctgov_import
-                 WHERE nlm_id = ?""", nlmId, timeout=500)
+                 WHERE nlm_id = ?""", nlmId, timeout=TIMEOUT)
             row = cursor.fetchone()
             if row:
                 if row[0] != dispCodes['duplicate']:
@@ -590,7 +591,7 @@ try:
                                comment = 'Marked as duplicate by download job'
                          WHERE nlm_id = ?""", (dispCodes['duplicate'],
                                                cdrId,
-                                               nlmId), timeout=500)
+                                               nlmId), timeout=TIMEOUT)
                             conn.commit()
                         except:
                             log('Unable to update row for %s/CDR%d\n' %
@@ -603,7 +604,7 @@ try:
                      VALUES (?, ?, ?, GETDATE(),
                              'Marked as duplicate by download job')""",
                                (nlmId, cdrId, dispCodes['duplicate']),
-                                   timeout=500)
+                                   timeout=TIMEOUT)
                     conn.commit()
                 except:
                     log('Unable to insert row for %s/CDR%d\n' %
@@ -838,7 +839,7 @@ try:
             if doc.disposition is not None:
                 try:
                     cursor.execute("DELETE ctgov_import WHERE nlm_id = ?",
-                                   doc.nlmId, timeout=500)
+                                   doc.nlmId, timeout=TIMEOUT)
                     conn.commit()
                     log("dropped existing row for %s\n" % doc.nlmId)
                 except Exception, e:
@@ -887,7 +888,7 @@ try:
                                 doc.lastChanged,
                                 doc.phase,
                                 doc.ctrpId,
-                                doc.nlmId), timeout=500)
+                                doc.nlmId), timeout=TIMEOUT)
                 conn.commit()
                 stats.updates += 1
                 log("Updated %s with disposition %s\n" % (doc.nlmId,
@@ -925,7 +926,7 @@ try:
                                 doc.verified,
                                 doc.lastChanged,
                                 doc.phase,
-                                doc.ctrpId), timeout=500)
+                                doc.ctrpId), timeout=TIMEOUT)
                 conn.commit()
                 if replacedDoc:
                     stats.transfers += 1
@@ -958,7 +959,7 @@ try:
                 self.disposition = disposition
         cursor.execute("""\
             SELECT nlm_id, disposition, cdr_id, dropped, reason_dropped
-              FROM ctgov_import""", timeout=500)
+              FROM ctgov_import""", timeout=TIMEOUT)
         rows = cursor.fetchall()
         for row in rows:
             dispName = dispNames[row[1]]
@@ -972,7 +973,7 @@ try:
                     cursor.execute("""\
                         UPDATE ctgov_import
                            SET dropped = ?
-                         WHERE nlm_id = ?""", (dropped, row[0]), timeout=500)
+                         WHERE nlm_id = ?""", (dropped, row[0]), timeout=TIMEOUT)
                     conn.commit()
                 except Exception, e:
                     log("Failure setting dropped flag to '%s' for %s: %s\n",
@@ -1006,7 +1007,7 @@ try:
                    (when, totals, stats.newTrials, stats.transfers,
                     stats.updates,
                     stats.unchanged, stats.pdqCdr, stats.duplicates,
-                    stats.outOfScope, stats.closed), timeout=500)
+                    stats.outOfScope, stats.closed), timeout=TIMEOUT)
     conn.commit()
 except Exception, e:
     log("Failure logging download statistics: %s\n" % e, True)
