@@ -14,7 +14,7 @@
 import cdr, zipfile, re, xml.dom.minidom, sys, urllib, cdrdb, os, time
 import socket, ModifyDocs, glob
 
-TIMEOUT   = 60 * 15
+TIMEOUT   = 60 * 25
 LOGFILE   = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
 developer = '***REMOVED***' # for error reports
 server    = socket.gethostname()
