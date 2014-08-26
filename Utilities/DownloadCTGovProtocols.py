@@ -20,6 +20,7 @@ developer = '***REMOVED***' # for error reports
 server    = socket.gethostname()
 session   = cdr.login('CTGovImport', '***REMOVED***')
 comment   = "Inserting NCT ID from CTGovProtocol download job."
+DUPS      = cdr.BASEDIR + "/Utilities/ctgov-dups.txt"
 
 #----------------------------------------------------------------------
 # Log activity, errors to the download log and to the console.
@@ -566,7 +567,7 @@ try:
     oldOncoreNctIds = getOncoreNctIds()
     newOncoreNctIds = {}
     expr = re.compile(r"CDR0*(\d+)\s+(NCT\d+)\s*")
-    for line in open('ctgov-dups.txt'):
+    for line in open(DUPS):
         match = expr.match(line)
         if match:
             cdrId, nlmId = match.groups()
