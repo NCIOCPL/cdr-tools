@@ -7,9 +7,8 @@
 # JIRA::OCECDR-3783 - drop Comment elements
 #
 #----------------------------------------------------------------------
-import cdrdb
+import cdr
 import sys
-import lxml.etree as etree
 
 #----------------------------------------------------------------------
 # Check command-line arguments.
@@ -22,29 +21,20 @@ except:
     sys.exit(1)
 
 #----------------------------------------------------------------------
-# Fetch the document's XML.
+# Make sure we don't introduce changes to line endings.
 #----------------------------------------------------------------------
-if version:
-    query = cdrdb.Query("doc_version", "xml")
-    query.where("id = %d" % doc_id)
-    query.where("num = %d" % version)
+if sys.platform == "win32":
+    import os
+    import msvcrt
+    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+
+#----------------------------------------------------------------------
+# Strip the comments.
+#----------------------------------------------------------------------
+xslt = ["name:Strip Comment Elements"]
+response = cdr.filterDoc("guest", xslt, doc_id, docVer=version)
+err = cdr.checkErr(response)
+if err:
+    sys.stderr.write(err)
 else:
-    query = cdrdb.Query("document", "xml")
-    query.where("id = %d" % doc_id)
-try:
-    doc_xml = query.execute().fetchall()[0][0]
-except:
-    sys.stderr.write("document not found\n")
-    sys.exit(1)
-
-#----------------------------------------------------------------------
-# Process the document.
-#----------------------------------------------------------------------
-tree = etree.fromstring(doc_xml.encode("utf-8"))
-for comment in tree.xpath("//Comment"):
-  comment.getparent().remove(comment)
-
-#----------------------------------------------------------------------
-# Send the results to standard output.
-#----------------------------------------------------------------------
-print etree.tostring(tree, xml_declaration=True)
+    sys.stdout.write(response[0])
