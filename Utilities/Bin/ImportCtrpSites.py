@@ -12,7 +12,7 @@
 import cdrdb, lxml.etree as etree, cgi, ctrp, cdr, sys, copy
 
 LOGFILE = cdr.DEFAULT_LOGDIR + "/CTRPImport.log"
-TESTING = True
+TESTING = False
 
 #----------------------------------------------------------------------
 # Object used to track what we do for this import job.
