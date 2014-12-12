@@ -47,6 +47,7 @@ def might_be_python(name):
 
 start = len(sys.argv) > 1 and sys.argv[1] or "."
 search_for = len(sys.argv) > 2 and sys.argv[2] or None
+parsed = 0
 for base, dirs, files in os.walk(start):
     if ".svn" in base:
         continue # older version of SVN have crap all over the place
@@ -64,6 +65,7 @@ for base, dirs, files in os.walk(start):
             except:
                 print "can't parse %s" % repr(path)
                 continue
+            parsed += 1
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
@@ -153,20 +155,20 @@ active_state_modules = set([
 ])
 
 third_party_modules = set([
-    "Image",
+    "Image",           # http://www.pythonware.com/products/pil/
     "ImageEnhance",
-    "lxml",
+    "lxml",            # http://lxml.de/
     "lxml.etree",
     "lxml.html",
     "lxml.html.builder",
-    "MP3Info",
-    "MySQLdb",
-    "xlrd",
+    "MP3Info",         # http://www.lab49.com/~vivake/python/MP3Info.py
+                       # (but not currently maintained, so we have it
+                       # in subversion in lib/Python)
+    "MySQLdb",         # http://sourceforge.net/projects/mysql-python/
+    "xlrd",            # http://www.python-excel.org/
     "xlwt",
-    "paramiko",
-    "pyXLWriter",
-    "SOAPpy",
-    "suds.client",
+    "paramiko",        # http://www.paramiko.org/
+    "suds.client",     # http://sourceforge.net/projects/python-suds/
 ])
 
 custom_modules = set([
@@ -233,3 +235,4 @@ if not search_for:
     for name in sorted(modules):
         if is_unknown(name):
             print name
+print "%d scripts parsed" % parsed
