@@ -237,7 +237,7 @@ def mod_type(name):
         return "other third-party"
     if name in custom_modules:
         return "custom"
-    return "U"
+    return "unknown"
 
 def is_unknown(name):
     if name in standard_library_modules:
