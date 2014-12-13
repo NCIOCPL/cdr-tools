@@ -55,9 +55,11 @@ if search_for == "--counts":
 else:
     counts = False
 parsed = 0
+total = 0
 for base, dirs, files in os.walk(start_dir):
     if ".svn" in base:
         continue # older version of SVN have crap all over the place
+    total += len(files)
     for name in files:
         if might_be_python(name):
             path = ("%s/%s" % (base, name)).replace("\\", "/")
@@ -260,3 +262,4 @@ elif not search_for:
         if is_unknown(name):
             print name
 print "%d scripts parsed in %.3f seconds" % (parsed, elapsed)
+print "%d files examined" % total
