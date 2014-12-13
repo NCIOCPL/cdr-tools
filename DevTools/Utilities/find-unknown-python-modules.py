@@ -230,13 +230,13 @@ custom_modules = set([
 
 def mod_type(name):
     if name in standard_library_modules:
-        return "S"
+        return "standard library"
     if name in active_state_modules:
-        return "A"
+        return "Active State contributed"
     if name in third_party_modules:
-        return "T"
+        return "other third-party"
     if name in custom_modules:
-        return "C"
+        return "custom"
     return "U"
 
 def is_unknown(name):
@@ -254,7 +254,7 @@ elapsed = time.time() - start_time
 if counts:
     names = sorted(modules, key=lambda k: (modules[k], k.lower()))
     for name in names:
-        print "[%s] %5d %s" % (mod_type(name), modules[name], name)
+        print "%5d %s (%s module)" % (modules[name], name, mod_type(name))
 elif not search_for:
     for name in sorted(modules):
         if is_unknown(name):
