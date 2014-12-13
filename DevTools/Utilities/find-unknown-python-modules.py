@@ -37,8 +37,6 @@ import time
 modules = {}
 
 def might_be_python(name):
-    if name in ("configure", "RELEASE"):
-        return False
     if name.endswith("~"):
         return False
     if "." not in name:
@@ -72,7 +70,7 @@ for base, dirs, files in os.walk(start_dir):
             try:
                 tree = ast.parse(source)
             except:
-                print "can't parse %s" % repr(path)
+                #print "%s is not a Python file" % repr(path)
                 continue
             parsed += 1
             for node in ast.walk(tree):
@@ -256,7 +254,7 @@ elapsed = time.time() - start_time
 if counts:
     names = sorted(modules, key=lambda k: (modules[k], k.lower()))
     for name in names:
-        print "%5d %s (%s module)" % (modules[name], name, mod_type(name))
+        print "%5d %-30s (%s module)" % (modules[name], name, mod_type(name))
 elif not search_for:
     for name in sorted(modules):
         if is_unknown(name):
