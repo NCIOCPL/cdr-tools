@@ -32,8 +32,9 @@
 import ast
 import os
 import sys
+import time
 
-modules = set()
+modules = {}
 
 def might_be_python(name):
     if name in ("configure", "RELEASE"):
@@ -45,10 +46,16 @@ def might_be_python(name):
     lower = name.lower()
     return lower.endswith(".py") or lower.endswith(".pyw")
 
-start = len(sys.argv) > 1 and sys.argv[1] or "."
+start_time = time.time()
+start_dir = len(sys.argv) > 1 and sys.argv[1] or "."
 search_for = len(sys.argv) > 2 and sys.argv[2] or None
+if search_for == "--counts":
+    search_for = None
+    counts = True
+else:
+    counts = False
 parsed = 0
-for base, dirs, files in os.walk(start):
+for base, dirs, files in os.walk(start_dir):
     if ".svn" in base:
         continue # older version of SVN have crap all over the place
     for name in files:
@@ -74,14 +81,15 @@ for base, dirs, files in os.walk(start):
                             if alias.name == search_for:
                                 print path
                         else:
-                            modules.add(alias.name)
+                            modules[alias.name] = modules.get(alias.name,
+                                                              0) + 1
                 elif isinstance(node, ast.ImportFrom):
                     #print "from %s import ..." % node.module
                     if search_for:
                         if node.module == search_for:
                             print path
                     else:
-                        modules.add(node.module)
+                        modules[node.module] = modules.get(node.module, 0) + 1
 
 standard_library_modules = set([
     "ast",
@@ -220,6 +228,17 @@ custom_modules = set([
     "WebService",      # used by glossify and ClientRefresh services
 ])
 
+def mod_type(name):
+    if name in standard_library_modules:
+        return "S"
+    if name in active_state_modules:
+        return "A"
+    if name in third_party_modules:
+        return "T"
+    if name in custom_modules:
+        return "C"
+    return "U"
+
 def is_unknown(name):
     if name in standard_library_modules:
         return False
@@ -231,8 +250,13 @@ def is_unknown(name):
         return False
     return True
 
-if not search_for:
+elapsed = time.time() - start_time
+if counts:
+    names = sorted(modules, key=lambda k: (modules[k], k.lower()))
+    for name in names:
+        print "[%s] %5d %s" % (mod_type(name), modules[name], name)
+elif not search_for:
     for name in sorted(modules):
         if is_unknown(name):
             print name
-print "%d scripts parsed" % parsed
+print "%d scripts parsed in %.3f seconds" % (parsed, elapsed)
