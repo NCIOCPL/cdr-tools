@@ -34,63 +34,9 @@ import os
 import sys
 import time
 
-modules = {}
-
-def might_be_python(name):
-    if name.endswith("~"):
-        return False
-    if "." not in name:
-        return True
-    lower = name.lower()
-    return lower.endswith(".py") or lower.endswith(".pyw")
-
-start_time = time.time()
-start_dir = len(sys.argv) > 1 and sys.argv[1] or "."
-search_for = len(sys.argv) > 2 and sys.argv[2] or None
-if search_for == "--counts":
-    search_for = None
-    counts = True
-else:
-    counts = False
-parsed = 0
-total = 0
-for base, dirs, files in os.walk(start_dir):
-    if ".svn" in base:
-        continue # older version of SVN have crap all over the place
-    total += len(files)
-    for name in files:
-        if might_be_python(name):
-            path = ("%s/%s" % (base, name)).replace("\\", "/")
-            #print "parsing", path
-            fp = open(path)
-            source = fp.read()
-            fp.close()
-            if "import " not in source:
-                continue
-            try:
-                tree = ast.parse(source)
-            except:
-                #print "%s is not a Python file" % repr(path)
-                continue
-            parsed += 1
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        #print "import", alias.name
-                        if search_for:
-                            if alias.name == search_for:
-                                print path
-                        else:
-                            modules[alias.name] = modules.get(alias.name,
-                                                              0) + 1
-                elif isinstance(node, ast.ImportFrom):
-                    #print "from %s import ..." % node.module
-                    if search_for:
-                        if node.module == search_for:
-                            print path
-                    else:
-                        modules[node.module] = modules.get(node.module, 0) + 1
-
+#----------------------------------------------------------------------
+# These are the standard library modules known to be used by the CDR.
+#----------------------------------------------------------------------
 standard_library_modules = set([
     "ast",
     "atexit",
@@ -116,6 +62,7 @@ standard_library_modules = set([
     "HTMLParser",
     "httplib",
     "locale",
+    "msvcrt", # part of standard library, but only available on MS Windows
     "operator",
     "optparse",
     "os",
@@ -154,14 +101,22 @@ standard_library_modules = set([
     "zipfile",
 ])
 
+#----------------------------------------------------------------------
+# These are non-standard modules used by the CDR and provided as part
+# of ActiveState's Python distribution for use on Windows platforms.
+# See http://www.activestate.com/activepython.
+#----------------------------------------------------------------------
 active_state_modules = set([
-    "msvcrt",
     "pythoncom",
     "pywintypes",
     "win32com.client",
     "win32file",
 ])
 
+#----------------------------------------------------------------------
+# Other third-party modules used by the CDR. For modules without a
+# URL in a comment, see the closest comment above the module.
+#----------------------------------------------------------------------
 third_party_modules = set([
     "Image",           # http://www.pythonware.com/products/pil/
     "ImageEnhance",
@@ -179,6 +134,9 @@ third_party_modules = set([
     "suds.client",     # http://sourceforge.net/projects/python-suds/
 ])
 
+#----------------------------------------------------------------------
+# Modules implemented specifically for the CDR project.
+#----------------------------------------------------------------------
 custom_modules = set([
     "AssignGroupNums", # imported by cdrpub module
     "authmap",         # used by ebms/conversion/convert.py (in same directory)
@@ -228,6 +186,28 @@ custom_modules = set([
     "WebService",      # used by glossify and ClientRefresh services
 ])
 
+#----------------------------------------------------------------------
+# Determine whether a file could be a Python file based on its name.
+# Basically if the file name has an extension, that extension must
+# be .py or .pyw to be a Python source file (in this context).
+# If the file name has no extension, and does not end in a tilde
+# character (used by many editors to denote a backup file), then
+# the file could be a Python file.
+#----------------------------------------------------------------------
+def might_be_python(name):
+    if name.endswith("~"):
+        return False
+    if "." not in name:
+        return True
+    lower = name.lower()
+    return lower.endswith(".py") or lower.endswith(".pyw")
+
+#----------------------------------------------------------------------
+# Return a string describing the type of module a name represents,
+# based on membership in one of the sets above. If we end up using
+# a module we've never used before, we'll modify the approriate set
+# to include that module (not likely to happen very often).
+#----------------------------------------------------------------------
 def mod_type(name):
     if name in standard_library_modules:
         return "standard library"
@@ -239,6 +219,9 @@ def mod_type(name):
         return "custom"
     return "unknown"
 
+#----------------------------------------------------------------------
+# Determine whether we already know about the origin of a named module.
+#----------------------------------------------------------------------
 def is_unknown(name):
     if name in standard_library_modules:
         return False
@@ -250,14 +233,80 @@ def is_unknown(name):
         return False
     return True
 
-elapsed = time.time() - start_time
-if counts:
-    names = sorted(modules, key=lambda k: (modules[k], k.lower()))
-    for name in names:
-        print "%5d %-30s (%s module)" % (modules[name], name, mod_type(name))
-elif not search_for:
-    for name in sorted(modules):
-        if is_unknown(name):
-            print name
-print "%d scripts parsed in %.3f seconds" % (parsed, elapsed)
-print "%d files examined" % total
+#----------------------------------------------------------------------
+# Generate the requested report.
+#----------------------------------------------------------------------
+def main():
+
+    # Initialize the local variables, some from the command line arguments.
+    modules = {}
+    start_time = time.time()
+    start_dir = len(sys.argv) > 1 and sys.argv[1] or "."
+    search_for = len(sys.argv) > 2 and sys.argv[2] or None
+    if search_for == "--counts":
+        search_for = None
+        counts = True
+    else:
+        counts = False
+    parsed = 0
+    total = 0
+
+    # Walk through all of the files in the subtree of the file system.
+    for base, dirs, files in os.walk(start_dir):
+        if ".svn" in base:
+            continue # older version of SVN have crap all over the place
+        total += len(files)
+        for name in files:
+            if might_be_python(name):
+                path = ("%s/%s" % (base, name)).replace("\\", "/")
+                #print "parsing", path
+                fp = open(path)
+                source = fp.read()
+                fp.close()
+                if "import " not in source:
+                    continue
+                try:
+                    tree = ast.parse(source)
+                except:
+                    #print "%s is not a Python file" % repr(path)
+                    continue
+                parsed += 1
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            #print "import", alias.name
+                            if search_for:
+                                if alias.name == search_for:
+                                    print path
+                            else:
+                                modules[alias.name] = modules.get(alias.name,
+                                                                  0) + 1
+                    elif isinstance(node, ast.ImportFrom):
+                        #print "from %s import ..." % node.module
+                        if search_for:
+                            if node.module == search_for:
+                                print path
+                        else:
+                            modules[node.module] = modules.get(node.module,
+                                                               0) + 1
+
+    # Write the report to the standard output.
+    elapsed = time.time() - start_time
+    if counts:
+        names = sorted(modules, key=lambda k: (modules[k], k.lower()))
+        for name in names:
+            print "%5d %-30s (%s module)" % (modules[name], name,
+                                             mod_type(name))
+    elif not search_for:
+        for name in sorted(modules):
+            if is_unknown(name):
+                print name
+    print "%d scripts parsed in %.3f seconds" % (parsed, elapsed)
+    print "%d files examined" % total
+
+#----------------------------------------------------------------------
+# Only run the report if the file is loaded as a script (instead of
+# as a module).
+#----------------------------------------------------------------------
+if __name__ == "__main__":
+    main()
