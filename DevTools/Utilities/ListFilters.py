@@ -9,7 +9,7 @@
 #----------------------------------------------------------------------
 import cdrdb, cdr
 
-cursor = cdrdb.connect('CdrGuest', dataSource=cdr.PROD_HOST).cursor()
+cursor = cdrdb.connect('CdrGuest').cursor()
 cursor.execute("""\
     SELECT d.id, d.title
       FROM document d
