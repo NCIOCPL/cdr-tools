@@ -2,6 +2,12 @@
 # $Id$
 #
 # Tool for generating script to drive get-prod-scripts.py.
+#
+# To use this:
+#  1. mkdir prod-20150106
+#  2. cd prod-20150106
+#  3. python ../get-prod-scripts.py > get-prod-files.cmd
+#  4. get-prod-files.cmd
 #----------------------------------------------------------------------
 import re, urllib2
 
