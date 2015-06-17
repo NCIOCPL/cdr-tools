@@ -1,8 +1,20 @@
 # ************************************************************************
 # $Id$
-# Program to replace a schema file with its version in the CDR database.
 #
-# $Log: not supported by cvs2svn $
+# Program to replace a schema in the CDR database with a version found in
+# a file, typically a file in a version control sandbox.
+#
+# Versions in the file should not have CdrDoc wrappers.  The wrapper is added
+# by this program.
+#
+# Matching is done by searching the database for the name of the file, e.g.,
+# "SummarySchema.xml", matching it against the title of the document
+# in the database version of the document.  That title is created by
+# this UpdateSchemas.py program - which should always be used when a schema
+# update is required.
+#
+# If no match is found, we assume that the schema in the file is new.  It will
+# be inserted into the database as a new schema document.
 # ************************************************************************
 import cdr, sys, glob
 
@@ -22,7 +34,7 @@ if err:
 
 # Stepping through the command line arguments (i.e. schema files)
 # for processing
-# If the schema doesn't exist in the CDR it will be added, 
+# If the schema doesn't exist in the CDR it will be added,
 # otherwise the existing schema file will be replaced.
 # --------------------------------------------------------------
 for token in sys.argv[3:]:

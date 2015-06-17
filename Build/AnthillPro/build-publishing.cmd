@@ -1,12 +1,12 @@
 @REM ----------------------------------------------------------------------
-@REM $Id: $
+@REM $Id$
 @REM ----------------------------------------------------------------------
 
 @ECHO OFF
 SETLOCAL
-CALL :init              || EXIT /B
-CALL :pull_svn_files    || EXIT /B
-CALL :cleanup           || EXIT /B
+CALL :init              || EXIT /B 1
+CALL :pull_svn_files    || EXIT /B 1
+CALL :cleanup           || EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------

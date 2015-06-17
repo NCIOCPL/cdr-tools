@@ -5,13 +5,13 @@
 @ECHO OFF
 SETLOCAL
 SET SCRIPTNAME=%0
-CALL :init %*           || EXIT /B
-CALL :pull_svn_files    || EXIT /B
-CALL :pull_msvc_dlls    || EXIT /B
-CALL :build_server      || EXIT /B
-CALL :build_service     || EXIT /B
-CALL :build_shutdown    || EXIT /B
-CALL :cleanup           || EXIT /B
+CALL :init %*           || EXIT /B 1
+CALL :pull_svn_files    || EXIT /B 1
+CALL :pull_msvc_dlls    || EXIT /B 1
+CALL :build_server      || EXIT /B 1
+CALL :build_service     || EXIT /B 1
+CALL :build_shutdown    || EXIT /B 1
+CALL :cleanup           || EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
@@ -33,15 +33,26 @@ IF "%2." == "." (
     SET SVNEXP=svn export %SVNOPTS% --username %3 --password %2
 )
 D:
-SET BUILDDIR=d:\tmp\Build
+REM Output data to a directory name found in the env or created here
+IF "%CDRBUILD_BASEPATH%." == "." (
+  SET BUILDDIR_TMP=d:\tmp\Build
+) ELSE (
+  SET BUILDDIR_TMP=%CDRBUILD_BASEPATH%
+)
+SET BUILDDIR=%BUILDDIR_TMP:/=\%
 SET BINDIR=%BUILDDIR%\Bin
+SET BINDIR
+ECHO Will copy all files into %BINDIR%
+
 SET SVNBRANCH=https://ncisvn.nci.nih.gov/svn/oce_cdr/%1
 SET CYGDATE=d:\cygwin\bin\date.exe
 SET STAMP=
 FOR /F %%s IN ('%CYGDATE% +%%Y%%m%%d%%H%%M%%S') DO SET STAMP=%%s
 IF NOT DEFINED STAMP ECHO %CYGDATE% failure && EXIT /B 1
+
 SET WORKDIR=d:\tmp\cdr-bin-%STAMP%
 MKDIR %WORKDIR% || ECHO Failure creating %WORKDIR% && EXIT /B 1
+
 CD %WORKDIR%
 ECHO Created working directory.
 CALL d:\bin\vcvars32.bat > NUL 2>&1 || ECHO Failed VC Init && EXIT /B 1

@@ -5,14 +5,16 @@
 @ECHO OFF
 SETLOCAL
 SET SCRIPTNAME=%0
-CALL :init %*           || EXIT /B
-CALL :pull_svn_files    || EXIT /B
-CALL :build_tools       || EXIT /B
-CALL :build_loader      || EXIT /B
-CALL :build_dll         || EXIT /B
-CALL :build_dtds        || EXIT /B
-CALL :build_manifest    || EXIT /B
-CALL :cleanup           || EXIT /B
+@REM Invoke each subscript, exit /B 1 inside any of them causes abort
+CALL :init %*           || EXIT /B 1
+CALL :pull_svn_files    || EXIT /B 1
+CALL :build_tools       || EXIT /B 1
+CALL :build_loader      || EXIT /B 1
+CALL :build_dll         || EXIT /B 1
+CALL :build_dtds        || EXIT /B 1
+CALL :build_manifest    || EXIT /B 1
+CALL :export_schemas    || EXIT /B 1
+CALL :cleanup           || EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
@@ -34,7 +36,14 @@ IF "%2." == "." (
     SET SVNEXP=svn export %SVNOPTS% --username %3 --password %2
 )
 D:
-SET CLIENTFILES=d:\tmp\ClientFiles
+REM Output data to a directory name found in the env or created here
+IF "%CDRBUILD_BASEPATH%." == "." (
+  SET CLIENTFILES_TMP=d:\tmp\ClientFiles
+) ELSE (
+  SET CLIENTFILES_TMP=%CDRBUILD_BASEPATH%\ClientFiles
+)
+SET CLIENTFILES=%CLIENTFILES_TMP:/=\%
+
 SET SVNBRANCH=https://ncisvn.nci.nih.gov/svn/oce_cdr/%1
 SET CYGDATE=d:\cygwin\bin\date.exe
 SET STAMP=
@@ -49,7 +58,9 @@ ECHO Created working directory.
 ECHO AnthillPro tools successfully fetched.
 CALL d:\bin\vcvars32.bat > NUL 2>&1 || ECHO Failed VC Init && EXIT /B 1
 ECHO Compiler successfully initialized.
-RMDIR /S /Q %CLIENTFILES%
+IF EXIST %CLIENTFILES% (
+  RMDIR /S /Q %CLIENTFILES%
+)
 MKDIR %CLIENTFILES% || ECHO Failed creating %CLIENTFILES% && EXIT /B 1
 ECHO Environment successfully initialized.
 EXIT /B 0
@@ -105,7 +116,7 @@ ECHO Building Client DLL.
 CD %WORKDIR%
 %SVNEXP% %SVNBRANCH%/XMetaL/DLL || ECHO Failed export && EXIT /B 1
 CD DLL
-nmake > nmake.log 2>nmake.err || ECHO DLL build failure && EXIT /B 1
+nmake > nmake.log 2>nmake.err || ECHO DLL build failure, check nmake.log && EXIT /B 1
 MKDIR %CLIENTFILES%\Cdr
 COPY ReleaseUMinDependency\Cdr.dll %CLIENTFILES%\Cdr\Cdr.dll > NUL 2>&1
 ECHO DLL successfully built.
@@ -131,6 +142,24 @@ CD %WORKDIR%\AnthillPro
 python RefreshManifest.py %CLIENTFILES% >RefreshManifest.err 2>&1
 IF ERRORLEVEL 1 ECHO Failure building manifest && EXIT /B 1
 ECHO Manifest successfully built.
+EXIT /B 0
+
+REM ----------------------------------------------------------------------
+REM Export the current schemas for later deployment
+REM ----------------------------------------------------------------------
+:export_schemas
+ECHO Exporting current schemas from version control
+
+REM Output path
+IF "%CDRBUILD_BASEPATH%." == "." (
+  SET SCHEMAFILES_TMP=d:\tmp
+) ELSE (
+  SET SCHEMAFILES_TMP=%CDRBUILD_BASEPATH%
+)
+SET SCHEMAFILES=%SCHEMAFILES_TMP:/=\%
+CD %SCHEMAFILES%
+%SVNEXP% %SVNBRANCH%/Schemas || ECHO Failed Schemas export && EXIT /B 1
+ECHO Schemas exported successfully.
 EXIT /B 0
 
 REM ----------------------------------------------------------------------

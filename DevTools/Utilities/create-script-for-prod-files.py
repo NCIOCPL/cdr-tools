@@ -6,7 +6,7 @@
 # To use this:
 #  1. mkdir prod-20150106
 #  2. cd prod-20150106
-#  3. python ../get-prod-scripts.py > get-prod-files.cmd
+#  3. python ../create-script-for-prod-scripts.py > get-prod-files.cmd
 #  4. get-prod-files.cmd
 #----------------------------------------------------------------------
 import re, urllib2

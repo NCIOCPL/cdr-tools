@@ -95,6 +95,10 @@ def refreshManifest(where):
 </Manifest>
 """ % (createTicket(), createFilelist(files))
     writeManifest(manifestXml.encode('utf-8'), manifestTime)
+
+    # NOTE: May change this in future to invoke something like
+    #       BuildDeploy.findCygwin(), but for now, can't count on
+    #       that being in the path, or findCygwin() being in cdr.py
     result = cdr.runCommand("D:\\cygwin\\bin\\chmod -R 777 *")
     if result.code:
         print "chmod return code: %s" % result.code

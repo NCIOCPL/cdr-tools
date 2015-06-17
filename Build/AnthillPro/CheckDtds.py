@@ -59,7 +59,8 @@ for docType in docTypes:
         #sys.stderr.write("checking %s\n" % path)
         try:
             current = open(path).read()
-        except:
+        except Exception as e:
+            sys.stderr.write("failure opening %s: %s\n" % (path, str(e)))
             current = None
         #sys.stderr.write("old DTD read\n")
         if current:
@@ -69,17 +70,17 @@ for docType in docTypes:
                 continue
             #sys.stderr.write("old start is at %d\n" % start)
             current = current[start:]
-            if newDtd == current: 
+            if newDtd == current:
                 print "DTD for %25s  is current" % docType
                 continue
-            else: 
+            else:
                 print "DTD for %25s has changed" % docType
         else:
             print "DTD for %25s     added" % docType
         try:
             open(path, "w").write(dtInfo.dtd)
-        except:
-            sys.stderr.write("failure writing %s\n" % path)
+        except Exception as e:
+            sys.stderr.write("failure writing %s: %s\n" % (path, str(e)))
     except Exception, e:
         sys.stderr.write(str(e))
         #pass
