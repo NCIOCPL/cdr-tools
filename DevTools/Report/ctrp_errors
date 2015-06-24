@@ -1,0 +1,3 @@
+'Document contains one or more private use characters'
+'No match found in content model for type CTGovProtocol with child elements of CTGovProtocol element (RequiredHeader,IDInfo,BriefTitle,OfficialTitle,Sponsors,CTOversightInfo,OverallStatus,StartDate,PrimaryCompletionDate,...); stopped at element RequiredHeader'
+'No match found in content model for type CTGovProtocol with child elements of CTGovProtocol element (RequiredHeader,IDInfo,BriefTitle,OfficialTitle,Sponsors,OverallStatus,StartDate,PrimaryCompletionDate,Location,...); stopped at element RequiredHeader'
