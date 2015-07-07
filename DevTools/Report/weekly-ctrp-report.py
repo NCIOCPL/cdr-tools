@@ -60,16 +60,17 @@ class Trial:
     CLOSED_STATUSES = set(["approved for marketing", "completed",
                            "terminated", "withdrawn",
                            "active, not recruiting"])
+    NO_MATCH = "no match found in content model for type ctgovprotocol"
     def __init__(self, bytes, filename, report):
         self.filename = filename
-        self.last_import_version = None
-        self.last_import_version_valid = None
-        self.last_import_version_publishable = None
-        self.last_import_version_date = None
+        self.import_date = None
+        self.pub_version_date = None
+        self.ctrp_data_publishable = False
         self.last_publication_job = None
         self.publication_failure = None
         self.publication_messages = None
         self.publication_removal = None
+        self.verification_date = None
         self.nct_id = self.status = self.open = self.cdr_id = None
         self.ctrp_errors = set()
         root = etree.XML(bytes)
@@ -86,11 +87,18 @@ class Trial:
         if self.status:
             self.open = self.status.lower() in Trial.OPEN_STATUSES
         if self.open:
+            for node in root.findall("verification_date"):
+                self.verification_date = node.text
             self.cdr_id = self.get_cdr_id()
-            self.get_last_import_version_info(report)
-            self.last_publishable_version = self.get_last_publishable_version()
-            if self.last_import_version_publishable and self.cdr_id:
+            self.import_date = self.get_import_date(report)
+            self.pub_version_date = self.get_pub_version_date()
+            if self.import_date and self.pub_version_date:
+                if self.pub_version_date >= self.import_date:
+                    self.ctrp_data_publishable = True
+            if self.ctrp_data_publishable:
                 self.check_publication_status()
+            else:
+                self.validate()
     def __cmp__(self, other):
         return cmp(self.nct_id, other.nct_id)
     def get_cdr_id(self):
@@ -102,30 +110,22 @@ SELECT cdr_id
  WHERE nlm_id = ?""", self.nct_id)
         rows = Report.cursor.fetchall()
         return rows and rows[0][0] or None
-    def get_last_import_version_info(self, report):
+    def get_import_date(self, report):
         if self.cdr_id:
             Report.cursor.execute("""\
-SELECT MAX(num)
-  FROM doc_version
- WHERE id = ?
+SELECT MAX(dt)
+  FROM audit_trail
+ WHERE document = ?
    AND dt > '2015-06-12' /* switch from NLM to CTRP trials */
    AND dt < '%s 23:59:59'
-   AND comment LIKE 'ImportCTGovProtocols%%'""" % report.iso_date, self.cdr_id)
+   AND program = 'cdrPutDoc'
+   AND comment LIKE 'ImportCTGovProtocols: %%'""" % report.iso_date,
+                                  self.cdr_id)
             rows = Report.cursor.fetchall()
             if rows:
-                self.last_import_version = rows[0][0]
-                Report.cursor.execute("""\
-SELECT dt, val_status, publishable
-  FROM doc_version
- WHERE id = ?
-   AND num = ?""", (self.cdr_id, self.last_import_version))
-        rows = Report.cursor.fetchall()
-        self.last_import_version_date = rows[0][0]
-        self.last_import_version_valid = rows[0][1] == "V"
-        self.last_import_version_publishable = rows[0][2] == "Y"
-        if not self.last_import_version_valid:
-            self.validate()
-    def get_last_publishable_version(self):
+                return rows[0][0]
+        return None
+    def get_pub_version_date(self):
         if not self.cdr_id:
             return None
         Report.cursor.execute("""\
@@ -134,7 +134,7 @@ SELECT MAX(dt)
  WHERE id = ?
    AND publishable = 'Y'""", self.cdr_id)
         rows = Report.cursor.fetchall()
-        return rows and rows[0][0]
+        return rows and rows[0][0] or None
     def check_publication_status(self):
         Report.cursor.execute("""\
 SELECT MAX(p.id)
@@ -190,18 +190,17 @@ SELECT failure, messages, removed
     # Had to wrap the call to cdr.valDoc in a looped try block,
     # because the network sometimes gets unhappy with too many sockets
     # being opened as quickly as we're doing it.
+    #
+    # Modified 2015-06-30 to perform the validation on the current
+    # working copy of the document, because it turns out that the
+    # import script doesn't always create a new version.
     #------------------------------------------------------------------
     def validate(self):
-        Report.cursor.execute("""\
-SELECT xml
-  FROM doc_version
- WHERE id = ?
-   AND num = ?""", (self.cdr_id, self.last_import_version))
-        doc = Report.cursor.fetchall()[0][0].encode("utf-8")
         tries = 3
         while tries > 0:
             try:
-                response = cdr.valDoc(Report.session, "CTGovProtocol", doc=doc)
+                response = cdr.valDoc(Report.session, "CTGovProtocol",
+                                      self.cdr_id)
                 break
             except Exception, e:
                 sys.stderr.write("\n")
@@ -218,15 +217,21 @@ SELECT xml
                 if normalized_error.startswith("failed link target rule"):
                     sys.stderr.write("\n")
                     Report.log("CDR%d: %s" % (self.cdr_id, repr(error)))
+            elif (Trial.NO_MATCH in normalized_error and
+                  not self.verification_date):
+                self.ctrp_errors.add("missing verification_date")
             elif normalized_error not in Report.ctrp_errors:
                 msg = "CDR%d: don't recognize %s" % (self.cdr_id, repr(error))
                 sys.stderr.write("\n")
                 Report.fail(msg)
-            elif "private use characters" in normalized_error:
-                self.ctrp_errors.add("private use characters")
+            elif "private use characters" not in normalized_error:
+                msg = "CDR%d: unrecognized %s" % (self.cdr_id, repr(error))
+                sys.stderr.write("\n")
+                Report.fail(msg)
             else:
-                # XXX check this assumption if you add to ctrp_errors file!!!
-                self.ctrp_errors.add("missing verification_date")
+                # XXX adjust code if you add to ctrp_errors file!!!
+                self.ctrp_errors.add("private use characters")
+
     class FileNameAnomaly:
         def __init__(self, nct_id, status):
             self.nct_id = nct_id
@@ -268,7 +273,10 @@ class History:
                         self.errors[key] = start_date
                 else:
                     self.errors[key] = start_date
-            sheet = book.sheet_by_name("File Name Anomalies")
+            try:
+                sheet = book.sheet_by_name("File Name Anomalies")
+            except:
+                continue
             for row_number in range(1, sheet.nrows):
                 nct_id = sheet.cell(row_number, 0).value
                 error = sheet.cell(row_number, 1).value
@@ -364,7 +372,7 @@ SELECT processed
                 self.bogus_trials += 1
             elif trial.open:
                 self.open_trials += 1
-                if trial.last_import_version_valid:
+                if trial.ctrp_data_publishable:
                     if trial.ctrp_errors:
                         self.trials_with_ctrp_errors.append(trial)
                     else:
@@ -398,24 +406,35 @@ SELECT processed
         sheet.col(1).width = 2000
         sheet.col(2).width = 7500
         title = "CTRP %s Clinical Trial Set" % self.iso_date
-        sheet.write_merge(0, 0, 0, 2, title, section_style)
-        sheet.write(1, 0, "Total trials")
-        sheet.write(1, 1, self.total_trials, comma_style)
-        sheet.write(2, 0, "Failed import")
-        sheet.write(2, 1, self.bogus_trials, comma_style)
-        sheet.write(2, 2, "See \"File Name Anomalies\" sheet")
-        sheet.write(3, 0, "\"Open\" trials")
-        sheet.write(3, 1, self.open_trials, comma_style)
-        sheet.write(4, 0, "\"Closed\" trials")
-        sheet.write(4, 1, self.closed_trials, comma_style)
-        sheet.write_merge(6, 6, 0, 2, "\"Open\" Trial Breakdown", section_style)
-        sheet.write(7, 0, "Invalid")
-        sheet.write(7, 1, len(self.trials_with_ctrp_errors), comma_style)
-        sheet.write(7, 2, "See \"Invalid Documents\" sheet")
-        sheet.write(8, 0, "Under review by CIAT")
-        sheet.write(8, 1, len(self.trials_with_ciat_errors), comma_style)
-        sheet.write(9, 0, "Pushed to GateKeeper")
-        sheet.write(9, 1, self.published_successfully, comma_style)
+        row_num = 0
+        sheet.write_merge(row_num, row_num, 0, 2, title, section_style)
+        row_num += 1
+        sheet.write(row_num, 0, "Total trials")
+        sheet.write(row_num, 1, self.total_trials, comma_style)
+        if self.bogus_trials:
+            row_num += 1
+            sheet.write(row_num, 0, "Failed import")
+            sheet.write(row_num, 1, self.bogus_trials, comma_style)
+            sheet.write(row_num, 2, "See \"File Name Anomalies\" sheet")
+        row_num += 1
+        sheet.write(row_num, 0, "\"Open\" trials")
+        sheet.write(row_num, 1, self.open_trials, comma_style)
+        row_num += 1
+        sheet.write(row_num, 0, "\"Closed\" trials")
+        sheet.write(row_num, 1, self.closed_trials, comma_style)
+        row_num += 2
+        sheet.write_merge(row_num, row_num, 0, 2, "\"Open\" Trial Breakdown",
+                          section_style)
+        row_num += 1
+        sheet.write(row_num, 0, "Invalid")
+        sheet.write(row_num, 1, len(self.trials_with_ctrp_errors), comma_style)
+        sheet.write(row_num, 2, "See \"Invalid Documents\" sheet")
+        row_num += 1
+        sheet.write(row_num, 0, "Under review by CIAT")
+        sheet.write(row_num, 1, len(self.trials_with_ciat_errors), comma_style)
+        row_num += 1
+        sheet.write(row_num, 0, "Pushed to GateKeeper")
+        sheet.write(row_num, 1, self.published_successfully, comma_style)
         sheet = book.add_sheet("Invalid Documents")
         sheet.col(0).width = 4000
         sheet.col(1).width = 3500
@@ -440,24 +459,25 @@ SELECT processed
                 sheet.write(row_number, 3, start_date, date_style)
                 sheet.write(row_number, 4, self.import_date, date_style)
                 row_number += 1
-        sheet = book.add_sheet("File Name Anomalies")
-        sheet.col(0).width = 4000
-        sheet.col(1).width = 12000
-        sheet.col(2).width = 5000
-        sheet.col(3).width = 5500
-        sheet.write(0, 0, "NCT ID", header_style)
-        sheet.write(0, 1, "Status", header_style)
-        sheet.write(0, 2, "Date of First Failure", header_style)
-        sheet.write(0, 3, "Date of Latest Failure", header_style)
-        row_number = 1
-        for anomaly in sorted(self.file_name_anomalies):
-            key = (anomaly.nct_id.upper(), anomaly.status.lower())
-            start_date = history.errors.get(key, self.import_date)
-            sheet.write(row_number, 0, anomaly.nct_id)
-            sheet.write(row_number, 1, anomaly.status)
-            sheet.write(row_number, 2, start_date, date_style)
-            sheet.write(row_number, 3, self.import_date, date_style)
-            row_number += 1
+        if self.file_name_anomalies:
+            sheet = book.add_sheet("File Name Anomalies")
+            sheet.col(0).width = 4000
+            sheet.col(1).width = 12000
+            sheet.col(2).width = 5000
+            sheet.col(3).width = 5500
+            sheet.write(0, 0, "NCT ID", header_style)
+            sheet.write(0, 1, "Status", header_style)
+            sheet.write(0, 2, "Date of First Failure", header_style)
+            sheet.write(0, 3, "Date of Latest Failure", header_style)
+            row_number = 1
+            for anomaly in sorted(self.file_name_anomalies):
+                key = (anomaly.nct_id.upper(), anomaly.status.lower())
+                start_date = history.errors.get(key, self.import_date)
+                sheet.write(row_number, 0, anomaly.nct_id)
+                sheet.write(row_number, 1, anomaly.status)
+                sheet.write(row_number, 2, start_date, date_style)
+                sheet.write(row_number, 3, self.import_date, date_style)
+                row_number += 1
         fp = open(report_path, "wb")
         book.save(fp)
         fp.close()

@@ -12,3 +12,4 @@
 "Invalid date value: '' in element EntryDate"
 "Invalid integer value: '' in element HighAge"
 'Failed link target rule: /Term/TermType/TermTypeName == "Index term" \nAND\n/Term/SemanticType/@cdr:ref -= "CDR0000256171"\nAND\n/Term/TermType/TermTypeName -= "Obsolete term"'
+"Invalid date/time value: '' in element ProcessingEndDateTime"
