@@ -163,10 +163,15 @@ SELECT failure, messages, removed
             # to be modified to map the DTD validation's message to
             # an error string to be used in the report. The report
             # will abort if it sees an unrecognized validation message.
+            # 2015-08-04: Skip over anomalous XSL/T failure.
             if self.publication_failure and self.publication_messages:
                 elig_error = "Eligibility content does not follow the DTD"
+                msg = self.publication_messages.lower()
+                if ("xslt error" in msg and "denormalizeterm" in msg and
+                    "attribute 'encoding'" in msg):
+                    return
                 if elig_error in self.publication_messages:
-                    if self.publication_messages.lower().count("gender") == 1:
+                    if msg.count("gender") == 1:
                         self.ctrp_errors.add("missing gender")
                         return
                 sys.stderr.write("\n")
