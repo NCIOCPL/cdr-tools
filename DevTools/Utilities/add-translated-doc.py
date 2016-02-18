@@ -8,15 +8,10 @@
 #----------------------------------------------------------------------
 import cdr, sys
 
-if len(sys.argv) != 4:
-    sys.stderr.write("usage: add-translated-doc.py uid pwd path-to-xml\n")
+if len(sys.argv) != 3:
+    sys.stderr.write("usage: add-translated-doc.py session path-to-xml\n")
     sys.exit(1)
-uid, pwd, path = sys.argv[1:]
-session = cdr.login(uid, pwd)
-err = cdr.checkErr(session)
-if err:
-    sys.stderr.write("login: %s\n" % repr(err))
-    sys.exit(1)
+session, path = sys.argv[1:]
 xml = open(path, "rb").read()
 doc = cdr.Doc(xml, "Summary", encoding="utf-8")
 reason = "Creating document translated in Trados"
