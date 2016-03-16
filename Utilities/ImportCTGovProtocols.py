@@ -8,6 +8,7 @@
 # BZIssue::4942
 # JIRA::OCECTS-113
 # JIRA::OCECTS-120
+# JIRA::OCECDR-4044
 #
 #----------------------------------------------------------------------
 import cdr
@@ -22,21 +23,15 @@ import lxml.etree as etree
 # Determine whether the clinical center at the main NIH campus is
 # (or is about to be) actively participating in this trial.
 # See Request #4689.
-# Modificiations for JIRA request OCECTS-120.
+# Modifications for JIRA request OCECTS-120.
+# Modification made at Erika's request 2016-03-07: use zip code (OCECDR-4044).
 #----------------------------------------------------------------------
 def hasActiveMagnusonSite(tree):
-    for node in tree.findall("Location/Facility"):
-        name = city = None
-        for child in node:
-            if child.tag == "Name":
-                name = child.text
-            elif child.tag == "PostalAddress":
-                for grandchild in child.findall("City"):
-                    city = grandchild.text
-        if isinstance(name, basestring) and isinstance(city, basestring):
-            if "magnuson clinical center" in name.lower():
-                if city.lower() == "bethesda":
-                    return True
+    for node in tree.findall("Location/Facility/PostalAddress/PostalCode_ZIP"):
+        if node.text is not None:
+            code = node.text.strip()
+            if code.startswith("20892"):
+                return True
     return False
 
 #----------------------------------------------------------------------
