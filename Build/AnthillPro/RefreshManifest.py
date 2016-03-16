@@ -6,16 +6,39 @@
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
 #
 #----------------------------------------------------------------------
-import cdr, sys, time, socket, os, win32file, pywintypes
+import cdr
+import hashlib
+import lxml.etree as etree
+import sys
+import time
+import socket
+import os
+import win32file
+import pywintypes
 
 CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
 MANIFEST_PATH    = "%s/%s" % (CLIENT_FILES_DIR, cdr.MANIFEST_NAME)
 
 class File:
+    """
+    Objects representing each file in the client area. We will eventually
+    eliminate the timestamp, after we have successfully transitioned all
+    of the tiers to use checksums instead for detecting changes in files.
+    We don't calculate the checksum in the File object's constructor,
+    because we need to calculate a cumulative checksum representing all
+    of the files, and we have to wait until all of the files have been
+    collected and sorted before we do that (to ensure that the bytes for
+    the files are fed into the hash in the same order every time we do
+    this). So to avoid reading each file twice, we wait and calculate
+    the checksums for the individual files after the File objects have
+    been constructed and sorted.
+    """
     def __init__(self, path, timestamp = None):
-        self.name      = unicode(path, "latin-1")
-        self.timestamp = timestamp or self.__getTimestamp()
-    def __getTimestamp(self):
+        self.name = unicode(path, "latin-1")
+        self.key = self.name.lower() # for sorting
+        self.timestamp = timestamp or self.__get_timestamp()
+    def __get_timestamp(self):
+        "Eliminate this once checksum support is in place."
         try:
             h = win32file.CreateFile(self.name,
                                      win32file.GENERIC_READ, 0, None,
@@ -27,74 +50,113 @@ class File:
             print "failure:", repr(self.name), str(e)
             sys.exit(1)
     def __cmp__(self, other):
-        return cmp(self.name, other.name)
+        "Sort by file names, ignoring case."
+        return cmp(self.key, other.key)
 
-def gatherFiles(dirPath):
+def gather_files(dir_path):
+    """
+    Recursively gather a list all the files in the client files area.
+    """
     files = []
-    for name in os.listdir(dirPath):
-        thisPath = os.path.join(dirPath, name)
-        #print repr(name), repr(thisPath)
-        if os.path.isdir(thisPath):
-            files += gatherFiles(thisPath)
+    for name in os.listdir(dir_path):
+        this_path = os.path.join(dir_path, name)
+        if os.path.isdir(this_path):
+            files += gather_files(this_path)
         else:
-            files.append(File(thisPath))
+            files.append(File(this_path))
     return files
 
-def createTicket():
-    return u"""\
- <Ticket>
-  <Application>%s</Application>
-  <Timestamp>%s</Timestamp>
-  <Host>%s</Host>
-  <Author>%s</Author>
- </Ticket>""" % (sys.argv[0],
-                  time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()),
-                  socket.gethostname(), os.environ['USERNAME'])
+def create_ticket(md5):
+    """
+    Create a block for the manifest which can be used for a quick
+    determination that at least one file is different (or missing)
+    between the client and the server.
+    """
+    ticket = etree.Element("Ticket")
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+    etree.SubElement(ticket, "Application").text = sys.argv[0]
+    etree.SubElement(ticket, "Timestamp").text = timestamp
+    etree.SubElement(ticket, "Host").text = str(socket.gethostname())
+    etree.SubElement(ticket, "Author").text = str(os.environ["USERNAME"])
+    etree.SubElement(ticket, "Checksum").text = md5.hexdigest().lower()
+    return ticket
 
-def createFilelist(files):
-    fragmentXml = u" <FileList>\n"
+def md5(bytes):
+    """
+    Generate a checksum for the bytes from a file; used to detect when
+    a file has changed.
+    """
+    m = hashlib.md5()
+    m.update(bytes)
+    return m.hexdigest().lower()
+
+def create_filelist(files, manifest_md5):
+    """
+    Create a block for the manifest with a list of information for each
+    of the files in the client area.
+    """
+    wrapper = etree.Element("FileList")
     for f in files:
-        #print repr(f.name), repr(f.timestamp)
-        fragmentXml += u"""\
-  <File>
-   <Name>%s</Name>
-   <Timestamp>%s</Timestamp>
-  </File>
-""" % (f.name, f.timestamp)
-    return fragmentXml + u" </FileList>"
+        child = etree.SubElement(wrapper, "File")
+        etree.SubElement(child, "Name").text = f.name
+        if cdr.MANIFEST_NAME not in f.name:
+            fp = open(f.name, "rb")
+            bytes = fp.read()
+            fp.close()
+            etree.SubElement(child, "Checksum").text = md5(bytes)
+            manifest_md5.update(bytes)
+        etree.SubElement(child, "Timestamp").text = f.timestamp
+    return wrapper
 
-def writeManifest(manifestXml, manifestTime):
-    manifestFile = file(MANIFEST_PATH, 'w')
-    manifestFile.write(manifestXml)
-    manifestFile.close()
+def write_manifest(manifest_xml, manifest_time):
+    """
+    Serialize the manifest file to disk.
+    Right now we also change the date/time stamp for the file on disk
+    to the value we stored in the manifest for itself, but we'll
+    eliminate once support for using checksums instead of file stamps
+    has been deployed to all of the tiers.
+    """
+    manifest_file = file(MANIFEST_PATH, 'w')
+    manifest_file.write(manifest_xml)
+    manifest_file.close()
 
-    timestamp = pywintypes.Time(manifestTime)
+    timestamp = pywintypes.Time(manifest_time)
     handle = win32file.CreateFile(cdr.MANIFEST_NAME,
                                   win32file.GENERIC_WRITE, 0, None,
                                   win32file.OPEN_EXISTING, 0, 0)
     win32file.SetFileTime(handle, timestamp, timestamp, timestamp)
     handle.Close()
 
-def refreshManifest(where):
+def refresh_manifest(where):
+    """
+    Top-level logic for this tool:
+
+       1. Remove the previous copy of the manifest.
+       2. Switch the current directory to the client files area.
+       3. Collect File objects for the files in this area.
+       4. Add a File object for the manifest file we're creating.
+       5. Calculate the checksums for the files.
+       6. Serialize the manifest to disk.
+       7. Adjust the permissions for the client area files/directories.
+    """
     try:
         os.unlink(MANIFEST_PATH)
     except:
         pass
     os.chdir(where)
-    files = gatherFiles('.')
-    manifestTime = time.time()
+    files = gather_files('.')
+    manifest_time = time.time()
     files.append(File(os.path.join('.', cdr.MANIFEST_NAME),
                       time.strftime("%Y-%m-%dT%H:%M:%S",
-                                    time.gmtime(manifestTime))))
+                                    time.gmtime(manifest_time))))
     files.sort()
-    manifestXml = u"""\
-<!-- Timestamps are UTC. -->
-<Manifest>
-%s
-%s
-</Manifest>
-""" % (createTicket(), createFilelist(files))
-    writeManifest(manifestXml.encode('utf-8'), manifestTime)
+    md5 = hashlib.md5()
+    filelist = create_filelist(files, md5)
+    root = etree.Element("Manifest")
+    root.append(create_ticket(md5))
+    root.append(filelist)
+    xml = etree.tostring(root, pretty_print=True)
+    write_manifest(xml, manifest_time)
 
     # NOTE: May change this in future to invoke something like
     #       BuildDeploy.findCygwin(), but for now, can't count on
@@ -106,4 +168,8 @@ def refreshManifest(where):
             print result.output
 
 if __name__ == "__main__":
-    refreshManifest(CLIENT_FILES_DIR)
+    """
+    Make it possible to load this file as a module without unwanted
+    side effects.
+    """
+    refresh_manifest(CLIENT_FILES_DIR)
