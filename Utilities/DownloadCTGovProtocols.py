@@ -57,14 +57,24 @@ class Dispositions:
             self.codes[name]= code
 
 #----------------------------------------------------------------------
-# Prepare a CTGovProtocol document for comparison with another version.
+# Object which can strip out the ephemeral parts of a trial document.
 #----------------------------------------------------------------------
-def normalizeXml(doc):
-    filt = ["name:Normalize NLM CTGovProtocol document"]
-    response = cdr.filterDoc("guest", filt, doc=doc)
-    if isinstance(response, basestring):
-        raise Exception(response)
-    return response[0]
+class Normalizer:
+    filter_name = "Normalize NLM CTGovProtocol document"
+    def __init__(self, cursor):
+        query = cdrdb.Query("document d", "d.xml")
+        query.join("doc_type t", "t.id = d.doc_type")
+        query.where("t.name = 'Filter'")
+        query.where("d.title = '%s'" % self.filter_name)
+        rows = query.execute(cursor).fetchall()
+        if not rows:
+            raise Exception("%s not found" % repr(self.filter_name))
+        root = etree.XML(rows[0][0].encode("utf-8"))
+        self.transform = etree.XSLT(root)
+    def normalize(self, doc):
+        fp = cStringIO.StringIO(doc)
+        tree = etree.parse(fp)
+        return etree.tostring(self.transform(tree))
 
 #----------------------------------------------------------------------
 # Compare two versions of a CTGovProtocol doc; return non-zero if
@@ -73,7 +83,7 @@ def normalizeXml(doc):
 def compareXml(a, b):
     if a is None or b is None:
         return True
-    return cmp(normalizeXml(a), normalizeXml(b))
+    return cmp(normalizer.normalize(a), normalizer.normalize(b))
 
 #----------------------------------------------------------------------
 # Gather a list of email recipients for reports.
@@ -335,6 +345,7 @@ wantedDocs     = set()
 processDropped = True
 when           = datetime.date.today().strftime("%Y-%m-%d")
 forceReimport  = loadForceReimportFlag(cursor)
+normalizer     = Normalizer(cursor)
 
 # If we're testing from the command line for a subset of documents,
 # we don't want to pay any attention to missing trials.
