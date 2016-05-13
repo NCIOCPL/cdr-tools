@@ -160,10 +160,6 @@ def main():
         print "CWD for %s updated" % cdrId
     else:
         print "Latest version of %s is %d" % (cdrId, versions[0])
-    if cdr.isProdHost():
-        print ""
-        print "DON'T FORGET TO UPDATE d:/cdr/prod-filters ON THE LOWER TIERS."
-        print "(See oce_cdr/trunk/Filters/collect-prod-filters.py.)"
 
 if __name__ == '__main__':
     main()
