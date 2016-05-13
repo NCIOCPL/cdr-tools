@@ -21,9 +21,12 @@ class Control:
         self.start = time.time()
         cursor = cdrdb.connect("CdrGuest").cursor()
         cursor.execute("""\
-SELECT id
-  FROM document
- WHERE xml LIKE '%list%compact%'""")
+SELECT d.id
+  FROM document d
+  JOIN doc_type t
+    ON t.id = d.doc_type
+ WHERE t.name IN ('Summary', 'DrugInformationSummary', 'MiscellaneousDocument')
+   AND xml LIKE '%list%compact%'""", timeout=600)
         self.ids = [row[0] for row in cursor.fetchall()]
     def getDocIds(self):
         return sorted(self.ids)

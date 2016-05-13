@@ -7,9 +7,22 @@
 # and directories when required.
 #
 #----------------------------------------------------------------------
-import sys, os, os.path, getopt, glob, shutil, time, datetime, lxml.etree as et
-import traceback, re, xml.dom.minidom, tarfile, cdr
-import cdrutil, cdrdb
+import sys
+import os
+import os.path
+import getopt
+import glob
+import shutil
+import time
+import datetime
+import lxml.etree as et
+import traceback
+import re
+import xml.dom.minidom
+import tarfile
+import cdr
+import cdrutil
+import cdrdb
 
 # Logfile
 LF = cdr.DEFAULT_LOGDIR + "/FileSweeper.log"
@@ -49,7 +62,6 @@ class qualFile:
         self.archived  = False
         self.truncated = False
         self.deleted   = False
-
 
 #----------------------------------------------------------------------
 # Class encapsulating the elements in a specification
@@ -152,9 +164,9 @@ class SweepSpec:
 
         # Validate
         if self.specName == "Unknown":
-            fatalError("No Name subelement in one of the SweepSpec elements");
+            fatalError("No Name subelement in one of the SweepSpec elements")
         if not self.action:
-            fatalError('No Action in SweepSpec "%s"' % self.specName);
+            fatalError('No Action in SweepSpec "%s"' % self.specName)
         if self.action not in ('Archive', 'Delete', 'TruncateArchive',
                                'TruncateDelete', 'Custom'):
             fatalError('Invalid Action "%s" in SweepSpec "%s"' %
@@ -162,7 +174,7 @@ class SweepSpec:
         if self.inFiles == []:
             if self.action != 'Custom':
                 fatalError('No File (or InputFiles?) in SweepSpec "%s"' %
-                           self.specName);
+                           self.specName)
 
         # Validate combinations of specs
         if not self.outFile and self.action in ('Archive','TruncateArchive'):
@@ -204,7 +216,6 @@ class SweepSpec:
 
         if self.oldSpec and self.maxSizeSpec:
             fatalError("Can't specify both big/small and old/young")
-
 
     #----------------------------------------------------------------------
     # Is this spec to be used on this tier?
@@ -360,7 +371,6 @@ SweepSpec: "%s"
 
         return specStr
 
-
     #----------------------------------------------------------------------
     # Archive files needing to be archived
     #----------------------------------------------------------------------
@@ -390,7 +400,7 @@ SweepSpec: "%s"
         for fobj in self.qualifiedList:
             # Archive it
             try:
-                tar.add(fobj.fileName);
+                tar.add(fobj.fileName)
             except Exception, info:
                 self.addMsg("Tar error (1): %s" % info)
                 self.addMsg("FileName: %s" % fobj.fileName)
@@ -407,7 +417,6 @@ SweepSpec: "%s"
 
         # If here, everything okay, deletion can proceed
         self.delete(testMode)
-
 
     #----------------------------------------------------------------------
     # Truncate files needing to be truncated
@@ -535,7 +544,7 @@ SweepSpec: "%s"
 
                 # Archive the truncation
                 try:
-                    tar.add(inFile);
+                    tar.add(inFile)
                 except Exception, info:
                     self.addMsg("Tar error: %s" % info)
                     self.addMsg("Abandoning this SweepSpec")
@@ -558,7 +567,6 @@ SweepSpec: "%s"
                 tar.close()
             except Exception, info:
                 fatalError('Could not close tarfile "%s"' % self.outFile)
-
 
     #----------------------------------------------------------------------
     # Delete files
@@ -594,7 +602,6 @@ SweepSpec: "%s"
                 else:
                     self.addMsg("Unable to remove file %s: %s" %
                                 (fileObj.fileName, info))
-
 
     #----------------------------------------------------------------------
     # Create a full output file name
@@ -661,7 +668,6 @@ SweepSpec: "%s"
                         (outBase, self.specName))
 
         self.outFile = outFile
-
 
     #----------------------------------------------------------------------
     # Remove out of date Media recordings
@@ -844,7 +850,6 @@ SweepSpec: "%s"
         # Cleanup
         cleanSession(cursor, session)
 
-
     #----------------------------------------------------------------------
     # Report results via HTML
     #----------------------------------------------------------------------
@@ -874,7 +879,6 @@ SweepSpec: "%s"
 
         return html
 
-
     #----------------------------------------------------------------------
     # Process a message
     #----------------------------------------------------------------------
@@ -887,7 +891,6 @@ SweepSpec: "%s"
             message
         """
         self.msgs.append(msg)
-
 
 #----------------------------------------------------------------------
 # Load configuration file
@@ -932,7 +935,6 @@ def loadConfigFile(fileName):
 
     return spec
 
-
 #----------------------------------------------------------------------
 # Usage message
 #----------------------------------------------------------------------
@@ -941,13 +943,16 @@ def usage(msg=None):
         sys.stderr.write("%s\n" % msg)
 
     sys.stderr.write("""
-usage: FileSweeper.py {-t} configFileName {outputDir}
-   -t             = Test mode - create output files but delete nothing.
-   configFileName = Full or relative path to configuration file.
-   outputDir      = Optional path to prepend to archive file output directory.
+usage: FileSweeper.py {options} configFileName {outputDir}
+  options:
+   -t --test       = Test mode - create output files but delete nothing.
+   -e --email list = Supply this alternate email list for fatal error msgs.
+                     If more than one address, use '+' as separator, no spaces.
+                      e.g, joe@nih.gov+bill@nih.gov+jane@somewhere.com
+   configFileName  = Full or relative path to configuration file.
+   outputDir       = Optional path to prepend to archive file output directory.
 """)
     sys.exit(1)
-
 
 #----------------------------------------------------------------------
 # Normalize a path
@@ -1003,7 +1008,6 @@ def makeFileNameUnique(inFile, maxSuffix=1):
 
     return outFile
 
-
 #----------------------------------------------------------------------
 # Cleanup CdrServer and database connections
 #----------------------------------------------------------------------
@@ -1028,7 +1032,6 @@ def cleanSession(cursor, session):
         except Exception as e:
             logException(e, 'logging out of session')
 
-
 #----------------------------------------------------------------------
 # Fatal error
 #----------------------------------------------------------------------
@@ -1040,10 +1043,46 @@ def fatalError(msg):
     Pass:
         Error message.
     """
+    global recips, TIER
+
+    # Add message to log file
     msg = "FATAL error: %s\n" %msg
     log(msg)
-    sys.exit(1)
 
+    # Send mail to recipients from command line or registered group
+    sender = 'FileSweeper-NoRepy@cdr.cancer.gov'
+    if not recips:
+        try:
+            recips = cdr.getEmailList('FileSweeper Error Notification')
+        except Exception as e:
+            logException(e, "Getting email recipients from the CDR")
+
+    # Message subject
+    subject = "FileSweeper failed on %s tier" % TIER
+
+    # Body
+    body = """
+The CDR FileSweeper failed on %s at %s.
+
+Error message was:
+   %s
+""" % (TIER, time.ctime(), msg)
+
+    # Send it
+    mailSent = False
+    if recips:
+        try:
+            cdr.sendMail(sender, recips, subject, body)
+            mailSent = True
+        except Exception as e:
+            logException(e, "Attempting to send mail for fatal error")
+
+    if mailSent:
+        log("Mail sent to: %s" % recips)
+    else:
+        log("No mail sent")
+
+    sys.exit(1)
 
 #----------------------------------------------------------------------
 # Log a message
@@ -1055,7 +1094,6 @@ def log(msg):
     cdr.logwrite(msg, LF)
     sys.stderr.write(msg)
     sys.stderr.write("\n")
-
 
 #----------------------------------------------------------------------
 # Log exceptions
@@ -1093,12 +1131,24 @@ If you are _certain_ that no other copy is running, then manually
 remove the file "%s" to enable FileSweeper to run.
 """ % lockFileName)
 
+    # Defaults for command line args
+    testMode  = False
+    recips    = None
+    outputDir = ""
 
     # Command line args
-    (opts, args) = getopt.getopt(sys.argv[1:], "t", ["test",])
-    if len(args) < 1 or len(args) > 2:
+    (opts, args) = getopt.getopt(sys.argv[1:], "te:", ["test", "email="])
+    if len(args) < 1 or len(args) > 3:
         usage()
     configFile = args[0]
+    if len(args) > 1:
+        for opt, arg in opts:
+            if opt in ('-t', '--test'):
+                testMode = True
+            elif opt in ('-e', '--email'):
+                recips = arg.split('+')
+
+    # If there is another arg, it's the output directory prefix
     if len(args) > 1:
         outputDir = args[1]
     else:
@@ -1110,15 +1160,6 @@ remove the file "%s" to enable FileSweeper to run.
   Args:
 %s
 """ % sys.argv, LF)
-
-    # Test mode?
-    testMode = False
-    if len(opts):
-        if opts[0][0] in ("-t", "--test"):
-            testMode = True
-
-    # XXX DEBUG - For testing only
-    # testMode = True
 
     # Load the configuration file, fatal if fails
     specList = loadConfigFile(configFile)
@@ -1152,6 +1193,9 @@ remove the file "%s" to enable FileSweeper to run.
     if not os.path.isdir(outputDir):
         fatalError('Command line output name "%s" is not a directory'
                     % outputDir)
+
+    # DEBUG
+    # fatalError("Aborting for test")
 
     # Process each archive specification
     try:

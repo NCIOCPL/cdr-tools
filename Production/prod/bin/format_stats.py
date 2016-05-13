@@ -4,7 +4,7 @@
 #            ---------------
 # Script that takes the changes file from the FTP server and creates
 # a formatted TXT file.  This is used when a wrong changes file went
-# and and we have to recreate the formatted output from an older
+# out and we have to recreate the formatted output from an older
 # file
 # Intermediate files are stored in the $PDQLOG directory.
 # ------------------------------------------------------------------
@@ -19,18 +19,16 @@
 # $Log: $
 #
 # ******************************************************************
-import sys, os, ftplib, time, glob
+import sys, os, ftplib, time, glob, datetime
+
+!!! Not converted for CBIIT yet !!!
 
 # Setting the variables
 # ---------------------
 tmpDir  = '/tmp'
 pdqLog  = '/pdq/prod/log'
 ftpFile = '%s/getchanges.ftp' % tmpDir
-pubDir  = '/u/ftp/pub/pdq/full'
-
-# FTPSERVER = 'cipsftp.nci.nih.gov'
-# FTPUSER   = 'operator'
-# FTPPWD    = '***REMOVED***'  # 'mars56'
+pubDir  = '/u/ftp/cdr/pub/pdq/full'
 
 now     = time.time()
 lastWk  = time.time() - 5 * 24 * 60 * 60
@@ -38,6 +36,19 @@ relDate = time.strftime("%Y%W", time.localtime(lastWk))
 relDateHdr = time.strftime("Week %W, %Y", time.localtime(lastWk))
 rchanges= '%s.changes'     % relDate
 lchanges= '%s_changes.txt' % relDate
+
+# This is the correct way of getting the ISO week number
+# The job is scheduled to run on a Sunday (the last day
+# of the ISO week) and the same week as the publishing
+# job.
+# ------------------------------------------------------
+today = datetime.date.today()
+one_day = datetime.timedelta(1)
+one_week = datetime.timedelta(7)
+last_week = today - one_week
+year, week, weekday = last_week.isocalendar()
+WEEK = "%04d%02d" % (year, week)
+
 
 # Which week are we processing?
 # -----------------------------

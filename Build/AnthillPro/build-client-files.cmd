@@ -25,38 +25,42 @@ ECHO Building CDR Client Files.
 IF "%1." == "." (
     ECHO Usage: CALL %SCRIPTNAME% branch-path [svn-pwd [svn-uid]]
     ECHO  e.g.: CALL %SCRIPTNAME% branches/patch-2.3
-    EXiT /B 1
+    EXIT /B 1
 )
-SET SVNOPTS=-q --trust-server-cert --non-interactive
+
+REM Establish defaults for all CDRBUILD_ environment variables
+CALL init-build-envvars.cmd
+
+REM Create command to export from svn
 IF "%2." == "." (
-    SET SVNEXP=svn export %SVNOPTS%
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS%
 ) ELSE IF "%3." == "." (
-    SET SVNEXP=svn export %SVNOPTS% --password %2
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS% --password %2
 ) ELSE (
-    SET SVNEXP=svn export %SVNOPTS% --username %3 --password %2
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS% --username %3 --password %2
 )
-D:
+
 REM Output data to a directory name found in the env or created here
 IF "%CDRBUILD_BASEPATH%." == "." (
-  SET CLIENTFILES_TMP=d:\tmp\ClientFiles
+  SET CLIENTFILES_TMP=%CDRBUILD_DRIVE%\tmp\ClientFiles
 ) ELSE (
   SET CLIENTFILES_TMP=%CDRBUILD_BASEPATH%\ClientFiles
 )
 SET CLIENTFILES=%CLIENTFILES_TMP:/=\%
 
-SET SVNBRANCH=https://ncisvn.nci.nih.gov/svn/oce_cdr/%1
-SET CYGDATE=d:\cygwin\bin\date.exe
+SET SVNBRANCH=%CDRBUILD_SVNBASEURL%/%1
+SET CYGDATE=%CDRBUILD_CYGBIN%\date.exe
 SET STAMP=
 FOR /F %%s IN ('%CYGDATE% +%%Y%%m%%d%%H%%M%%S') DO SET STAMP=%%s
 IF NOT DEFINED STAMP ECHO %CYGDATE% failure && EXIT /B 1
-SET WORKDIR=d:\tmp\client-%STAMP%
+SET WORKDIR=%CDRBUILD_DRIVE%\tmp\client-%STAMP%
 SET CDRLOADER=CdrClient-%STAMP%.exe
 MKDIR %WORKDIR% || ECHO Failure creating %WORKDIR% && EXIT /B 1
 CD %WORKDIR%
 ECHO Created working directory.
 %SVNEXP% %SVNBRANCH%/Build/AnthillPro || ECHO Failed export && EXIT /B 1
-ECHO AnthillPro tools successfully fetched.
-CALL d:\bin\vcvars32.bat > NUL 2>&1 || ECHO Failed VC Init && EXIT /B 1
+ECHO Build tools successfully fetched into working directory.
+CALL %CDRBUILD_DRIVE%\bin\vcvars32.bat > NUL 2>&1 || ECHO Failed Visual C++ Init (vcvars32) && EXIT /B 1
 ECHO Compiler successfully initialized.
 IF EXIST %CLIENTFILES% (
   RMDIR /S /Q %CLIENTFILES%
@@ -152,7 +156,7 @@ ECHO Exporting current schemas from version control
 
 REM Output path
 IF "%CDRBUILD_BASEPATH%." == "." (
-  SET SCHEMAFILES_TMP=d:\tmp
+  SET SCHEMAFILES_TMP=%CDRBUILD_DRIVE%\tmp
 ) ELSE (
   SET SCHEMAFILES_TMP=%CDRBUILD_BASEPATH%
 )
@@ -168,7 +172,10 @@ REM ----------------------------------------------------------------------
 :cleanup
 ECHO Setting file permssions.
 CD %CLIENTFILES%
-d:\cygwin\bin\chmod -R 777 * || ECHO Can't set permissions && EXIT /B 1
+echo DEBUG
+echo CLIENTFILES=%CLIENTFILES%
+%CDRBUILD_CYGBIN%\pwd
+%CDRBUILD_CYGBIN%\chmod -R 777 * || ECHO Can't set permissions && EXIT /B 1
 ECHO File permissions successfully set.
 ECHO Cleaning up temporary files.
 CD \

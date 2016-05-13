@@ -38,6 +38,8 @@ if isinstance(cdr.idSessionUser(sys.argv[1], sys.argv[1]), tuple):
     tokens = sys.argv[2:]
     new_session = False
 else:
+    if len(sys.argv) < 4:
+        usage()
     session = cdr.login(sys.argv[1], sys.argv[2])
     new_session = True
     tokens = sys.argv[3:]

@@ -6,18 +6,8 @@
 # Required command-line argument is path to comma-delimited ASCII
 # file from ZIPInfo (ZIPList5).
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.3  2005/09/07 19:11:51  venglisc
-# Modified loader program to adjust for data file provided with additional
-# data fields. (Bug 1820)
-#
-# Revision 1.2  2005/03/16 18:44:22  venglisc
-# Made changes to the program to address a version change of the CSV module
-# (Bug 1457).
-#
-# Revision 1.1  2003/09/09 15:09:56  bkline
-# Script to create and populate zipcode table.
-#
+# ---------------------------------------------------------------------
+# OCECDR-3848: Automate Quarterly ZIP Code Updates
 #----------------------------------------------------------------------
 import cdrdb, sys
 import csv   #http://www.object-craft.com.au/projects/csv/
@@ -28,11 +18,33 @@ cursor = conn.cursor()
 reader = csv.reader(file)
 added  = 0
 header = 0
+
+# Create a backup of the current zipcode table
+# --------------------------------------------
+try:
+    cursor.execute("TRUNCATE TABLE zipcode_backup")
+    conn.commit()
+except:
+    print "Error:  Unable to truncate zipcode_backup"
+    sys.exit(1)
+
+try:
+    cursor.execute("""INSERT INTO zipcode_backup
+                    SELECT * 
+                      FROM zipcode""")
+    conn.commit()
+except:
+    print "Error:  Unable to populate zipcode_backup"
+    sys.exit(1)
+
+# Drop the zipcode table and recreate it with proper permissions
+# --------------------------------------------------------------
 try:
     cursor.execute("DROP TABLE zipcode")
     conn.commit()
 except:
     pass # OK if it doesn't exist yet.
+
 cursor.execute("""\
     CREATE TABLE zipcode
            (city VARCHAR(28) NOT NULL,
@@ -50,6 +62,9 @@ conn.commit()
 cursor.execute("GRANT select ON zipcode TO CdrGuest")
 conn.commit()
 errCount = 0
+
+# Load the ZIP code data
+# ----------------------
 for row in reader:
     if header > 1:
         if len(row) == 19:
@@ -61,7 +76,7 @@ for row in reader:
                   VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", zipInfo)
             conn.commit()
             added += 1
-            print "added %d rows" % added
+            if not added % 2500: print "added %d rows" % added
         elif len(row) > 19:
             print "Data format change!!!  Adjust data columns."
             sys.exit(1)
@@ -72,4 +87,5 @@ for row in reader:
                 print "ERROR: Too many errors detected!!!"
                 sys.exit(1)
     header += 1
+print "\nTotal number of rows loaded: %d" % added
 file.close()

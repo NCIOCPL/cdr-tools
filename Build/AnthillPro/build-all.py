@@ -48,6 +48,10 @@ usage: %s {options}
 
  options:
 
+ --drive letter      - Drive letter (with or without ':') to prepend to
+                       paths.  All paths are relative to this drive unless
+                       explicitly defined with a fully qualified name.
+                       Default = logged in drive, currently '%s'.
  --srcpath  dirpath  - Base directory path for external scripts.
                        Default ='%s'
  --basepath dirpath  - Base directory path for output files.
@@ -65,10 +69,10 @@ usage: %s {options}
                        Blank lines and comments beginning with '#' are okay.
                        No default.
  --logfile  filepath - Path to output logfile, default=%s.
- --include  dirname  - CDR directory to build.  May be invoked multiple times.
-                       If no --include parameters are passed, all CDR
-                       directories will be built, else only --include dirs are
-                       created.
+ --include  dirname  - Single CDR directory to build.  May be invoked
+                       multiple times.  If no --include parameters are passed,
+                       all CDR directories will be built, else
+                       only --include dirs are created.
                        Dirnames are matched against the internal list of
                        dirnames that can be built.  Current values are:
 %s
@@ -103,7 +107,7 @@ usage: %s {options}
 If the argument for a parameter consists of more than one word, double quotes
 around the entire argument are required, for example:
      --execcmd "copy /Y file1 file2"
-""" % (os.path.basename(sys.argv[0]), Cfg.srcpath, Cfg.basepath,
+""" % (os.path.basename(sys.argv[0]), Cfg.drive, Cfg.srcpath, Cfg.basepath,
        Cfg.logfile, Cfg.dirList, Cfg.svnurl, Cfg.mindisk))
 
     if msg:
@@ -176,6 +180,49 @@ Here is what occurs after parameter substitution:
 """)
     sys.exit(1)
 
+def showConfig():
+    """
+    Create a list of current configuration values, i.e., members of this
+    class.
+
+    Return:
+        Formated list suitable for logging, one parm per line.
+    """
+    global Cfg
+
+    # Are there any commands to execute (--execcmd)
+    if Cfg.execcmd is not None:
+        cmdList = "\n " + "\n ".join(Cfg.execcmd)
+    else:
+        cmdList = "None"
+
+    output = """
+%s
+
+Build parameters:
+
+ --srcpath:   %s
+ --basepath:  %s
+ --parmfile:  %s
+ --logfile:   %s
+ --include:   %s
+ --exclude:   %s
+ --svnurl:    %s
+ --svnuser:   %s
+ --svnbrnch:  %s
+ --execcmds:  %s
+ --failok;    %s
+ --trialrun:  %s
+ --mindisk:   %d GB
+ free disk:   %d GB
+
+""" % (bd.versionCtlVersion(sys.argv[0]),
+       Cfg.srcpath, Cfg.basepath, Cfg.parmfile, Cfg.logfile,
+       Cfg.includes, Cfg.excludes, Cfg.svnurl, Cfg.svnuser, Cfg.svnbrnch,
+       cmdList, Cfg.failok, Cfg.trialrun, Cfg.mindisk, Cfg.freedisk)
+
+    return output
+
 class Config:
     """
     Container class to hold all configuration information.
@@ -185,12 +232,14 @@ class Config:
     def __init__(self):
         """
         Set default values for all configuration settings.
+
+        Drive letters will be prepended to paths later.
         """
         self.current  = time.strftime("%Y-%m-%d_%H-%M-%S")
-        self.drive    = "d:"
-        self.basepath = "%s/tmp/CdrBuild/%s" % (self.drive, self.current)
+        self.drive    = os.getcwd()[0]
+        self.basepath = "\\tmp\\CdrBuild\\%s" % self.current
         self.parmfile = None
-        self.logfile  = "%s/cdr/Log/build.log" % self.drive
+        self.logfile  = "\\cdr\\Log\\build.log"
         self.includes = None
         self.excludes = None
         self.svnurl   = 'https://ncisvn.nci.nih.gov/svn/oce_cdr'
@@ -203,10 +252,10 @@ class Config:
         self.failok   = False
         self.trialrun = False
         self.mindisk  = 5
-        self.freedisk = bd.availDiskGB(self.basepath)
+        self.freedisk = -1
 
         # Command line options
-        self.longOpts = ["basepath=", "srcpath=", "parmfile=",
+        self.longOpts = ["basepath=", "srcpath=", "drive=", "parmfile=",
                          "logfile=", "include=", "exclude=",
                          "svnuser=", "svnpw=", "svnbrnch=",
                          "svnurl=", "mindisk=", "execcmd=",
@@ -214,24 +263,33 @@ class Config:
 
         # Commands to execute for a full build
         # See --helpcmds for explanation
+
+        # Start with the svn options split up, because build-pythondir.cmd
+        # expects the basepath argument in the middle of them.
+        svn_opts = ["@+svnurl @-svnbrnch", "@-svnpw @-svnuser"]
+
+        # build_python_dir is a string interpolation pattern (using %s).
+        # build-pythondir.cmd is a bit of a misnomer (Licensee isn't really
+        # a Python directory, though it does have one Python script in it).
+        build_python_dir = " ".join(("build-pythondir.cmd",
+                                     svn_opts[0],
+                                     "@-basepath %s ",
+                                     svn_opts[1]))
+
+        # Splice the svn options back together.
+        svn_opts = " ".join(svn_opts)
         self.commandList = [
-['Bin',
- 'build-cdr-bin.cmd @+basepath @+svnurl @-svnbrnch @-svnpw @-svnuser'],
-['ClientFiles',
- 'build-client-files.cmd @+basepath @+svnurl @-svnbrnch @-svnpw @-svnuser'],
-['Database',
-'build-pythondir.cmd @+svnurl @-svnbrnch @-basepath Database @-svnpw @-svnuser'],
-['lib',
- 'build-pythondir.cmd @+svnurl @-svnbrnch @-basepath lib @-svnpw @-svnuser'],
-['Mailers',
- 'build-pythondir.cmd @+svnurl @-svnbrnch @-basepath Mailers @-svnpw @-svnuser'],
-['Publishing',
- 'build-pythondir.cmd @+svnurl @-svnbrnch @-basepath Publishing @-svnpw @-svnuser'],
-['Utilities',
- 'build-pythondir.cmd @+svnurl @-svnbrnch @-basepath Utilities @-svnpw @-svnuser'],
-['Inetpub',
- 'build-pythondir.cmd @+svnurl @-svnbrnch @-basepath Inetpub @-svnpw @-svnuser'],
-]
+            ["Bin", "build-cdr-bin.cmd @+basepath %s" % svn_opts],
+            ["ClientFiles", "build-client-files.cmd @+basepath %s" % svn_opts],
+            ["Database", build_python_dir % "Database"],
+            ["lib", build_python_dir % "lib"],
+            ["Mailers", build_python_dir % "Mailers"],
+            ["Publishing", build_python_dir % "Publishing"],
+            ["Utilities", build_python_dir % "Utilities"],
+            ["Inetpub", build_python_dir % "Inetpub"],
+            ["Licensee", build_python_dir % "Licensee"],
+            ["Scheduler", build_python_dir % "Scheduler"]
+        ]
         self.dirList = [dir[0] for dir in self.commandList]
 
     def getParms(self):
@@ -315,6 +373,10 @@ class Config:
                     bd.fatal('"--basepath %s" not found' % arg)
                 self.basepath = arg
 
+            if opt == "--drive":
+                # Convert "c:" to "c", etc.
+                self.drive = arg[0]
+
             if opt == "--parmfile":
                 # Only allow one parmfile, must be on command line
                 if self.parmfile and arg != self.parmfile:
@@ -377,6 +439,37 @@ class Config:
         if self.svnbrnch:
             brnchName = self.svnbrnch.replace("\\", "_").replace("/", "_")
             self.basepath += "_%s" % brnchName
+
+        # Normalize all paths separators and drive letters
+        self.srcPath  = self.normPath(self.srcpath)
+        self.basepath = self.normPath(self.basepath)
+        self.parmfile = self.normPath(self.parmfile)
+        self.logfile  = self.normPath(self.logfile)
+
+        # Now that we have a final basepath, we can calculate disk space
+        self.freedisk = bd.availDiskGB(self.basepath)
+
+    def normPath(self, path):
+        """
+        Normalize path names to use Windows path separators and drive letters.
+
+        Pass:
+            Pathname to normalize.
+
+        Return:
+            Normalized pathname.
+        """
+        if not path:
+            return path
+
+        # Normalize directory separators
+        path = bd.windowsPath(path)
+
+        # Prepend drive letter if needed
+        if len(path) < 2 or path[1] != ':':
+            path = "%s:%s" % (self.drive, path)
+
+        return path
 
     def cmdFile(self):
         """
@@ -541,50 +634,28 @@ Cfg.getParms()
 # Before this, logging is to the default log in BuildDeploy.py
 bd.setLogfileName(Cfg.logfile)
 
-# Command list, if any
-if Cfg.execcmd is not None:
-    cmdList = "\n " + "\n ".join(Cfg.execcmd)
-else:
-    cmdList = "None"
-
-bd.log("""
-=====================================================================
-                           Building CDR
-=====================================================================
-
-Build parameters:
-
- --srcpath:   %s
- --basepath:  %s
- --parmfile:  %s
- --logfile:   %s
- --include:   %s
- --exclude:   %s
- --svnurl:    %s
- --svnuser:   %s
- --svnbrnch:  %s
- --execcmd:   %s
- --failok;    %s
- --trialrun:  %s
- --mindisk:   %d
- free disk:   %d
-
-""" % (Cfg.srcpath, Cfg.basepath, Cfg.parmfile, Cfg.logfile,
-       Cfg.includes, Cfg.excludes, Cfg.svnurl, Cfg.svnuser, Cfg.svnbrnch,
-       cmdList, Cfg.failok, Cfg.trialrun, Cfg.mindisk, Cfg.freedisk))
-
-# Check initial conditions
-Cfg.okayToStart()
+# Check free disk
+Cfg.freedisk = bd.availDiskGB(Cfg.basepath)
 
 # Produce the final list of commands to execute
 Cfg.setFinalCmds()
 if not Cfg.finalCmdsList:
     bd.fatal("No commands found to run")
 
+bd.log("""
+=====================================================================
+                           Building CDR
+=====================================================================
+
+%s""" % showConfig())
+
+# Check initial conditions
+Cfg.okayToStart()
+
 # Create the output directory
 if not bd.chkPath(Cfg.basepath, True) and not Cfg.trialrun:
     try:
-        os.mkdir(Cfg.basepath)
+        bd.makeDirs(Cfg.basepath)
     except Exception as e:
         bd.fatal("Unable to create output directory: %s:\n%s" %
                (Cfg.basepath, str(e)))

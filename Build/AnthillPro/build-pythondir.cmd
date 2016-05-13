@@ -1,6 +1,8 @@
 @REM ----------------------------------------------------------------------
 @REM $Id$
 @REM BZIssue::None  (JIRA::WEBTEAM-1884)
+@REM Despite the name, this is used for more than directories containing
+@REM Python scripts (e.g., Licensee).
 @REM ----------------------------------------------------------------------
 @ECHO OFF
 SETLOCAL
@@ -24,10 +26,8 @@ IF "%3." == "." (
  EXIT /B 1
 )
 
-REM Default subversion repository
-IF "%SVNURL%." == "." (
-  SET SVNURL=https://ncisvn.nci.nih.gov/svn/oce_cdr
-)
+REM Establish defaults for all CDRBUILD_ environment variables
+CALL init-build-envvars.cmd
 
 REM Clear left over variables
 REM Get all parameters
@@ -36,11 +36,11 @@ SET BASE_DIR_TMP=%2
 SET FILES_DIR_TMP=%3
 IF %FILES_DIR_TMP%==ALL-BRANCH (
   ECHO Exporting entire branch
-  SET SVNEXPORT_POINT_TMP=%SVNURL%/%SVNBRNCH_TMP%
+  SET SVNEXPORT_POINT_TMP=%CDRBUILD_SVNBASEURL%/%SVNBRNCH_TMP%
   SET OUTPUT_DIR_TMP=%BASE_DIR_TMP%
 ) ELSE (
   ECHO Exporting just the specified directory: %FILES_DIR_TMP%
-  SET SVNEXPORT_POINT_TMP=%SVNURL%/%SVNBRNCH_TMP%/%FILES_DIR_TMP%
+  SET SVNEXPORT_POINT_TMP=%CDRBUILD_SVNBASEURL%/%SVNBRNCH_TMP%/%FILES_DIR_TMP%
   SET OUTPUT_DIR_TMP=%BASE_DIR_TMP%\%FILES_DIR_TMP%
 )
 
@@ -75,14 +75,16 @@ REM ----------------------------------------------------------------------
 
 ECHO Building CDR Python directory.
 
+REM Establish defaults for all CDRBUILD_ environment variables
+CALL init-build-envvars.cmd
+
 REM Subversion parameters
-SET SVNOPTS=-q --trust-server-cert --non-interactive
 IF "%4." == "." (
-    SET SVNEXP=svn export %SVNOPTS%
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS%
 ) ELSE IF "%5." == "." (
-    SET SVNEXP=svn export %SVNOPTS% --password %4
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS% --password %4
 ) ELSE (
-    SET SVNEXP=svn export %SVNOPTS% --username %5 --password %4
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS% --username %5 --password %4
 )
 
 ECHO Creating (or finding) base directory
@@ -111,7 +113,7 @@ REM ----------------------------------------------------------------------
 :cleanup
 ECHO Setting file permssions.
 CD %OUTPUT_DIR%
-d:\cygwin\bin\chmod -R 777 * || ECHO Can't set permissions && EXIT /B 1
+%CDRBUILD_CYGBIN%\chmod -R 777 * || ECHO Can't set permissions && EXIT /B 1
 ECHO File permissions successfully set.
 
 ECHO Build complete.

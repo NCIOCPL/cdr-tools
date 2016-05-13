@@ -10,11 +10,8 @@ import cdr
 import hashlib
 import lxml.etree as etree
 import sys
-import time
 import socket
 import os
-import win32file
-import pywintypes
 
 CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
 MANIFEST_PATH    = "%s/%s" % (CLIENT_FILES_DIR, cdr.MANIFEST_NAME)
@@ -32,23 +29,12 @@ class File:
     this). So to avoid reading each file twice, we wait and calculate
     the checksums for the individual files after the File objects have
     been constructed and sorted.
+
+    2016-04-05: Eliminating timestamps as promised.
     """
-    def __init__(self, path, timestamp = None):
+    def __init__(self, path):
         self.name = unicode(path, "latin-1")
         self.key = self.name.lower() # for sorting
-        self.timestamp = timestamp or self.__get_timestamp()
-    def __get_timestamp(self):
-        "Eliminate this once checksum support is in place."
-        try:
-            h = win32file.CreateFile(self.name,
-                                     win32file.GENERIC_READ, 0, None,
-                                     win32file.OPEN_EXISTING, 0, 0)
-            t = win32file.GetFileTime(h)
-            h.Close()
-            return t[-1].Format("%Y-%m-%dT%H:%M:%S")
-        except Exception, e:
-            print "failure:", repr(self.name), str(e)
-            sys.exit(1)
     def __cmp__(self, other):
         "Sort by file names, ignoring case."
         return cmp(self.key, other.key)
@@ -73,9 +59,7 @@ def create_ticket(md5):
     between the client and the server.
     """
     ticket = etree.Element("Ticket")
-    timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
     etree.SubElement(ticket, "Application").text = sys.argv[0]
-    etree.SubElement(ticket, "Timestamp").text = timestamp
     etree.SubElement(ticket, "Host").text = str(socket.gethostname())
     etree.SubElement(ticket, "Author").text = str(os.environ["USERNAME"])
     etree.SubElement(ticket, "Checksum").text = md5.hexdigest().lower()
@@ -105,27 +89,21 @@ def create_filelist(files, manifest_md5):
             fp.close()
             etree.SubElement(child, "Checksum").text = md5(bytes)
             manifest_md5.update(bytes)
-        etree.SubElement(child, "Timestamp").text = f.timestamp
     return wrapper
 
-def write_manifest(manifest_xml, manifest_time):
+def write_manifest(manifest_xml):
     """
     Serialize the manifest file to disk.
     Right now we also change the date/time stamp for the file on disk
     to the value we stored in the manifest for itself, but we'll
     eliminate once support for using checksums instead of file stamps
     has been deployed to all of the tiers.
+
+    2016-04-05: date/time stamp dropped as promised.
     """
     manifest_file = file(MANIFEST_PATH, 'w')
     manifest_file.write(manifest_xml)
     manifest_file.close()
-
-    timestamp = pywintypes.Time(manifest_time)
-    handle = win32file.CreateFile(cdr.MANIFEST_NAME,
-                                  win32file.GENERIC_WRITE, 0, None,
-                                  win32file.OPEN_EXISTING, 0, 0)
-    win32file.SetFileTime(handle, timestamp, timestamp, timestamp)
-    handle.Close()
 
 def refresh_manifest(where):
     """
@@ -145,10 +123,7 @@ def refresh_manifest(where):
         pass
     os.chdir(where)
     files = gather_files('.')
-    manifest_time = time.time()
-    files.append(File(os.path.join('.', cdr.MANIFEST_NAME),
-                      time.strftime("%Y-%m-%dT%H:%M:%S",
-                                    time.gmtime(manifest_time))))
+    files.append(File(os.path.join('.', cdr.MANIFEST_NAME)))
     files.sort()
     md5 = hashlib.md5()
     filelist = create_filelist(files, md5)
@@ -156,7 +131,7 @@ def refresh_manifest(where):
     root.append(create_ticket(md5))
     root.append(filelist)
     xml = etree.tostring(root, pretty_print=True)
-    write_manifest(xml, manifest_time)
+    write_manifest(xml)
 
     # NOTE: May change this in future to invoke something like
     #       BuildDeploy.findCygwin(), but for now, can't count on

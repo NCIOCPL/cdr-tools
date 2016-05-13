@@ -30,7 +30,7 @@ class GlobalVars:
         self.logfile       = None  # Logfile to be established after parms read
         self.live          = False # True=deploying to {live drive}:\cdr
         self.noErase       = False # True=don't erase target files, just update
-        self.updateSchemas = True  # RefreshManifest if ClientFiles deploy live
+        self.updateSchemas = True  # UpdateSchemas if ClientFiles deploy live
         self.refreshMan    = True  # RefreshManifest if ClientFiles deploy live
         self.diffArgs      = '-br' # Arguments to diff command
         self.minDisk       = 5     # Min GB free wanted on disk before start
@@ -126,8 +126,9 @@ BEWARE:
   currently safe to run when deploying from an environment (like a group drive)
   that does not have a live CDR.  Bad things may happen unless and until
   this changes.  If deploying to d: from this script on L:, make a directory
-  on D: the current working directory and invoke the script on L:, i.e.,
-  D:\somwewhere> L:deploy.py ...
+  on the deployment directory (D: for most cases) the current working
+  directory and invoke the script on L:, i.e.,
+    D:\somwewhere> L:deploy-all.py ...
 """ % (os.path.basename(sys.argv[0]), GV.liveCdrDir, GV.liveDrive,
                         GV.diffArgs, GV.minDisk, GV.logfile))
     if msg:
@@ -241,7 +242,7 @@ def postProcess():
             sawClientFiles = True
             break
 
-    if sawClientFiles and (GV.live or GV.diffFile):
+    if sawClientFiles and (GV.live or GV.diffFile) and GV.updateSchemas:
 
         # Post processing uses the CdrServer
         if not cdrServiceRunning:
@@ -1000,6 +1001,8 @@ bd.log("""
                          Deploying CDR
 =====================================================================
 
+%s
+
 Deployment parameters:
 
  source_dir:   %s
@@ -1016,7 +1019,8 @@ Deployment parameters:
   free disk:   %d
  found tier:   %s
 
-""" % (GV.srcDir, GV.targetDir, GV.diffFile, GV.liveDrive,
+""" % (bd.versionCtlVersion(sys.argv[0]),
+       GV.srcDir, GV.targetDir, GV.diffFile, GV.liveDrive,
        GV.live, GV.noErase, not GV.updateSchemas, not GV.refreshMan,
        GV.logfile, GV.minDisk, GV.freeDisk, TIER))
 

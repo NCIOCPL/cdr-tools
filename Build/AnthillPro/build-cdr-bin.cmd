@@ -2,7 +2,7 @@
 @REM $Id$
 @REM ----------------------------------------------------------------------
 
-@ECHO OFF
+@REM ECHO OFF
 SETLOCAL
 SET SCRIPTNAME=%0
 CALL :init %*           || EXIT /B 1
@@ -24,38 +24,38 @@ IF "%1." == "." (
     ECHO  e.g.: CALL %SCRIPTNAME% branches/patch-2.3
     EXiT /B 1
 )
-SET SVNOPTS=-q --trust-server-cert --non-interactive
+
+REM Establish defaults for all CDRBUILD_ environment variables
+CALL init-build-envvars.cmd
 IF "%2." == "." (
-    SET SVNEXP=svn export %SVNOPTS%
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS%
 ) ELSE IF "%3." == "." (
-    SET SVNEXP=svn export %SVNOPTS% --password %2
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS% --password %2
 ) ELSE (
-    SET SVNEXP=svn export %SVNOPTS% --username %3 --password %2
+    SET SVNEXP=%CYGSVN% export %CDRBUILD_SVNOPTS% --username %3 --password %2
 )
-D:
-REM Output data to a directory name found in the env or created here
-IF "%CDRBUILD_BASEPATH%." == "." (
-  SET BUILDDIR_TMP=d:\tmp\Build
-) ELSE (
-  SET BUILDDIR_TMP=%CDRBUILD_BASEPATH%
-)
+
+REM Establish important environment variables
+CALL init-build-envvars.cmd
+
+REM Output data to a directory name found in the env (created just above)
+SET BUILDDIR_TMP=%CDRBUILD_BASEPATH%
 SET BUILDDIR=%BUILDDIR_TMP:/=\%
 SET BINDIR=%BUILDDIR%\Bin
-SET BINDIR
 ECHO Will copy all files into %BINDIR%
 
-SET SVNBRANCH=https://ncisvn.nci.nih.gov/svn/oce_cdr/%1
-SET CYGDATE=d:\cygwin\bin\date.exe
+SET SVNBRANCH=%CDRBUILD_SVNBASEURL%/%1
+SET CYGDATE=%CDRBUILD_CYGBIN%\date.exe
 SET STAMP=
 FOR /F %%s IN ('%CYGDATE% +%%Y%%m%%d%%H%%M%%S') DO SET STAMP=%%s
 IF NOT DEFINED STAMP ECHO %CYGDATE% failure && EXIT /B 1
 
-SET WORKDIR=d:\tmp\cdr-bin-%STAMP%
+SET WORKDIR=%CDRBUILD_DRIVE%\tmp\cdr-bin-%STAMP%
 MKDIR %WORKDIR% || ECHO Failure creating %WORKDIR% && EXIT /B 1
 
 CD %WORKDIR%
 ECHO Created working directory.
-CALL d:\bin\vcvars32.bat > NUL 2>&1 || ECHO Failed VC Init && EXIT /B 1
+CALL %CDRBUILD_DRIVE%\bin\vcvars32.bat > NUL 2>&1 || ECHO Failed VC Init && EXIT /B 1
 ECHO Compiler successfully initialized.
 MKDIR %BUILDDIR% >NUL 2>&1
 RMDIR /S /Q %BINDIR% >NUL 2>&1
@@ -70,6 +70,7 @@ REM ----------------------------------------------------------------------
 :pull_svn_files
 ECHO Exporting scripts from Subversion.
 CD %BUILDDIR%
+cd
 %SVNEXP% %SVNBRANCH%/Bin || ECHO Failed export && EXIT /B 1
 ECHO Scripts successfully exported from Subversion.
 EXIT /B 0
@@ -79,7 +80,10 @@ REM Get the Microsoft runtime DLLs.
 REM ----------------------------------------------------------------------
 :pull_msvc_dlls
 ECHO Preserving Microsoft runtime DLLs.
-COPY d:\cdr\Bin\msvc*.dll %BINDIR% >NUL 2>&1 || ECHO Copy Failed && EXIT /B 1
+ECHO %BINDIR%
+SET BINDIR
+ECHO COPY %CDRBUILD_DRIVE%\cdr\Bin\msvc*.dll %BINDIR%
+COPY %CDRBUILD_DRIVE%\cdr\Bin\msvc*.dll %BINDIR% >NUL 2>&1 || ECHO Copy Failed && EXIT /B 1
 ECHO Microsoft runtime DLLs successfully fetched.
 EXIT /B 0
 
@@ -91,7 +95,8 @@ ECHO Building CDR Server
 CD %WORKDIR%
 %SVNEXP% %SVNBRANCH%/Server || ECHO Failed export && EXIT /B 1
 CD Server
-nmake CdrServer.exe >>log 2>>err || ECHO Server Build Failed && EXIT /B 1
+
+nmake DRV=%CDRBUILD_DRIVE% CdrServer.exe >>log 2>>err || ECHO Server Build Failed && EXIT /B 1
 COPY CdrServer.exe %BINDIR%\ > NUL 2>&1
 ECHO Server built successfully.
 EXIT /B 0
@@ -124,7 +129,7 @@ REM ----------------------------------------------------------------------
 :cleanup
 ECHO Setting file permssions.
 CD %BINDIR%
-d:\cygwin\bin\chmod -R 777 * || ECHO Can't set permissions && EXIT /B 1
+%CDRBUILD_CYGBIN%\chmod -R 777 * || ECHO Can't set permissions && EXIT /B 1
 ECHO File permissions successfully set.
 ECHO Cleaning up temporary files.
 CD \

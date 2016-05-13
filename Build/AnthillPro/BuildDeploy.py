@@ -79,7 +79,7 @@ def log(msg, dest=STDOUT, fatal=False):
     """
     Log a message to CDR specific log files and to stdout or stderr.
     If run via AnthillPro, stdout and stderr will be logged by AnthillPro
-    to it's own log destinations.
+    to its own log destinations.
 
     Pass:
         msg   - Message to be logged.
@@ -283,6 +283,58 @@ def chmod(dir, perms):
     runCmd("%s -R %s ." % (cmd, perms), failOk=True)
     os.chdir(start)
 
+def versionCtlVersion(fpath, logIt=False):
+    """
+    Extract the version control version number ($Id:...$) of a file,
+    return it to the caller, and optionally log it.
+
+    Failure to find the file at all is a fatal error.   Failure to
+    find a version string is not an error since some files may not have
+    version control keys, even if they are under version control.
+
+    Note: No attempt is made to verify that the file content is identical to
+    the content of the file in version control with the same revision
+    number.  If a programmer has exported a file and then modified it,
+    this function will not detect that.
+
+    Pass:
+        fpath - Path to the file, fully qualified or relative to current
+                working directory.
+
+    Return:
+        Version string, or fixed message if version info not available
+    """
+    # Prefix identifying the source of a log message
+    PREFIX = 'VERSION:'
+
+    try:
+        fp = open(fpath, 'r')
+    except Exception as e:
+        fatal("%s Could not open %s to find revision info: %s" %
+              (PREFIX, fpath, str(e)))
+
+    # Regex to find the version control Id key
+    ID_MATCH = re.compile(r'(\$Id: ..* \$)')
+
+    msg = None
+    while msg is None:
+        # Walk the file
+        line = fp.readline()
+        if not line:
+            break
+
+        # Search for Id string
+        match = ID_MATCH.search(line)
+        if match:
+            msg = ("%s %s" % (PREFIX, match.group(1)))
+
+    # If we got here, no revision info found
+    if not msg:
+        msg = "%s No version info found in file %s" % (PREFIX, fpath)
+    if (logIt):
+        log(msg)
+    return msg
+
 def availDiskGB(path):
     """
     Report how many gigabytes are available on disk.
@@ -388,7 +440,7 @@ def runCmd(command, obj=None, trialRun=False, failOk=False):
     Run a command.
 
     Pass:
-        command      - String form command.  See see build-all.py helpcmds().
+        command      - String form command.  See build-all.py helpcmds().
         obj          - Object containing evaluable parameters.
                        We look here to resolve '@' macros.
         trialRun     - True = Log what would be done, but don't execute.

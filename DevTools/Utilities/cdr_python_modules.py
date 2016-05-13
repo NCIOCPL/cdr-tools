@@ -38,31 +38,52 @@ import time
 # These are the standard library modules known to be used by the CDR.
 #----------------------------------------------------------------------
 standard_library_modules = set([
+    "argparse",
     "ast",
     "atexit",
     "base64",
+    "builtins",
     "bz2",
     "calendar",
     "cgi",
     "cgitb",
     "codecs",
+    "concurrent", # from futures - used by ndscheduler
     "copy",
     "cPickle",
     "csv",
     "cStringIO",
+    "ctypes",
     "datetime",
     "difflib",
+    "distutils.command.clean", # used by ndscheduler
+    "email",
     "email.Header",
     "email.MIMEText",
+    "email.mime.audio",
+    "email.mime.base",
+    "email.mime.image",
+    "email.mime.multipart",
+    "email.mime.text",
+    "email.utils",
     "filecmp",
     "ftplib",
     "getopt",
     "glob",
     "gzip",
+    "hashlib",
     "HTMLParser",
     "httplib",
+    "importlib", # used by ndscheduler
+    "json",
     "locale",
+    "logging",
+    "logging.config",
+    "logging.handlers",
+    "math",
+    "mimetypes",
     "msvcrt", # part of standard library, but only available on MS Windows
+    "multiprocessing",
     "operator",
     "optparse",
     "os",
@@ -72,6 +93,7 @@ standard_library_modules = set([
     "random",
     "re",
     "shutil",
+    "signal",
     "smtplib",
     "socket",
     "struct",
@@ -87,9 +109,11 @@ standard_library_modules = set([
     "Tkinter",
     "tkMessageBox",
     "traceback",
+    "unittest",
     "urllib",
     "urllib2",
     "urlparse",
+    "uuid",
     "warnings",
     "xml.dom.minidom",
     "xml.etree.ElementTree",
@@ -118,6 +142,9 @@ active_state_modules = set([
 # URL in a comment, see the closest comment above the module.
 #----------------------------------------------------------------------
 third_party_modules = set([
+    "apns",            # https://github.com/djacobs/PyAPNs (for scheduler)
+    "dateutil.parser", # https://pypi.python.org/pypi/python-dateutil
+    "dateutil.tz",     #  (used by ndscheduler)
     "Image",           # http://www.pythonware.com/products/pil/
     "ImageEnhance",
     "lxml",            # http://lxml.de/
@@ -128,21 +155,38 @@ third_party_modules = set([
                        # (but not currently maintained, so we have it
                        # in subversion in lib/Python)
     "MySQLdb",         # http://sourceforge.net/projects/mysql-python/
+    "pip",             # https://pypi.python.org/pypi/pip
     "xlrd",            # http://www.python-excel.org/
     "xlwt",
     "paramiko",        # http://www.paramiko.org/
+    "requests",        # http://requests.readthedocs.io/en/master/ (HTTP api)
+    "setuptools",      # https://pypi.python.org/pypi/setuptools
+                       # (used by ndscheduler)
+    "sqlalchemy",      # http://www.sqlalchemy.org/ (DB API for scheduler)
     "suds.client",     # http://sourceforge.net/projects/python-suds/
+    "tornado",         # http://www.tornadoweb.org (web server for scheduler)
+    "tornado.concurrent",
+    "tornado.gen",
+    "tornado.ioloop",
+    "tornado.testing",
+    "tornado.web"
 ])
 
 #----------------------------------------------------------------------
 # Modules implemented specifically for the CDR project.
 #----------------------------------------------------------------------
 custom_modules = set([
+    "apscheduler.executors", # https://pypi.python.org/pypi/APScheduler
+    "apscheduler.jobstores", # (sits underneath ndscheduler)
+    "apscheduler.schedulers",
     "AssignGroupNums", # imported by cdrpub module
     "authmap",         # used by ebms/conversion/convert.py (in same directory)
+    "BuildDeploy",     # used by CDR build/deploy scripts
     "cdr",             # used throughout system
     "cdr2gk",          # used by Publishing subsystem (to communicate with GK)
     "cdr_dev_data",    # used by scripts to preserve DEV data after refresh
+    "cdr_job_base",    # part of CDR scheduler
+    "cdr_task_base",
     "cdrbatch",        # used for queueing up long-running jobs
     "cdrcgi",          # used by CDR administrative web interface
     "cdrdb",           # used throughout system for DB access
@@ -150,6 +194,7 @@ custom_modules = set([
     "cdrglblchg",      # common routines for global change jobs
     "cdrlatexlib",     # used by mailer subsystem
     "cdrlatextables",  # used by mailer subsystem
+    "cdrlite",         # stripped-down version of cdr module for secure login
     "cdrmailcommon",   # used by mailer subsystem
     "cdrmailer",       # used by mailer subsystem
     "cdrpub",          # used by publishing subsystem
@@ -159,6 +204,8 @@ custom_modules = set([
     "cdrxdiff",        # used by batch jobs to compare documents
     "cdrxmllatex",     # used by mailer subsystem
     "CgiQuery",        # used by CGI script CdrQueries.py (for ad hoc SQL)
+    "core.const",      # part of CDR scheduler
+    "core.exceptions",
     "CTGovUpdateCommon", # used by scripts for clinical trial docs from NLM
     "ctrp",            # used for import of clinical trial docs from CTRP
     "EmailerLookupTables", # used by mailer subsystem (obsolete?)
@@ -170,19 +217,33 @@ custom_modules = set([
     "GPFragIds",       # used by legacy conversion (not currently used)
     "GlobalChangeLinkBatch", # imported by CGI script GlobalChangeLink.py
     "GlossaryTermGroups", # imported by ConvertGlossaryDocs.py (not current)
+    "mock",            # https://pypi.python.org/pypi/mock
+                       # (unit testing for ndscheduler)
     "ModifyDocs",      # used extensively by global change jobs
     "NCIThes",         # used by scripts dealing with terminology documents
     "NciThesaurus",    # original version of NCIThes, used by one-off job
+    "ndscheduler",     # https://github.com/Nextdoor/ndscheduler
+    "ndscheduler.core",
+    "ndscheduler.core.datastore",
+    "ndscheduler.core.datastore.providers",
+    "ndscheduler.core.scheduler",
+    "ndscheduler.server",
+    "ndscheduler.server.handlers",
     "NewGPOrgs",       # used by legacy conversion (not currently used)
     "OleStorage",      # imported by ExcelReader module
+    "pdq_data_partner",# for managing PDQ data partner information
     "PdqThesaurus",    # obsolete, used by older one-off jobs back in 2009
+    "pymssql",         # http://www.pymssql.org (used by ndscheduler)
+    "pytz",            # https://pypi.python.org/pypi/pytz (used by ndscheduler)
     "RepublishDocs",   # imported by CGI script Republish.py
     "RtfWriter",       # used by mailer subsystem
     "SimpleLinkGlobalChangeBatch", # imported by CGI global change script
+    "task_property_bag", # part of CDR scheduler
     "UnicodeToLatex",  # used by mailer subsystem
     "unicode2ascii",   # used by legacy conversion (not currently used)
     "util",            # imported by MakeGPEmailerTables (historical only)
                        # (replaced by cdrutil module)
+    "util.cdr_connection_info", # part of CDR scheduler
     "WebService",      # used by glossify and ClientRefresh services
 ])
 
