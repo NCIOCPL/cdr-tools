@@ -38,9 +38,9 @@ the command line, and the name of the file is expected to be in the format
 "NAME.xml" where NAME is the name of the publishing system (e.g., Primary,
 Mailers, or QcFilter).
 
-It is common to provide the version control revision number of the 
-document in the comment option as well as the JIRA ticket number, 
-particularly when storing a new version of the document on the production 
+It is common to provide the version control revision number of the
+document in the comment option as well as the JIRA ticket number,
+particularly when storing a new version of the document on the production
 server.
 
    Sample comment:   R54321 (JIRA::OCECDR-9999): New mailer type""")
@@ -139,12 +139,22 @@ def main():
     # 6. Store the new version on the target CDR server.
     #------------------------------------------------------------------
     docObj.xml = docXml
-    print 'Versioned: %s, Publishable: %s' % (options.version,
-                                              options.publishable)
-    cdrId = cdr.repDoc(session, doc=str(docObj), checkIn="Y", val="Y",
-                       reason=options.comment, comment=options.comment,
-                       ver=options.version, verPublishable=options.publishable)
-    checkForProblems(cdrId, op)
+    print "REQUESTED OPTIONS:",
+    print 'Version: %s, Make Publishable: %s' % (options.version,
+                                                 options.publishable)
+    cdrId, warnings = cdr.repDoc(session, doc=str(docObj),
+                                 checkIn="Y", val="Y",
+                                 reason=options.comment,
+                                 comment=options.comment,
+                                 ver=options.version,
+                                 verPublishable=options.publishable,
+                                 showWarnings=True)
+    if warnings:
+        print cdrId and "WARNINGS" or "ERRORS"
+        for error in cdr.getErrors(warnings, asSequence=True):
+            print " -->", error
+    if not cdrId:
+        print "aborting with failure"
 
     #------------------------------------------------------------------
     # 7. Report the number of the latest version.
