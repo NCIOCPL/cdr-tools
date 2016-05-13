@@ -175,8 +175,11 @@ Use CreateFilter.py to create the filter in the production database, then
     # DEBUG
     # sys.exit(0)
     comment = 'New filter install'
-    newCdrId = cdr.addDoc(session, doc=wrappedXml, comment=comment,
-                          checkIn=True)
+    newCdrId = cdr.addDoc(session, doc=wrappedXml, comment=comment)
+    if newCdrId.startswith("CDR"):
+        error = cdr.unlock(session, newCdrId)
+        if error:
+            print error
 
     # Display result, doc ID or error message
     print(newCdrId)
