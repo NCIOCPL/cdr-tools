@@ -23,10 +23,10 @@ def updateGroups(uid, pwd, testMode):
 
     # Groups to be reset
     # ------------------
-    groups  = {"BatchCTGovMapping Notification":  ['alan'],
+    groups  = {"BatchCTGovMapping Notification":  ['volker'],
                "CTGov Duplicate Notification":    ['volker'],
                "CTGov Export Notification":       ['bkline', 'volker'],
-               "CTGov Link Fix Notification":     ['alan', 'bkline', 'volker'],
+               "CTGov Link Fix Notification":     ['bkline', 'volker'],
                "CTRPDownload Notification":       ['bkline', 'volker'],
                "Hotfix Remove Notification":      ['operator', 'volker'],
                "ICRDB Statistics Notification":   ['operator', 'volker'],
