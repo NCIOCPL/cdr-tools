@@ -10,6 +10,7 @@
 # BZIssue::4817
 # BZIssue::5294 (OCECDR-3595)
 # JIRA::OCECTS-113
+# OCECDR-4120: GovDelivery Report for ClinicalTrials
 #
 #----------------------------------------------------------------------
 import cdr
@@ -159,6 +160,9 @@ class Doc:
     wantedStatuses = set(["recruiting", "available", "not yet recruiting",
                           "enrolling by invitation", "suspended",
                           "temporarily not available"])
+    activeStatuses = set(["recruiting", "available", 
+                          "enrolling by invitation"])
+    "For OCECDR-4120 report; adjust list to match requirements."
 
     def __init__(self, xmlFile, name):
         self.name           = name
@@ -174,6 +178,7 @@ class Doc:
         self.oldXml         = None
         self.phase          = None
         self.activeStatus   = None
+        self.becameActive   = None
         briefTitle = officialTitle = None
         for node in self.root:
             if node.tag == "id_info":
@@ -196,7 +201,7 @@ class Doc:
             row = None
             try:
                 cursor.execute("""\
-                    SELECT xml, cdr_id, disposition
+                    SELECT xml, cdr_id, disposition, became_active
                       FROM ctgov_import
                      WHERE nlm_id = ?""", self.nlmId, timeout=TIMEOUT)
                 row = cursor.fetchone()
@@ -205,7 +210,8 @@ class Doc:
                        % self.nlmId)
                 reportFailure(msg)
             if row:
-                self.oldXml, cdrId, self.disposition = row
+                (self.oldXml, cdrId, self.disposition,
+                 self.becameActive) = row
                 if cdrId:
 
                     # If the CDR document is not a CTGovProtocol document
@@ -225,6 +231,17 @@ class Doc:
                     if rows:
                         self.cdrId = cdrId
                         self.activeStatus = rows[0][0].upper()
+
+            # Added for OCECDR-4120 report.
+            if self.recruiting():
+                if self.becameActive is None:
+                    self.becameActive = datetime.date.today()
+            else:
+                self.becameActive = None
+
+    def recruiting(self):
+        "Active as defined by requirements for OCECDR-4120 report."
+        return self.status.lower() in Doc.activeStatuses
 
     def wanted(self):
         return self.status.lower() in Doc.wantedStatuses
@@ -437,6 +454,7 @@ try:
                            changed = ?,
                            dropped = 'N',
                            phase = ?,
+                           became_active = ?,
                            cdr_id = ?
                      WHERE nlm_id = ?""",
                                (doc.title[:255],
@@ -445,6 +463,7 @@ try:
                                 doc.verified,
                                 doc.lastChanged,
                                 doc.phase,
+                                doc.becameActive,
                                 doc.cdrId,
                                 doc.nlmId), timeout=TIMEOUT)
                 conn.commit()
@@ -462,12 +481,13 @@ try:
             disp = dispositions.codes['import requested']
             try:
                 cursor.execute("""\
-    INSERT INTO ctgov_import (nlm_id, title, xml, downloaded,
+    INSERT INTO ctgov_import (nlm_id, title, xml, downloaded, became_active,
                               disposition, dt, verified, changed, phase)
-         VALUES (?, ?, ?, GETDATE(), ?, GETDATE(), ?, ?, ?)""",
+         VALUES (?, ?, ?, GETDATE(), ?, ?, GETDATE(), ?, ?, ?)""",
                                (doc.nlmId,
                                 doc.title[:255],
                                 doc.xmlFile,
+                                doc.becameActive,
                                 disp,
                                 doc.verified,
                                 doc.lastChanged,
