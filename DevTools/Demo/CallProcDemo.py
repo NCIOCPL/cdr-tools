@@ -1,22 +1,19 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Illustrates invocation of a stored procedure to obtain the last results
 # set when the number of results sets is unknown.  Assumes that no interim
 # results sets (nor the final results set, for that matter) will be so
 # prohibitively large that keeping the entire set in memory is an unacceptable
 # option.
 #
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2009/01/27 19:29:50  bkline
 # New example program for Alan.
 #
 #----------------------------------------------------------------------
 import cdrdb
+import datetime
+import sys
 
 def getLastResultsSet(cursor, procName, parms):
-    #cursor.execute(procName, parms, timeout = 300)
     cursor.callproc(procName, parms, timeout = 300)
     lastSet = []
     done = False
@@ -28,6 +25,13 @@ def getLastResultsSet(cursor, procName, parms):
     return lastSet
 
 cursor = cdrdb.connect().cursor()
-#print getLastResultsSet(cursor, "EXEC select_changed_non_active_protocols", [])
-parms = []
-print getLastResultsSet(cursor, "select_changed_non_active_protocols", parms)
+
+# ADO/DB is picky about parameter types; can't use a string here!
+if len(sys.argv) > 1:
+    try:
+        parm = datetime.datetime.strptime(sys.argv[1], "%Y-%m-%d")
+    except:
+        print "usage: python CallProcDemo.py [YYYY-MM-DD]"
+else:
+    parm= datetime.datetime.today() - datetime.timedelta(2)
+print getLastResultsSet(cursor, "cdr_changed_docs", (parm,))
