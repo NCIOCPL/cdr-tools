@@ -1,6 +1,10 @@
-import urllib
+import requests
 
-url = "https://cdr.dev.cancer.gov/cgi-bin/cdr/https-tunnel.ashx"
+# Needed until we're able to upgrade Python, eliminating SNIMissingWarning
+import warnings
+warnings.filterwarnings("ignore")
+
+url = "https://cdr-dev.cancer.gov/cgi-bin/cdr/https-tunnel.ashx"
 request = """\
 <CdrCommandSet>
  <SessionId>guest</SessionId>
@@ -12,6 +16,4 @@ request = """\
   </CdrGetDoc>
  </CdrCommand>
 </CdrCommandSet>"""
-conn = urllib.urlopen(url, request)
-print conn.read()
-
+print requests.post(url, request).text
