@@ -1,91 +1,46 @@
-# Count the nodes in an XML document, report to standard out
-#
-# $Id$
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2005/09/28 01:37:20  ameyer
-# Initial version
-#
-#
-import sys, getopt, xml.dom.minidom
+#----------------------------------------------------------------------
+# Count the nodes in an XML document, report to standard out.
+#----------------------------------------------------------------------
+import argparse
+import lxml.etree as etree
 
-# Ignore comments and PIs
-elemCnt = 0
-attrCnt = 0
-textCnt = 0
-spceCnt = 0
-cmntCnt = 0
-pinsCnt = 0
-cdatCnt = 0
-totlCnt = 0
-
-if len(sys.argv) < 2:
-    sys.stderr.write("usage: countNodes.py {options} xmlfilename\n")
-    sys.stderr.write("  options:\n")
-    sys.stderr.write("  -t  = Show element text (not whitespace)\n")
-    sys.stderr.write("  -a  = Show attribute text (not whitespace)\n")
-    sys.exit(1)
-
-def countem(nodeList, indent):
-    global elemCnt, attrCnt, textCnt, spceCnt, cmntCnt, pinsCnt, \
-           cdatCnt, totlCnt
-
-    for i in range(len(nodeList)):
-        n = nodeList[i]
-        if n.nodeType == xml.dom.minidom.Node.COMMENT_NODE:
-            cmntCnt += 1
-        elif n.nodeType == xml.dom.minidom.Node.PROCESSING_INSTRUCTION_NODE:
-            pinsCnt += 1
-        elif n.nodeType == xml.dom.minidom.Node.CDATA_SECTION_NODE:
-            cdatCnt += 1
-        elif n.nodeType == xml.dom.minidom.Node.TEXT_NODE:
-            if(n.nodeValue.isspace()):
-                spceCnt += 1
-            else:
-                textCnt += 1
-                if showElemText:
-                    print("  %s%s" % (indent,
-                          n.nodeValue.encode('ascii', 'replace')))
-
-        elif n.nodeType == xml.dom.minidom.Node.ELEMENT_NODE:
-            if showElemText or showAttrText:
-                print("  %s%s:" % (indent, n.nodeName))
-
-            elemCnt += 1
-            if n.hasAttributes():
-                attrs = n.attributes
-                attrCnt += len(attrs)
-                totlCnt += len(attrs)
-                if showAttrText:
-                    for i in range(attrs.length):
-                        attr = attrs.item(i)
-                        print("    %s@%s=%s" % (indent, attr.name, attr.value))
-            countem(n.childNodes, indent+"  ")
-
-        totlCnt += 1
-
-# Command line
-showElemText = False
-showAttrText = False
-(opts, args) = getopt.getopt(sys.argv[1:], 'ta')
-for opt in opts:
-    if opt[0] == '-t':
-        showElemText = True
-    if opt[0] == '-a':
-        showAttrText = True
-
-# Parse file fail if not found
-try:
-    # d = xml.dom.minidom.parse(sys.argv[1])
-    d = xml.dom.minidom.parse(args[0])
-except Exception, info:
-    sys.stderr.write(str(info))
-    sys.exit(1)
-
-# Count
-countem(d.childNodes, "")
-
-# Report
-print """
+class Parser(object):
+    INDENT = "  "
+    def __init__(self, counter):
+        self.counter = counter
+        self.show_text = counter.args.text
+        self.show_attrs = counter.args.attributes
+        self.depth = 0
+    def start(self, tag, attrib):
+        if self.show_text or self.show_attrs:
+            print "%s%s" % (self.depth * self.INDENT, tag.encode("utf-8"))
+        self.depth += 1
+        self.counter.elem += 1
+        self.counter.total += 1
+        self.counter.attr += len(attrib)
+        self.counter.total += len(attrib)
+        if attrib and self.show_attrs:
+            for name, val in attrib.iteritems():
+                val = val.encode("utf-8")
+                print "%s@%s=%s" % (self.depth * self.INDENT, name, val)
+    def end(self, tag):
+        self.depth -= 1
+    def data(self, data):
+        if data.isspace():
+            self.counter.space += 1
+        else:
+            self.counter.text += 1
+            if self.show_text:
+                print "%s%s" % (self.depth * self.INDENT, data.encode("utf-8"))
+        self.counter.total += 1
+    def comment(self, text):
+        self.counter.comment += 1
+        self.counter.total += 1
+    def pi(self, name, val):
+        self.counter.pi += 1
+        self.counter.total += 1
+    def close(self):
+        print """
 Results:
       Element nodes = %d
     Attribute nodes = %d
@@ -93,7 +48,26 @@ Results:
    Whitespace nodes = %d
       Comment nodes = %d
            PI nodes = %d
-        CDATA nodes = %d
      -------------------
           Total = %d
-""" % (elemCnt, attrCnt, textCnt, spceCnt, cmntCnt, pinsCnt, cdatCnt, totlCnt)
+""" % (self.counter.elem, self.counter.attr, self.counter.text,
+       self.counter.space, self.counter.comment, self.counter.pi,
+       self.counter.total)
+
+class Counter:
+    def __init__(self):
+        self.elem = self.attr = self.text = self.space = self.comment = 0
+        self.pi = self.total = 0
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--text", "-t", action="store_true",
+                            help="show non-space text nodes")
+        parser.add_argument("--attributes", "-a", action="store_true",
+                            help="show non-blank attribute values")
+        parser.add_argument("path", type=argparse.FileType("r"),
+                            help="path to input file")
+        self.args = parser.parse_args()
+    def count(self):
+        parser = etree.XMLParser(strip_cdata=False, target=Parser(self))
+        etree.parse(self.args.path, parser)
+
+Counter().count()
