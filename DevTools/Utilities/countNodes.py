@@ -4,22 +4,20 @@
 import argparse
 import lxml.etree as etree
 
-class Parser(object):
+class Target(object):
     INDENT = "  "
     def __init__(self, counter):
         self.counter = counter
-        self.show_text = counter.args.text
-        self.show_attrs = counter.args.attributes
         self.depth = 0
     def start(self, tag, attrib):
-        if self.show_text or self.show_attrs:
+        if self.counter.args.text or self.counter.args.attributes:
             print "%s%s" % (self.depth * self.INDENT, tag.encode("utf-8"))
         self.depth += 1
         self.counter.elem += 1
         self.counter.total += 1
         self.counter.attr += len(attrib)
         self.counter.total += len(attrib)
-        if attrib and self.show_attrs:
+        if attrib and self.counter.args.attributes:
             for name, val in attrib.iteritems():
                 val = val.encode("utf-8")
                 print "%s@%s=%s" % (self.depth * self.INDENT, name, val)
@@ -30,7 +28,7 @@ class Parser(object):
             self.counter.space += 1
         else:
             self.counter.text += 1
-            if self.show_text:
+            if self.counter.args.text:
                 print "%s%s" % (self.depth * self.INDENT, data.encode("utf-8"))
         self.counter.total += 1
     def comment(self, text):
@@ -67,7 +65,7 @@ class Counter:
                             help="path to input file")
         self.args = parser.parse_args()
     def count(self):
-        parser = etree.XMLParser(strip_cdata=False, target=Parser(self))
+        parser = etree.XMLParser(target=Target(self))
         etree.parse(self.args.path, parser)
 
 Counter().count()
