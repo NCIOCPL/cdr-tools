@@ -60,7 +60,7 @@ class Counter:
         parser.add_argument("--text", "-t", action="store_true",
                             help="show non-space text nodes")
         parser.add_argument("--attributes", "-a", action="store_true",
-                            help="show non-blank attribute values")
+                            help="show attribute values")
         parser.add_argument("path", type=argparse.FileType("r"),
                             help="path to input file")
         self.args = parser.parse_args()
