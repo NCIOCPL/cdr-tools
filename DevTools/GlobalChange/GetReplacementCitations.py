@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Re-import citations invalidated by most recent DTD modifications at
 # NLM (see CDR request #622); only change resulting in invalid CDR
 # docs is that the URL element is no longer allowed of PubmedData
@@ -9,7 +7,6 @@
 # fetches the replacement citations from NLM, use ReimportCitations.py
 # to actually import the Citations back into the CDR.
 #
-# $Log: not supported by cvs2svn $
 #----------------------------------------------------------------------
 
 import os, cdr, cdrdb, urllib
@@ -17,7 +14,7 @@ import os, cdr, cdrdb, urllib
 dir     = 'ReplacementCitations'
 host    = 'www.ncbi.nlm.nih.gov'
 app     = '/entrez/utils/pmfetch.fcgi'
-base    = 'http://' + host + app + '?db=PubMed&report=sgml&mode=text&id='
+base    = 'https://' + host + app + '?db=PubMed&report=sgml&mode=text&id='
 log     = open("GetReplacementCitations.log", "w")
 try:
     os.mkdir(dir)
