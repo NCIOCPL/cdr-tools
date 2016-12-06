@@ -22,7 +22,7 @@ import os
 import re
 import socket
 import sys
-import urllib2
+import requests
 import zipfile
 
 BASE      = "https://trials.nci.nih.gov/pa/pdqgetFileByDate.action"
@@ -73,6 +73,8 @@ class Normalizer:
         root = etree.XML(rows[0][0].encode("utf-8"))
         self.transform = etree.XSLT(root)
     def normalize(self, doc):
+        if isinstance(doc, unicode):
+            doc = doc.encode("utf-8")
         fp = cStringIO.StringIO(doc)
         tree = etree.parse(fp)
         return etree.tostring(self.transform(tree))
@@ -311,9 +313,9 @@ def fetchTrialSet(cursor):
     while filename.upper() > previous:
         url = "%s?date=%s" % (BASE, filename)
         try:
-            server = urllib2.urlopen(url)
-            doc = server.read()
-            code = server.code
+            response = requests.get(url)
+            doc = response.content
+            code = response.status_code
             if code == 200:
                 fp = open(filename, "wb")
                 fp.write(doc)

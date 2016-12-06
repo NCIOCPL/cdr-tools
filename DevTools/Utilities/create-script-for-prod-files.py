@@ -1,6 +1,4 @@
 #----------------------------------------------------------------------
-# $Id$
-#
 # Tool for generating script to drive get-prod-scripts.py.
 #
 # To use this:
@@ -8,8 +6,11 @@
 #  2. cd prod-20150106
 #  3. python ../create-script-for-prod-scripts.py > get-prod-files.cmd
 #  4. get-prod-files.cmd
+#
+# TODO: handle session ID requirement
 #----------------------------------------------------------------------
-import re, urllib2
+import re
+import requests
 
 BASE = "https://cdr.cancer.gov/cgi-bin/cdr/log-tail.py"
 DIRS = ("cdr/Bin", "cdr/ClientFiles", "cdr/Database", "cdr/etc", "cdr/Lib",
@@ -30,8 +31,8 @@ def unwanted(path):
 
 for d in DIRS:
     path = d.replace("/", "\\")
-    request = urllib2.urlopen("%s?p=d:\\%s\\*/s/ad" % (BASE, path))
-    for line in request.read().splitlines():
+    response = requests.get("%s?p=d:\\%s\\*/s/ad" % (BASE, path))
+    for line in response.text.splitlines():
         match = re.search("Directory of (d:.+)", line.strip())
         if match:
             p = match.group(1)

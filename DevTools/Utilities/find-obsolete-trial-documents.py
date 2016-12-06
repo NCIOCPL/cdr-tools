@@ -1,5 +1,4 @@
 #----------------------------------------------------------------------
-# $Id$
 # Find trials documents which need to be blocked because the trials
 # they represent are not included in the set of clinical_trial documents
 # fetched from CTRP. Run this after the first CTGovDownload job which
@@ -15,7 +14,7 @@ import datetime
 import lxml.etree as etree
 import sys
 import zipfile
-import urllib2
+import requests
 
 FILENAME  = "CTRP-TO-CANCER-GOV-EXPORT-%s.zip"
 BASE      = "https://trials.nci.nih.gov/pa/pdqgetFileByDate.action"
@@ -34,9 +33,9 @@ SELECT nlm_id, cdr_id
         filename = FILENAME % date
         if not zipfile.is_zipfile(filename):
             url = "%s?date=%s" % (BASE, filename)
-            server = urllib2.urlopen(url)
-            doc = server.read()
-            code = server.code
+            response = requests.get(url)
+            doc = response.content
+            code = response.status_code
             if code != 200:
                 raise Exception("%s HTTP code %s" % (url, code))
             fp = open(filename, "wb")

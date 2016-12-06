@@ -136,9 +136,10 @@ def refresh_manifest(where):
     # NOTE: May change this in future to invoke something like
     #       BuildDeploy.findCygwin(), but for now, can't count on
     #       that being in the path, or findCygwin() being in cdr.py
-    result = cdr.runCommand("D:\\cygwin\\bin\\chmod -R 777 *")
+    result = cdr.runCommand("D:\\bin\\fix-client-files-permissions.cmd")
+    print "fixing permissions..."
     if result.code:
-        print "chmod return code: %s" % result.code
+        print "return code: %s" % result.code
         if result.output:
             print result.output
 

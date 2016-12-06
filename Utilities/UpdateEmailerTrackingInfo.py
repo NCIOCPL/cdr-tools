@@ -9,7 +9,8 @@
 # BZIssue::4977 [fixed indentation bug at bottom of script]
 #
 #----------------------------------------------------------------------
-import xml.dom.minidom, cdr, cdrmailcommon, time, lxml.etree as etree, urllib2
+import xml.dom.minidom, cdr, cdrmailcommon, time, lxml.etree as etree
+import requests
 
 #----------------------------------------------------------------------
 # Get the host name used by the CDR Windows server to talk to the
@@ -131,9 +132,11 @@ session = cdr.login('etracker', '***REMOVED***')
 # tracking document.
 #----------------------------------------------------------------------
 def recordUpdate(mailerId, date):
-    data = "mailerId=%s&recorded=%s" % (mailerId, str(date).replace(' ', '+'))
-    fp = urllib2.urlopen("%s/recorded-gp.py" % EMAILERSWEB, data)
-    response = fp.read()
+    data = {
+        "mailerId": str(mailerId),
+        "recorded": str(date).replace(' ', '+')
+    }
+    response = requests.post("%s/recorded-gp.py" % EMAILERSWEB, data=data).text
     if not response.startswith('OK'):
         logwrite("mailer %s: %s" % (mailerId, response))
 
@@ -141,8 +144,8 @@ def recordUpdate(mailerId, date):
 # Ask the emailer server to provide us with an XML report showing
 # Genetics Professional mailers which have been completed.
 #----------------------------------------------------------------------
-fp = urllib2.urlopen("%s/completed-gp.py" % EMAILERSWEB)
-tree = etree.XML(fp.read())
+response = requests.get("%s/completed-gp.py" % EMAILERSWEB)
+tree = etree.XML(response.content)
 nodes = [node for node in tree.findall('mailer')]
 
 #----------------------------------------------------------------------

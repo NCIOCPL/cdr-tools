@@ -16,7 +16,7 @@ import cdrdb
 import datetime
 import lxml.etree as etree
 import sys
-import urllib2
+import requests
 import zipfile
 
 LOGFILE = cdr.DEFAULT_LOGDIR + "/RecentCTGovProtocols.log"
@@ -78,8 +78,8 @@ def fetch(since):
     url = "%s?%s" % (base, params)
     cdr.logwrite(url, LOGFILE)
     try:
-        urlobj = urllib2.urlopen(url)
-        page   = urlobj.read()
+        response = requests.get(url)
+        page = response.content
     except Exception, e:
         error = "Failure downloading trial set using %s: %s" % (url, e)
         raise Exception(error)

@@ -3,8 +3,10 @@
 #
 # Tool for pulling scripts from a production directory down to the
 # local file system.  Doesn't recurse.  Handles binary files.
+# TODO: add login to prod server (failure to do so breaks script).
 #----------------------------------------------------------------------
-import os, re, sys, urllib2
+import os, re, sys
+import requests
 
 PATH = len(sys.argv) > 1 and sys.argv[1] or r"d:\Inetpub\wwwroot\cgi-bin\cdr"
 BASE = "https://cdr.cancer.gov/cgi-bin/cdr/log-tail.py"
@@ -16,18 +18,19 @@ try:
 except:
     sys.stderr.write("%s already created\n" % DIR)
 
-request = urllib2.urlopen("%s?p=%s\\*" % (BASE, PATH))
+response = requests.get("%s?p=%s\\*" % (BASE, PATH))
 names = []
-for line in request.read().splitlines():
+for line in response.text.splitlines():
     pieces = re.split("\\s+", line.strip(), 4)
     if len(pieces) == 5 and pieces[2] in ("AM", "PM") and pieces[3] != "<DIR>":
         names.append(pieces[4])
 done = 0
+print len(names)
 for name in sorted(names):
     path = "%s\\%s" % (PATH, name.replace(" ", "+"))
     try:
-        request = urllib2.urlopen("%s?r=1&p=%s" % (BASE, path))
-        script = request.read()
+        response = requests.get("%s?r=1&p=%s" % (BASE, path))
+        script = response.content
         fp = open("%s/%s" % (DIR, name), "wb")
         fp.write(script)
         fp.close()
