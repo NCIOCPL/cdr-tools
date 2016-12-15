@@ -335,13 +335,14 @@ def mergeChanges(cdrId, newDoc, flags):
     newSubset = response[0]
     lastAny, lastPub, isChanged = cdr.lastVersions(session, cdrId)
     newCwd   = mergeVersion(newDoc, cdrId, docObject, "Current")
+    isChanged = isChanged == "Y"
 
     # We only need to save the newCwd once
     # This flag says that we haven't saved it at all yet
     savedNewCwd = False
 
     # Save the old CWD as a version if appropriate.
-    if isChanged == 'Y':
+    if isChanged:
         comment = 'ImportCTGovProtocols: preserving current working doc'
         response = cdr.repDoc(session, doc=str(docObject), ver='Y',
                               reason=comment, comment=comment,
