@@ -1,6 +1,4 @@
 #----------------------------------------------------------------
-# $Id$
-#
 # Include module for build and deploy processes containing common routines.
 # Note: No use is made of cdr specific python libraries.
 #
@@ -252,36 +250,23 @@ def makeDirs(path, errorIsFatal=True):
         return False
     return True
 
-def chmod(dir, perms):
+def chmod(dir, perms="777"):
     """
-    Set the permissions on a directory and all subdirectories using the
-    UNIX/cygwin chmod.
+    Undo the havoc introduced by the Byzantine configuration of the CBIIT
+    servers.
 
     No errors are recognized.  Just do what can be done and leave it at that.
 
     dir    - Directory on which to set permissions.
-    perms  - Numeric string to pass to chmod, e.g., "777"
-    """
-    # Note:
-    #   chmod didn't work when I referenced a directory from elsewhere (which
-    #   does work on Linux) but did work when I changed to the directory
-    #   and invoked chmod on the files found there.  This is presumably
-    #   a cygwin and/or Windows issue.
-    # Note2:
-    #   I'm not sure that chmod won't fail on some file and return non-zero
-    #   Seems safest to just ignore the return codes
-    # Note3:
-    #   chmod must be found in the path, can no longer assume it's in
-    #   d:\cygwin\bin.
-    cyg_path = findCygwin()
-    if not cyg_path:
-        return
+    perms  - Numeric string to pass to chmod, e.g., "777" - ignored now
 
-    start = os.getcwd()
-    os.chdir(dir)
-    cmd = os.path.join(cyg_path, "chmod")
-    runCmd("%s -R %s ." % (cmd, perms), failOk=True)
-    os.chdir(start)
+    2016-12-20 - replace cygwin command with Windows ICACLS OCECDR-4125
+    """
+
+    directory = windowsPath(dir)
+    for group in ("NIH\\Domain Users", "NULL SID"):
+        runCmd('icacls "%s" /remove:d "%s" /T /C /Q' % (directory, group))
+    runCmd('icacls "%s" /grant Everyone:(F) /T /C /Q' % directory)
 
 def versionCtlVersion(fpath, logIt=False):
     """

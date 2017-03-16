@@ -1,5 +1,5 @@
 @REM ----------------------------------------------------------------------
-@REM $Id$
+@REM Build the contents of the /cdr/bin directory for deployment.
 @REM ----------------------------------------------------------------------
 
 @REM ECHO OFF

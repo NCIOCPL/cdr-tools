@@ -1,6 +1,4 @@
 # ************************************************************************
-# $Id$
-#
 # Program to replace a schema in the CDR database with a version found in
 # a file, typically a file in a version control sandbox.
 #

@@ -1,6 +1,4 @@
 #----------------------------------------------------------------------
-# $Id$
-#
 # Find the latest trial documents in the ClinicalTrials.gov database
 # which are relevant to cancer and record them in the CDR database.
 # Optional command-line argument can be given to specify how far back

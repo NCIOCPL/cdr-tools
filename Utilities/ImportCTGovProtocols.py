@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
-#
-# $Id$
+# Transform queued clinical_trail documents to CTGovProtocol docs and
+# import them.
 #
 # BZIssue::4667
 # BZIssue::4689
@@ -9,7 +9,6 @@
 # JIRA::OCECTS-113
 # JIRA::OCECTS-120
 # JIRA::OCECDR-4044
-#
 #----------------------------------------------------------------------
 import cdr
 import cdrdb

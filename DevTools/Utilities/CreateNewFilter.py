@@ -1,6 +1,6 @@
 #----------------------------------------------------------------------
 #
-# $Id$
+# Id: CreateNewFilter.py 12382 2014-02-25 21:06:33Z bkline
 #
 # Creates a new stub filter document in the CDR.  See description below
 # in createOptionParser.
@@ -66,7 +66,6 @@ def main():
     checkForProblems(session, op)
     stub = """\
 <?xml version='1.0' encoding='utf-8'?>
-<!-- $""" """Id$ -->
 <!-- Filter title: %s -->
 <xsl:transform               xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                              xmlns:cdr = 'cips.nci.nih.gov/cdr'

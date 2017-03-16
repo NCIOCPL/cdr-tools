@@ -1,5 +1,5 @@
 @REM ----------------------------------------------------------------------
-@REM $Id$
+@REM Assemble a set of publishing software files for deployment.
 @REM ----------------------------------------------------------------------
 
 @ECHO OFF

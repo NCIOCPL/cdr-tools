@@ -1,5 +1,4 @@
 @REM ----------------------------------------------------------------------
-@REM $Id$
 @REM BZIssue::None  (JIRA::WEBTEAM-1884)
 @REM Despite the name, this is used for more than directories containing
 @REM Python scripts (e.g., Licensee).

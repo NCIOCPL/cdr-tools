@@ -1,13 +1,9 @@
 #----------------------------------------------------------------------
-#
-# $Id$
-#
 # Script to perform scheduled updates of electronic mailer tracking
 # documents.
 #
 # BZIssue::4900 [support for GP mailers]
 # BZIssue::4977 [fixed indentation bug at bottom of script]
-#
 #----------------------------------------------------------------------
 import xml.dom.minidom, cdr, cdrmailcommon, time, lxml.etree as etree
 import requests
@@ -82,7 +78,7 @@ class Mailer:
         filter = """\
 <?xml version='1.0' encoding='UTF-8'?>
 
-<xsl:transform                version = '1.0' 
+<xsl:transform                version = '1.0'
                             xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                             xmlns:cdr = 'cips.nci.nih.gov/cdr'>
 
@@ -120,7 +116,7 @@ class Mailer:
             logwrite('MailerTracker.transform(%s): WARNING: %s' %
                      (self.id, response[1]))
         return response[0]
-        
+
 #----------------------------------------------------------------------
 # Retrieve the tracking information from the emailer's dropbox database.
 #----------------------------------------------------------------------

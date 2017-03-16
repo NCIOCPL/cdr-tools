@@ -1,5 +1,5 @@
 @REM ----------------------------------------------------------------------
-@REM $Id$
+@REM Build the CDR client files for deployment.
 @REM ----------------------------------------------------------------------
 
 @ECHO OFF
@@ -8,7 +8,6 @@ SET SCRIPTNAME=%0
 @REM Invoke each subscript, exit /B 1 inside any of them causes abort
 CALL :init %*           || EXIT /B 1
 CALL :pull_svn_files    || EXIT /B 1
-CALL :build_tools       || EXIT /B 1
 CALL :build_loader      || EXIT /B 1
 CALL :build_dll         || EXIT /B 1
 CALL :build_dtds        || EXIT /B 1
@@ -82,19 +81,6 @@ CD %CLIENTFILES%
 %SVNEXP% %SVNBRANCH%/XMetaL/Rules     || ECHO Failed export && EXIT /B 1
 %SVNEXP% %SVNBRANCH%/XMetaL/Template  || ECHO Failed export && EXIT /B 1
 ECHO Client configuration files pulled successfully from Subversion.
-EXIT /B 0
-
-REM ----------------------------------------------------------------------
-REM Build any troubleshooting tools used on the client machine.
-REM ----------------------------------------------------------------------
-:build_tools
-ECHO Building client diagnostic tools.
-CD %WORKDIR%
-%SVNEXP% %SVNBRANCH%/XMetaL/Tools || ECHO Failed export && EXIT /B 1
-CD Tools
-nmake > nmake.log 2>nmake.err || ECHO Tools Build Failed && EXIT /B 1
-COPY *.exe %CLIENTFILES%\ > NUL 2>&1
-ECHO Tools built successfully.
 EXIT /B 0
 
 REM ----------------------------------------------------------------------

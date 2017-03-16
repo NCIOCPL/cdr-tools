@@ -1,13 +1,9 @@
 #----------------------------------------------------------------------
-#
-# $Id$
-#
 # Used to generate CdrLoader shell scripts.  Takes the name of the
 # CDR client program as the only command-line argument.  Run this
 # in d:\cdr\ClientFiles.  For example:
 #
 # make-cdr-loader-scripts CdrClient20120915-0839.exe
-#
 #----------------------------------------------------------------------
 import sys
 

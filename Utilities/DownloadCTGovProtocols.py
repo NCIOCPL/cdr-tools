@@ -1,6 +1,5 @@
 #----------------------------------------------------------------------
-#
-# $Id$
+# Download and queue clinical_trial documents for import.
 #
 # BZIssue::3250
 # BZIssue::3324
@@ -11,7 +10,6 @@
 # BZIssue::5294 (OCECDR-3595)
 # JIRA::OCECTS-113
 # OCECDR-4120: GovDelivery Report for ClinicalTrials
-#
 #----------------------------------------------------------------------
 import cdr
 import cdrdb
@@ -162,7 +160,7 @@ class Doc:
     wantedStatuses = set(["recruiting", "available", "not yet recruiting",
                           "enrolling by invitation", "suspended",
                           "temporarily not available"])
-    activeStatuses = set(["recruiting", "available", 
+    activeStatuses = set(["recruiting", "available",
                           "enrolling by invitation"])
     "For OCECDR-4120 report; adjust list to match requirements."
 

@@ -1,6 +1,4 @@
 #----------------------------------------------------------------
-# $Id$
-#
 # Deploy all application program files required for the deployment
 # of a patch or release to the CDR on a Windows server.
 #
@@ -44,6 +42,7 @@ class GlobalVars:
         # Some global constants
         self.CDR_SERVICE   = 'Cdr'
         self.PUB_SERVICE   = 'cdrpublish2'
+        self.SCH_SERVICE   = "CDRScheduler"
 
         # List of directories we visited
         self.dirsChecked = []
@@ -234,6 +233,7 @@ def postProcess():
     # Find status of the services
     cdrServiceRunning = serviceRunning(GV.CDR_SERVICE)
     pubServiceRunning = serviceRunning(GV.PUB_SERVICE)
+    schServiceRunning = serviceRunning(GV.SCH_SERVICE)
 
     # Do we need to run client file post processing
     sawClientFiles = False
@@ -270,6 +270,9 @@ def postProcess():
             serviceStart(GV.CDR_SERVICE)
         if not pubServiceRunning:
             serviceStart(GV.PUB_SERVICE)
+    if GV.schServiceWasRunning:
+        if not schServiceRunning:
+            serviceStart(GV.SCH_SERVICE)
 
 
 def processSchemas():
@@ -346,17 +349,12 @@ def processSchemas():
         bd.log('ERROR: Unable to import: "%s" - processSchemas() not run' % e)
         return
 
-    # UpdateSchemas.py has to run with schema files in its working directory
-    # If a name like 'x:\abc\xyz\InScopeProtocols.xml" is received, that
-    #  full path will become the exact title of the doc in the database.
-    # XXX - Should modify UpdateSchemas.py instead?
-    os.chdir(schemaDir)
-
     # Differencing object
     differ = difflib.Differ()
 
     # For each schema in the directory, get and compare to target database
-    for schemaName in os.listdir('.'):
+    os.chdir(schemaDir)
+    for schemaName in os.listdir("."):
         # There's currently a file in this version control directory
         #  that's not a schema.  Skip it.
         if not schemaName.endswith('.xml'):
@@ -692,41 +690,24 @@ def copyCgiFiles():
                  )
 
     # Set permissions to ensure we can delete or overwrite
-    for dir in cdrCgiDirs:
-        if (os.path.exists(dir)):
-            bd.log("Recursively setting permissions on existing dir: %s" % dir)
-            bd.chmod(dir, "777")
+    bd.chmod(GV.liveCgiDir)
 
     if not GV.noErase:
         # Delete the directories
         bd.log("Deleting data from live CGI directories")
         for dir in cdrCgiDirs:
-            dir = bd.windowsPath(dir)
-            bd.log("Recursively deleting directory: %s" % dir)
-            bd.runCmd("DEL /Q /F /S %s\\*" % dir)
+            if os.path.exists(dir):
+                dir = bd.windowsPath(dir)
+                bd.log("Recursively deleting directory: %s" % dir)
+                bd.runCmd("RMDIR /Q /S %s" % dir)
 
     # Copy
-    bd.log("STARTING CGI COPY")
-    for path, dirs, files in os.walk(srcDir):
-        for dir in dirs:
-            # See similar in copyAll()
-            targetDir = os.path.join(GV.liveCgiDir, path[len(srcDir)+1:], dir)
-            if (os.path.exists(targetDir)):
-                if not os.path.isdir(targetDir):
-                    bd.fatal(
-                    "Encountered ordinary file '%s' which should be directory")
-            else:
-                bd.makeDirs(targetDir)
-
-            fromDir = os.path.join(path, dir)
-            copyOrdinaryFiles(fromDir, targetDir)
+    bd.log("copying wwwroot files")
+    bd.runCmd("XCOPY /E /R /Y %s\\* %s" %
+              (bd.windowsPath(srcDir), bd.windowsPath(GV.liveCgiDir)))
 
     start = os.getcwd()
     os.chdir(GV.liveCgiDir)
-
-    # Copy in anything in wwwroot that we need, but don't delete anything
-    # that's already there.  It might not be CDR related.
-    copyOrdinaryFiles(srcDir, GV.liveCgiDir)
 
     # Select the proper favicon for this tier
     bd.log("Setting favicon.ico for tier %s" % TIER)
@@ -739,10 +720,7 @@ def copyCgiFiles():
     shutil.copy("favicon-%s.ico" % faviconTier, "favicon.ico")
 
     # Set permissions as well as we can.  See comments in copyAll()
-    for dir in cdrCgiDirs:
-        if (os.path.exists(dir)):
-            bd.log("Recursively setting permissions on deployed dir: %s" % dir)
-            bd.chmod(dir, "777")
+    bd.chmod(GV.liveCgiDir)
     os.chdir(start)
 
 def copyAll():
@@ -752,6 +730,9 @@ def copyAll():
     deployment.
     """
     global GV
+
+    # Make sure permissions on the source tree are OK.
+    bd.chmod(GV.srcDir)
 
     # True = I've updated the CGI directories already
     ranLiveCGI = False
@@ -763,12 +744,16 @@ def copyAll():
     # If the target is a live system we need to stop CDR services before
     #  swapping in new software
     if GV.live:
+        # Stop them in the proper order
+        if GV.schServiceWasRunning:
+            serviceStop(GV.SCH_SERVICE)
+        else:
+            bd.log("scheduler service was not running; will not be started")
         # Only do this if the services weren't stopped outside of this
         #  progrmam.  If the user did it himself, he may have a reason
         #  for keeping things off.
         if GV.cdrServiceWasRunning:
 
-            # Stop them in the proper order
             serviceStop(GV.PUB_SERVICE)
             serviceStop(GV.CDR_SERVICE)
         else:
@@ -990,6 +975,9 @@ TIER = None
 
 # Remember whether the CDR service was running at the outset
 GV.cdrServiceWasRunning = serviceRunning(GV.CDR_SERVICE)
+
+# Same for the scheduler service
+GV.schServiceWasRunning = serviceRunning(GV.SCH_SERVICE)
 
 # Are all prerequisites satisfied?
 checkPrerequisites()

@@ -207,12 +207,8 @@ custom_modules = set([
     "core.const",      # part of CDR scheduler
     "core.exceptions",
     "CTGovUpdateCommon", # used by scripts for clinical trial docs from NLM
-    "ctrp",            # used for import of clinical trial docs from CTRP
     "EmailerLookupTables", # used by mailer subsystem (obsolete?)
     "EmailerProtSites", # used by the mailer subsystem (obsolete?)
-    "ExcelReader",     # don't use for future scripts (use xlrd instead)
-    "ExcelWriter",     # don't use for future scripts (use xlwt instead)
-    "extMapPatChk",    # common code for external mapping maintenance
     "get_stats",       # used by Production/prod/bin/SendEmail.py
     "GPFragIds",       # used by legacy conversion (not currently used)
     "GlobalChangeLinkBatch", # imported by CGI script GlobalChangeLink.py
@@ -220,8 +216,7 @@ custom_modules = set([
     "mock",            # https://pypi.python.org/pypi/mock
                        # (unit testing for ndscheduler)
     "ModifyDocs",      # used extensively by global change jobs
-    "NCIThes",         # used by scripts dealing with terminology documents
-    "NciThesaurus",    # original version of NCIThes, used by one-off job
+    "nci_thesaurus",   # used by scripts dealing with terminology documents
     "ndscheduler",     # https://github.com/Nextdoor/ndscheduler
     "ndscheduler.core",
     "ndscheduler.core.datastore",
@@ -230,14 +225,12 @@ custom_modules = set([
     "ndscheduler.server",
     "ndscheduler.server.handlers",
     "NewGPOrgs",       # used by legacy conversion (not currently used)
-    "OleStorage",      # imported by ExcelReader module
     "pdq_data_partner",# for managing PDQ data partner information
     "PdqThesaurus",    # obsolete, used by older one-off jobs back in 2009
     "pymssql",         # http://www.pymssql.org (used by ndscheduler)
     "pytz",            # https://pypi.python.org/pypi/pytz (used by ndscheduler)
     "RepublishDocs",   # imported by CGI script Republish.py
     "RtfWriter",       # used by mailer subsystem
-    "SimpleLinkGlobalChangeBatch", # imported by CGI global change script
     "task_property_bag", # part of CDR scheduler
     "UnicodeToLatex",  # used by mailer subsystem
     "unicode2ascii",   # used by legacy conversion (not currently used)

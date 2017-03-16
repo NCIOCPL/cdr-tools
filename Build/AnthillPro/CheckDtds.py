@@ -1,10 +1,6 @@
 #----------------------------------------------------------------------
-#
-# $Id$
-#
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.
-#
 #----------------------------------------------------------------------
 
 import cdr, sys

@@ -1,10 +1,6 @@
 #----------------------------------------------------------------------
-#
-# $Id$
-#
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
-#
 #----------------------------------------------------------------------
 import cdr
 import hashlib
@@ -132,12 +128,10 @@ def refresh_manifest(where):
     root.append(filelist)
     xml = etree.tostring(root, pretty_print=True)
     write_manifest(xml)
-
-    # NOTE: May change this in future to invoke something like
-    #       BuildDeploy.findCygwin(), but for now, can't count on
-    #       that being in the path, or findCygwin() being in cdr.py
-    result = cdr.runCommand("D:\\bin\\fix-client-files-permissions.cmd")
+    target = CLIENT_FILES_DIR.replace("/", "\\")
+    command = r"%s:\cdr\bin\fix-permissions.cmd %s" % (cdr.WORK_DRIVE, target)
     print "fixing permissions..."
+    result = cdr.runCommand(command)
     if result.code:
         print "return code: %s" % result.code
         if result.output:

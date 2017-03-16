@@ -1,6 +1,5 @@
 @ECHO OFF
 REM ----------------------------------------------------------------------
-REM $Id$
 REM Initialize environment variables
 REM
 REM This should be safe to CALL multiple times, e.g. from each of the
@@ -45,8 +44,8 @@ IF "%CDRBUILD_CYGPATH%." == "." (
 )
 
 SET CDRBUILD_CYGBIN=%CDRBUILD_CYGPATH%\bin
-SET CYGSVN=%CDRBUILD_CYGBIN%\svn.exe
-
+REM SET CYGSVN=%CDRBUILD_CYGBIN%\svn.exe
+SET CYGSVN=svn.exe
 REM ----------------------------------------------------------------------
 REM Set path to build directory.  Create it if it doesn't exist.
 REM ----------------------------------------------------------------------

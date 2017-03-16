@@ -1,11 +1,7 @@
 #----------------------------------------------------------------------
-#
-# $Id$
-#
 # Utility to drop, re-create, and load the zipcode validation table.
 # Required command-line argument is path to comma-delimited ASCII
 # file from ZIPInfo (ZIPList5).
-#
 # ---------------------------------------------------------------------
 # OCECDR-3848: Automate Quarterly ZIP Code Updates
 #----------------------------------------------------------------------
@@ -30,7 +26,7 @@ except:
 
 try:
     cursor.execute("""INSERT INTO zipcode_backup
-                    SELECT * 
+                    SELECT *
                       FROM zipcode""")
     conn.commit()
 except:
@@ -68,7 +64,7 @@ errCount = 0
 for row in reader:
     if header > 1:
         if len(row) == 19:
-            zipInfo = [row[0], row[1], row[2], row[3], 
+            zipInfo = [row[0], row[1], row[2], row[3],
                        row[4], row[5], row[6], row[15]]
             cursor.execute("""\
             INSERT INTO zipcode (city, st, zip, area_code, county_fips,

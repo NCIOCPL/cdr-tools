@@ -1,6 +1,4 @@
 #----------------------------------------------------------------
-# $Id$
-#
 # Create all of the application program files required for the deployment
 # of the CDR on a Windows server.
 #
@@ -56,6 +54,8 @@ usage: %s {options}
                        Default ='%s'
  --basepath dirpath  - Base directory path for output files.
                        Default now='%s'
+ --linuxpath dirpath - Base directory path for Linux output files.
+                       Default now='%s'
  --parmfile filepath - Path to parameter file containing all parameters.
                        This is an alternative to passing many parms on a
                        hand typed command line.  Format is:
@@ -108,7 +108,7 @@ If the argument for a parameter consists of more than one word, double quotes
 around the entire argument are required, for example:
      --execcmd "copy /Y file1 file2"
 """ % (os.path.basename(sys.argv[0]), Cfg.drive, Cfg.srcpath, Cfg.basepath,
-       Cfg.logfile, Cfg.dirList, Cfg.svnurl, Cfg.mindisk))
+       Cfg.linuxpath, Cfg.logfile, Cfg.dirList, Cfg.svnurl, Cfg.mindisk))
 
     if msg:
         sys.stderr.write("\nERROR: %s\n" % msg)
@@ -203,6 +203,7 @@ Build parameters:
 
  --srcpath:   %s
  --basepath:  %s
+ --linuxpath: %s
  --parmfile:  %s
  --logfile:   %s
  --include:   %s
@@ -217,7 +218,7 @@ Build parameters:
  free disk:   %d GB
 
 """ % (bd.versionCtlVersion(sys.argv[0]),
-       Cfg.srcpath, Cfg.basepath, Cfg.parmfile, Cfg.logfile,
+       Cfg.srcpath, Cfg.basepath, Cfg.linuxpath, Cfg.parmfile, Cfg.logfile,
        Cfg.includes, Cfg.excludes, Cfg.svnurl, Cfg.svnuser, Cfg.svnbrnch,
        cmdList, Cfg.failok, Cfg.trialrun, Cfg.mindisk, Cfg.freedisk)
 
@@ -238,6 +239,7 @@ class Config:
         self.current  = time.strftime("%Y-%m-%d_%H-%M-%S")
         self.drive    = os.getcwd()[0]
         self.basepath = "\\tmp\\CdrBuild\\%s" % self.current
+        self.linuxpath= self.basepath # distinguished from basepath later
         self.parmfile = None
         self.logfile  = "\\cdr\\Log\\build.log"
         self.includes = None
@@ -253,9 +255,11 @@ class Config:
         self.trialrun = False
         self.mindisk  = 5
         self.freedisk = -1
+        self.custom_linuxpath = self.custom_basepath = False
 
         # Command line options
-        self.longOpts = ["basepath=", "srcpath=", "drive=", "parmfile=",
+        self.longOpts = ["basepath=", "linuxpath=",
+                         "srcpath=", "drive=", "parmfile=",
                          "logfile=", "include=", "exclude=",
                          "svnuser=", "svnpw=", "svnbrnch=",
                          "svnurl=", "mindisk=", "execcmd=",
@@ -276,6 +280,12 @@ class Config:
                                      "@-basepath %s ",
                                      svn_opts[1]))
 
+        # build_linux_dir works much the same way as build_python_dir
+        build_linux_dir = " ".join(("build-linuxdir.cmd",
+                                    svn_opts[0],
+                                    "@-linuxpath %s",
+                                    svn_opts[1]))
+
         # Splice the svn options back together.
         svn_opts = " ".join(svn_opts)
         self.commandList = [
@@ -288,7 +298,10 @@ class Config:
             ["Utilities", build_python_dir % "Utilities"],
             ["Inetpub", build_python_dir % "Inetpub"],
             ["Licensee", build_python_dir % "Licensee"],
-            ["Scheduler", build_python_dir % "Scheduler"]
+            ["Scheduler", build_python_dir % "Scheduler"],
+            ["Glossifier", build_linux_dir % "Glossifier"],
+            ["Emailers", build_linux_dir % "Emailers"],
+            ["FTP", build_linux_dir % "FTP"]
         ]
         self.dirList = [dir[0] for dir in self.commandList]
 
@@ -369,9 +382,15 @@ class Config:
                 os.chdir(self.srcpath)
 
             if opt == "--basepath":
-                if not bd.chkPath(arg, isDir=True):
-                    bd.fatal('"--basepath %s" not found' % arg)
+                # we'll create this later, so isn't this test inappropriate???
+                #if not bd.chkPath(arg, isDir=True):
+                #    bd.fatal('"--basepath %s" not found' % arg)
                 self.basepath = arg
+                self.custom_basepath = True
+
+            if opt == "--linuxpath":
+                self.linuxpath = arg
+                self.custom_linuxpath = True
 
             if opt == "--drive":
                 # Convert "c:" to "c", etc.
@@ -435,16 +454,27 @@ class Config:
             if opt == "--mindisk":
                 self.mindisk = int(arg)
 
-        # Modify basepath to indicate source of this data
+        # Modify basepath and linuxpath to indicate source of this data.
+        # If custom paths are set, honor them.
+        if self.custom_basepath and not self.custom_linuxpath:
+            self.linuxpath = self.basepath
         if self.svnbrnch:
             brnchName = self.svnbrnch.replace("\\", "_").replace("/", "_")
-            self.basepath += "_%s" % brnchName
+            if not self.custom_basepath:
+                self.basepath += "_%s" % brnchName
+            if not self.custom_linuxpath:
+                self.linuxpath += "_%s" % brnchName
+        if not self.custom_basepath:
+            self.basepath += "_windows"
+        if not self.custom_linuxpath:
+            self.linuxpath += "_linux"
 
         # Normalize all paths separators and drive letters
         self.srcPath  = self.normPath(self.srcpath)
         self.basepath = self.normPath(self.basepath)
         self.parmfile = self.normPath(self.parmfile)
         self.logfile  = self.normPath(self.logfile)
+        self.linuxpath= self.normPath(self.linuxpath)
 
         # Now that we have a final basepath, we can calculate disk space
         self.freedisk = bd.availDiskGB(self.basepath)
@@ -462,14 +492,8 @@ class Config:
         if not path:
             return path
 
-        # Normalize directory separators
-        path = bd.windowsPath(path)
-
-        # Prepend drive letter if needed
-        if len(path) < 2 or path[1] != ':':
-            path = "%s:%s" % (self.drive, path)
-
-        return path
+        # Make the path usable for the build.
+        return bd.windowsPath(os.path.abspath(path))
 
     def cmdFile(self):
         """
@@ -652,13 +676,21 @@ bd.log("""
 # Check initial conditions
 Cfg.okayToStart()
 
-# Create the output directory
-if not bd.chkPath(Cfg.basepath, True) and not Cfg.trialrun:
-    try:
-        bd.makeDirs(Cfg.basepath)
-    except Exception as e:
-        bd.fatal("Unable to create output directory: %s:\n%s" %
-               (Cfg.basepath, str(e)))
+# Create the output directories
+if not Cfg.trialrun:
+    paths = set()
+    for cmd in Cfg.finalCmdsList:
+        if "basepath" in cmd:
+            paths.add(Cfg.basepath)
+        elif "linuxpath" in cmd:
+            paths.add(Cfg.linuxpath)
+    for path in paths:
+        if not bd.chkPath(path, True):
+            try:
+                bd.makeDirs(path)
+            except Exception as e:
+                bd.fatal("Unable to create output directory: %s:\n%s" %
+                         (path, str(e)))
 
 # Run them
 if Cfg.finalCmdsList:
