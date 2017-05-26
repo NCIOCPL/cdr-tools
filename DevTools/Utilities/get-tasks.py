@@ -84,7 +84,7 @@ class Trigger:
     """
 
     def __init__(self, trigger):
-        """Extract fields from pytz.CronTrigger object.
+        """Extract fields from CronTrigger object.
         """
 
         self.fields = {}
