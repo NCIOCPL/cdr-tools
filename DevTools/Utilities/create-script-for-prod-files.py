@@ -4,37 +4,73 @@
 # To use this:
 #  1. mkdir prod-20150106
 #  2. cd prod-20150106
-#  3. python ../create-script-for-prod-scripts.py > get-prod-files.cmd
+#  3. set SESS="--session CDR-SESSION-ID"
+#  3. python ../create-script-for-prod-scripts.py %SESS% > get-prod-files.cmd
 #  4. get-prod-files.cmd
 #
-# TODO: handle session ID requirement
+# To fetch from a non-prod tier, add --tier TIER (e.g. --tier stage)
 #----------------------------------------------------------------------
+import argparse
+import logging
 import re
 import requests
 
-BASE = "https://cdr.cancer.gov/cgi-bin/cdr/log-tail.py"
+parser = argparse.ArgumentParser()
+parser.add_argument("--session", required=True)
+parser.add_argument("--tier")
+opts = parser.parse_args()
+tier = opts.tier and ("-%s" % opts.tier.lower()) or ""
+BASE = "https://cdr%s.cancer.gov/cgi-bin/cdr/log-tail.py" % tier
 DIRS = ("cdr/Bin", "cdr/ClientFiles", "cdr/Database", "cdr/etc", "cdr/Lib",
         "cdr/Licensee", "cdr/Mailers", "cdr/Publishing", "cdr/Utilities",
-        "etc", "Inetpub/wwwroot")
+        "etc", "Inetpub/wwwroot", "cdr/glossifier", "cdr/Scheduler",
+        "cdr/Build")
 
+logging.basicConfig(
+    format="%(asctime)s %(message)s",
+    filename="create-script-for-prod-files.log",
+    level=logging.INFO
+)
 def unwanted(path):
     p = path.lower()
     if p.endswith(r"\cvs"):
         return True
-    if p.startswith(r"d:\cdr\mailers\output"):
-        return True
-    if p.startswith(r"d:\cdr\utilities\ctgovdownloads"):
-        return True
-    if p.startswith(r"d:\cdr\utilities\bin\ctrpdownloads"):
-        return True
+    prefixes = (
+        r"d:\cdr\mailers\output",
+        r"d:\cdr\utilities\ctgovdownloads",
+        r"d:\cdr\utilities\bin\ctrpdownloads",
+        r"d:\etc\boundschecker",
+        r"d:\etc\emacs",
+        r"d:\etc\lisp",
+        r"d:\etc\localtexmf",
+        r"d:\etc\vim",
+    )
+    for prefix in prefixes:
+        if p.startswith(prefix):
+            return True
     return False
 
+def make_command(path, opts):
+    command = ["python ../get-prod-scripts.py --session %s" % opts.session]
+    if opts.tier:
+        command.append("--tier %s" % opts.tier)
+    command.append('--path "%s"' % path)
+    command.append('--dir "%s"' % path[3:])
+    return " ".join(command)
+
+base = "%s?Session=%s" % (BASE, opts.session)
+logging.info("base=%s", base)
 for d in DIRS:
     path = d.replace("/", "\\")
-    response = requests.get("%s?p=d:\\%s\\*/s/ad" % (BASE, path))
+    url = "%s&Request=Submit&p=d:\\%s\\*/s/ad" % (base, path)
+    logging.info(url)
+    response = requests.get(url)
+    with open("responses.txt", "a") as fp:
+        fp.write(response.text)
+        fp.write("\n****************************************\n")
     for line in response.text.splitlines():
         match = re.search("Directory of (d:.+)", line.strip())
         if match:
-            p = match.group(1)
-            if not unwanted(p):
-                print 'python ../get-prod-scripts.py "%s" "%s"' % (p, p[3:])
+            path = match.group(1)
+            if not unwanted(path):
+                print(make_command(path, opts))
