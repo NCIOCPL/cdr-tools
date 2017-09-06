@@ -101,8 +101,8 @@ class Flags:
 #----------------------------------------------------------------------
 # Gather a list of email recipients for reports.
 #----------------------------------------------------------------------
-def getEmailRecipients(cursor, includeDeveloper = False):
-    developer = '***REMOVED***'
+def getEmailRecipients(cursor, includeDevelopers=False):
+    developers = cdr.getEmailList("Developers Notification")
     try:
         cursor.execute("""\
             SELECT u.email
@@ -116,12 +116,13 @@ def getEmailRecipients(cursor, includeDeveloper = False):
                AND u.email IS NOT NULL
                AND u.email <> ''""")
         recips = [row[0] for row in cursor.fetchall()]
-        if includeDeveloper and developer not in recips:
-            recips.append(developer)
+        if includeDevelopers:
+            for developer in developers:
+                recips.append(developer)
         return recips
     except:
-        if includeDeveloper:
-            return [developer]
+        if includeDevelopers:
+            return developers
 
 #----------------------------------------------------------------------
 # Split paragraph text into multiple paragraphs and/or itemized lists.
@@ -419,7 +420,7 @@ LOGFILE = cdr.DEFAULT_LOGDIR + "/CTGovImport.log"
 flags   = Flags()
 conn    = cdrdb.connect()
 cursor  = conn.cursor()
-session = cdr.login('CTGovImport', '***REMOVED***')
+session = cdr.login("CTGovImport", cdr.getpw("ctgovimport"))
 errors  = cdr.getErrors(session, errorsExpected = False, asSequence = True)
 if errors:
     cdr.logwrite("Login failure", session)

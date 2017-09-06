@@ -335,7 +335,7 @@ def processSchemas():
     # UpdateSchema constants
     SCHEMA_PRG = "%s:/cdr/bin/UpdateSchemas.py" % GV.liveDrive
     SCHEMA_UID = 'SchemaUpdater'
-    SCHEMA_PWD = '***REMOVED***'
+    SCHEMA_PWD = os.environ.get("SCHEMA_PWD") # PROVIDED THROUGH JENKINS
     SCHEMA_CMD = '%s %s %s' % (SCHEMA_PRG, SCHEMA_UID, SCHEMA_PWD)
 
     # This function requires lib/Python.  It will be available if deploying to

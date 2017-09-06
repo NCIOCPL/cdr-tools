@@ -120,7 +120,7 @@ class Mailer:
 #----------------------------------------------------------------------
 # Retrieve the tracking information from the emailer's dropbox database.
 #----------------------------------------------------------------------
-session = cdr.login('etracker', '***REMOVED***')
+session = cdr.login('etracker', cdr.getpw('etracker'))
 
 #----------------------------------------------------------------------
 # Update the row in the emailer server's database table for the mailer

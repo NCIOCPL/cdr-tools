@@ -28,15 +28,15 @@ TIMEOUT   = 60 * 25
 LOGFILE   = cdr.DEFAULT_LOGDIR + "/CTGovDownload.log"
 FILENAME  = "CTRP-TO-CANCER-GOV-EXPORT-%s.zip"
 DIR       = cdr.WORK_DRIVE + ":\\cdr\\Output\\CTRP_Trial_Sets"
-developer = "***REMOVED***" # for error reports
+developers = cdr.getEmailList("Developers Notification")
 server    = socket.gethostname()
-session   = cdr.login("CTGovImport", "***REMOVED***")
+session   = cdr.login("CTGovImport", cdr.getpw("ctgovimport"))
 comment   = "Inserting NCT ID from CTGovProtocol download job."
 
 #----------------------------------------------------------------------
 # Log activity, errors to the download log and to the console.
 #----------------------------------------------------------------------
-def log(what, traceback = False):
+def log(what, traceback=False):
     sys.stderr.write(what)
     if what and what[-1] == "\n":
         what = what[:-1]
@@ -89,7 +89,7 @@ def compareXml(a, b):
 #----------------------------------------------------------------------
 # Gather a list of email recipients for reports.
 #----------------------------------------------------------------------
-def getEmailRecipients(cursor, includeDeveloper = False):
+def getEmailRecipients(cursor, includeDevelopers=False):
     try:
         cursor.execute("""\
             SELECT u.email
@@ -103,12 +103,14 @@ def getEmailRecipients(cursor, includeDeveloper = False):
                AND u.email IS NOT NULL
                AND u.email <> ''""", timeout=TIMEOUT)
         recips = [row[0] for row in cursor.fetchall()]
-        if includeDeveloper and developer not in recips:
-            recips.append(developer)
+        if includeDevelopers:
+            for developer in developers:
+                if developer not in recips:
+                    recips.append(developer)
         return recips
     except:
-        if includeDeveloper:
-            return [developer]
+        if includeDevelopers:
+            return developers
 
 #----------------------------------------------------------------------
 # Mail a report to the specified recipient list.
@@ -118,11 +120,11 @@ def sendReport(recips, subject, body):
     cdr.sendMail(sender, recips, subject, body)
 
 #----------------------------------------------------------------------
-# Send a failure report; include the developer.
+# Send a failure report; include the developers.
 #----------------------------------------------------------------------
 def reportFailure(message, include_traceback=True):
     log(message, include_traceback)
-    recips = getEmailRecipients(cursor, includeDeveloper=True)
+    recips = getEmailRecipients(cursor, includeDevelopers=True)
     subject = "CTGov Download Failure Report"
     sendReport(recips, subject, message)
     sys.exit(1)

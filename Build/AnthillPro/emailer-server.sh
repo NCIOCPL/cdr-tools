@@ -9,14 +9,14 @@
 #----------------------------------------------------------------------
 
 #----------------------------------------------------------------------
-# This is the only part which needs to be tailored for each release.
+# These are the only parts which needs to be tailored for each release.
 #----------------------------------------------------------------------
 RELEASE=REPLACEME
+DEVELOPERS=EMAIL_ADDRESS_FOR_CDR_DEVELOPMENT_TEAM
 
 #----------------------------------------------------------------------
 # Set up the rest of the variables.
 #----------------------------------------------------------------------
-DEVELOPERS="***REMOVED***"
 SUBJECT="Deployment of $RELEASE emailer server updates"
 LOGNAME=`/bin/date +"$RELEASE-%Y%m%d%H%M%S.log"`
 LINUX_DIR=/cdr_deployments/$RELEASE/linux
