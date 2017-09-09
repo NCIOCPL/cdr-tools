@@ -1,12 +1,5 @@
 ##
 # Validate a previous version of a document against current rules.
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2005/05/25 00:42:18  ameyer
-# Initial version.
-#
 ##
 import sys, re, cdr
 

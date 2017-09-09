@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Pulls control documents and tables which need to be preserved from the
 # development server in preparation for refreshing the CDR database from
 # the production server.  If the development server has any document

@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Skeletal template for one-off global change jobs using the lxml.etree
 # parser to perform the document modifications.
 #

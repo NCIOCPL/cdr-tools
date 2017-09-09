@@ -1,20 +1,7 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Save changes which haven't been versioned as a new version for a
 # given CDR document type.
-#
-# $Log: not supported by cvs2svn $
-# Revision 1.3  2008/11/03 15:53:29  bkline
-# Added call to log number of documents to be processed for which no
-# version has yet been created at all.
-#
-# Revision 1.2  2008/11/03 15:46:15  bkline
-# Added missing docType string interpolation in last SQL query.
-#
-# Revision 1.1  2008/10/31 19:18:18  bkline
-# Command-line utility for saving unversioned changes in CDR documents.
 #
 #----------------------------------------------------------------------
 import cdr, cdrdb, re, sys

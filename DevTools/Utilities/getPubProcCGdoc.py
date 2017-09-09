@@ -1,10 +1,5 @@
 #######################################################
 # Get one XML document from pub_proc_cg to stdout
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
-#
 #######################################################
 import sys, cdrdb, cdr
 

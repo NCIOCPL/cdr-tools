@@ -2,25 +2,6 @@
 # Test filter a CDR doc from the command line.
 #
 # Run without args for usage info.
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
-# Revision 1.5  2008/12/23 20:15:52  ameyer
-# Added XSLT trace logging courtesy of Oliver Becker.
-#
-# Revision 1.4  2008/12/22 16:49:41  ameyer
-# Added elapsed time in primary call to cdr.filterDoc().
-#
-# Revision 1.3  2008/12/22 16:23:51  ameyer
-# Added indentation option.
-#
-# Revision 1.2  2008/12/19 03:49:40  ameyer
-# Added file options for doc and filter.
-#
-# Revision 1.1  2008/12/19 03:16:09  ameyer
-# Initial version.
-#
 ###########################################################
 
 import sys, getopt, re, time, cdr, cdrdb

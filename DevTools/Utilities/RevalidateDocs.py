@@ -2,9 +2,6 @@
 # Validate some or all documents in the database.
 #
 # See usage() for parameters.
-#
-# $Id$
-#
 ####################################################################
 
 import sys, getopt, time, cdr, cdrdb

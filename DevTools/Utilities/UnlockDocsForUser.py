@@ -1,12 +1,9 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Unlocks all documents checked out by a user.
 #
 # usage: UnlockDocsForUser user-id password
 #
-# $Log: not supported by cvs2svn $
 #----------------------------------------------------------------------
 import cdr, cdrdb, sys
 

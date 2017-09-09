@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Replaces copies of CDR control documents which have been preserved
 # from the development server, after a refresh of the database on
 # the development server from the production server.  This allows us

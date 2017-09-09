@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Compare schemas in working sandbox with those in the CDR.
 # Name individual schema files on the command line or use wildcards.
 # If no schemas are named, all files ending in ".xml" in the

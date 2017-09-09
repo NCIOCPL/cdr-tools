@@ -2,10 +2,6 @@
 #
 # Reports to terminal every 100 docs, and reports total docs to be
 # indexed and actually indexed.
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
 
 import cdr, cdrdb, sys, time
 

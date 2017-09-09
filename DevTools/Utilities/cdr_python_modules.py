@@ -1,8 +1,6 @@
 #!/usr/bin/python
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Finds all of the import statements in all of the Python scripts in
 # a specified portion of the file system and reports any imported
 # modules that we can't account for. This script identifies the

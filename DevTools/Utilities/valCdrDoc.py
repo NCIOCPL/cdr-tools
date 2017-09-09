@@ -5,10 +5,6 @@
 #   or from a file.
 #
 # This program is based on the earlier valDocVersion.py, renamed and modified.
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
 ##
 import sys, re, cdr
 

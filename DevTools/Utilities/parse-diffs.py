@@ -1,6 +1,4 @@
 #----------------------------------------------------------------------
-# $Id$
-#
 # Tool to parse diff output when comparing files on live prod directory
 # with what's in Subversion.
 #----------------------------------------------------------------------

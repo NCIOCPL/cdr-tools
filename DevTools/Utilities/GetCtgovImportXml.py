@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Tool to get the xml column from the ctgov_import table for a given
 # trial and print it to standard output.
 #

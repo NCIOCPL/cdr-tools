@@ -3,12 +3,8 @@
 # Term documents.
 # Each of the following fields will be passed through the XSLT
 # normalize-space() function.
-# 
+#
 # Note: Free space and # delimited comments are okay in the file
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
 ##################################################################
 
 /Term/PreferredName

@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Script for changing a CDR filter document.  Must be used on each
 # tier where the filter exists in order to bring the filter titles
 # on all tiers in sync.  Changing a filter title should be rare,

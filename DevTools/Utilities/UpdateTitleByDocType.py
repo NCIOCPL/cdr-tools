@@ -1,11 +1,6 @@
 #----------------------------------------------------------
 # Regenerate and update document table titles for all docs of a
 # given doctype.
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
-#
 #----------------------------------------------------------
 import cdr, cdrdb, sys, time
 

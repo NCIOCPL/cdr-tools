@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Utility to work around bug in Windows file system, which causes
  * copy of large (10s of GB) files to fail.
  *

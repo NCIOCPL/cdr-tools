@@ -3,12 +3,6 @@
 # was saved in the last N days, where N is passed on the command line.
 #
 # A version of ReindexByDocType.py
-#
-# $Id$
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2008/07/25 00:58:41  ameyer
-# Initial version.
-#
 #----------------------------------------------------------
 
 import cdr, cdrdb, sys, time

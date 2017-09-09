@@ -1,18 +1,10 @@
-#----------------------------------------------------------------------
-#
-# $Id$
-#
-# $Log: not supported by cvs2svn $
-#
-#----------------------------------------------------------------------
-
 """\
-  Takes a list of URLs from the standard input (or from a named file 
-  if there is at least one command-line argument present), one URL on 
-  each line, and determines whether the resource identified by the URL 
-  is still available.  A report is written to standard output (or 
-  appended to a named file if a second command-line argument is present) 
-  containing one line for each URL with a problem.  Each line in the 
+  Takes a list of URLs from the standard input (or from a named file
+  if there is at least one command-line argument present), one URL on
+  each line, and determines whether the resource identified by the URL
+  is still available.  A report is written to standard output (or
+  appended to a named file if a second command-line argument is present)
+  containing one line for each URL with a problem.  Each line in the
   report contains three fields, separated by the tab character:
 
      1. Date and time (local timezone)

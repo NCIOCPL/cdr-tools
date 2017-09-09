@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #----------------------------------------------------------------------
-# $Id$
+# Data comparison tool used when refreshing CDR DEV from PROD.
 # JIRA::OCECDR-3733
 #----------------------------------------------------------------------
 import cdrdb, sys, cgi, difflib, cdr_dev_data

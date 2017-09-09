@@ -1,14 +1,11 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Utility for normalizing whitespace in specified fields for a
 # specified CDR document type, using a global change.
 #
 # Command line:
 #   See usage() below.
 #
-# $Log: not supported by cvs2svn $
 #----------------------------------------------------------------------
 
 import sys, re, cdr, cdrdb, ModifyDocs

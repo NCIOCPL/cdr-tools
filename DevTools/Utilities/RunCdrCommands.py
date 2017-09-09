@@ -1,5 +1,4 @@
 #----------------------------------------------------------------------
-# $Id$
 #
 # Tool to run a set of commands stored in a text XML document file.
 # The top-level wrapper element is CdrCommandSets, which in turn
@@ -27,7 +26,6 @@
 # taking steps to ensure that documents which need to be changed are not
 # locked by another account).
 #
-# $Log: not supported by cvs2svn $
 #----------------------------------------------------------------------
 
 import cdr, sys, xml.dom.minidom, xml.sax.saxutils

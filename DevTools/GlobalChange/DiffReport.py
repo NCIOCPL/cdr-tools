@@ -1,7 +1,4 @@
 #----------------------------------------------------------------------
-#
-# $Id$
-#
 # Concatenate output of diff files for quick review of test mode
 # global change runs.
 #

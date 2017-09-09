@@ -1,6 +1,4 @@
 #--------------------------------------------------------------
-# $Id$
-#
 # Script for installing a filter on a development or test server that
 # has already been created on the production server but has not yet
 # appeared on the server on which it will be installed now.

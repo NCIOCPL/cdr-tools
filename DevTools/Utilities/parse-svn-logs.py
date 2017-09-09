@@ -1,6 +1,4 @@
 #----------------------------------------------------------------------
-# $Id$
-#
 # Script to find files/directories changed since a certain point in
 # history.
 #

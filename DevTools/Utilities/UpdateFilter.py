@@ -1,7 +1,5 @@
 #----------------------------------------------------------------------
 #
-# $Id$
-#
 # Script for installing a new version of an XSL/T filter in the CDR.
 #
 # JIRA::OCECDR-3694
