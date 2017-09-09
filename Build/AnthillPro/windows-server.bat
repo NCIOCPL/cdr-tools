@@ -6,8 +6,10 @@ rem This is the template for the master deployment script for the CDR
 rem Windows server on a given tier. Here's what you do with it:
 rem   1. copy it to the release directory in the root of the cdr_deployments
 rem      share (e.g., \\nciis-p401.nci.nih.gov\cdr_deployments\einstein)
-rem   2. replace REPLACEME below to set the variable RELEASE to the
-rem      name of that directory
+rem   2. replace REPLACEMEs below to set the variable RELEASE to the
+rem      name of that directory and the CDR_DEPLOYMENTS variable to
+rem      the correct UNC path (we don't want to put an internal server
+rem      name into source code in a public repository)
 rem   3. (optionally) add any extra steps needed for this specific
 rem      release on the Windows server (e.g., add new DB tables)
 rem
@@ -23,7 +25,7 @@ set RELEASE=REPLACEME
 rem ----------------------------------------------------------------------
 rem Set the rest of the variables.
 rem ----------------------------------------------------------------------
-set CDR_DEPLOYMENTS=\\nciis-p401.nci.nih.gov\cdr_deployments
+set CDR_DEPLOYMENTS=REPLACEME
 set RELEASE_DIR=%CDR_DEPLOYMENTS%\%RELEASE%\windows
 set PYTHON=D:\Python\python.exe
 set DEPLOY_ALL=%CDR_DEPLOYMENTS%\Scripts\deploy-all.py
