@@ -19,5 +19,7 @@ The build scripts depend on having the following tools present:
 See https://github.com/NCIOCPL/cdr-server/blob/master/Server/README.md
 for details about building the third-party libraries in that last bullet.
 
+## Deploy
+
 The deployment scripts can be run directly or through
 [Jenkins](https://jenkins.io/).
