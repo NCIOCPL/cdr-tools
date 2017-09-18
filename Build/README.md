@@ -14,10 +14,34 @@ The build scripts depend on having the following tools present:
  * a Subversion client (GitHub supports `svn export`, but not `git archive`)
  * a connection to the internet
  * a GitHub account, with membership in the NCIOCPL organization
+ * a branch in each of the repositories from which the build will pull code
  * expat, Sablotron, and xerces
 
 See https://github.com/NCIOCPL/cdr-server/blob/master/Server/README.md
 for details about building the third-party libraries in that last bullet.
+
+### Usage
+
+While it is possible to run the separate batch files for the individual
+portions of a CDR build, the simplest way to create a complete or partial
+build is to run `build-all.py` with the appropriate command-line arguments.
+The script has one required argument naming the branch from which the build
+is to be created. For details on the available options, invoke the script
+with the `--help` option:
+
+```build-all.py --help```
+
+It is necessary, as noted above, that the branch named on the command line
+be present in all of the CDR repositories from which code will be pulled.
+It is possible to do a partial build with the branch created in only one
+or two of the repositories, but it is generally more straightforward if
+when work on a new release is begun the branch is created (with the same
+name, including case) in all of the CDR repositories (eight of them as
+of this writing).
+
+Example usage:
+
+```build-all.py fermi```
 
 ## Deploy
 
