@@ -1,0 +1,17 @@
+*.exe
+*.dll
+CDRLoader.cmd
+CdrClientDebug*.cmd
+CdrManifest.xml
+CdrRunAgain.cmd
+*.pyc
+cdr_redirect
+aspnet_client
+CheckDevData.py
+*-ve.py
+dada.py
+show-dll-trace-logs.py
+test-mp3-runtime.py
+sample_job.py
+.gitignore
+.gitattributes
