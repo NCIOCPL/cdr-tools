@@ -11,6 +11,9 @@ this script work correctly with or without Jenkins.
 The original implementation pulled source code from the CBIIT
 Subversion server. This rewrite uses GitHub repositories instead.
 
+Only standard libraries are imported, to avoid dependencies on
+things we might not have yet deployed.
+
 JIRA::WEBTEAM-1884 - original implementation (Alan Meyer, April 2014)
 JIRA::OCECDR-4300 - rewrite for Jenkins/GitHub (Bob Kline, September 2017)
 """
@@ -36,14 +39,14 @@ class Control:
         Collect and validate runtime settings and set up logging.
         """
 
-        self.dirs = Directory.directories()
+        self.dirs = Directory.all_dirs()
         self.drive = self.find_cdr_drive()
         self.opts = self.fetch_options()
         self.logger = self.make_logger()
 
     def run(self):
         """
-        Generate the requested build package(s).
+        Generate the requested deployment package.
         """
 
         if not os.path.isdir(self.opts.base):
@@ -98,7 +101,6 @@ class Control:
         dirlist = " ".join([d.name for d in sorted(self.dirs)])
         epilog = "valid arguments for --/include/--exclude:\n" + dirlist
         desc = "Assemble the files for a CDR release deployment"
-        formatter = argparse.ArgumentDefaultsHelpFormatter
         parser = argparse.ArgumentParser(description=desc, epilog=epilog)
         now = datetime.datetime.now()
         self.stamp = now.strftime("%Y%m%d%H%M%S")
@@ -108,8 +110,6 @@ class Control:
         parser.add_argument("-b", "--base", default=base, help="output base")
         parser.add_argument("-l", "--logpath", default=logpath,
                             help="where to record what we do")
-        parser.add_argument("-d", "--debug", action="store_true",
-                            help="more verbose logging")
         group = parser.add_mutually_exclusive_group()
         group.add_argument("-i", "--include", nargs="*",
                            help="directories to build")
@@ -125,7 +125,7 @@ class Control:
         stream_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
         logger = logging.getLogger("build")
-        logger.setLevel("DEBUG" if self.opts.debug else "INFO")
+        logger.setLevel("INFO")
         logger.addHandler(stream_handler)
         logger.addHandler(file_handler)
         self.log_config_settings(logger)
@@ -154,7 +154,7 @@ class Control:
 
     @staticmethod
     def find_cdr_drive():
-        for drive in "CDEFGH":
+        for drive in "DCEFGH":
             if os.path.isdir("{}:/cdr".format(drive)):
                 return drive
         return None
@@ -192,7 +192,7 @@ class Directory:
         return cmp(self.name.lower(), other.name.lower())
 
     @classmethod
-    def directories(cls):
+    def all_dirs(cls):
         return [
             cls("Database", "cdr-server/branches/{branch}/Database"),
             cls("lib", "cdr-lib/branches/{branch}"),
@@ -205,6 +205,7 @@ class Directory:
             cls("Glossifier", "cdr-glossifier/branches/{branch}"),
             cls("Emailers", "cdr-publishing/branches/{branch}/gpmailers"),
             cls("Schemas", "cdr-server/branches/{branch}/Schemas"),
+            cls("Build", "cdr-tools/branches/{branch}/Build"),
             cls("Bin"),
             cls("ClientFiles"),
         ]
