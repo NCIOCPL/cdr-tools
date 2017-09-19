@@ -63,6 +63,7 @@ REM ----------------------------------------------------------------------
 CHDIR /D %CLIENTFILES%\tmp-build\CdrClient
 nmake > nmake.log 2>nmake.err || ECHO Failed building loader && EXIT /B 1
 COPY Release\CdrClient.exe %CLIENTFILES%\%LOADER% > NUL 2>&1
+IF ERRORLEVEL 1 ECHO Failed copying CdrClient.exe && EXIT /B 1
 CHDIR /D %CLIENTFILES%
 SET SCRIPT=tmp-build\Build\make-cdr-loader-scripts.py
 python %SCRIPT% %LOADER% || ECHO Failed building loader scripts && EXIT /B 1
@@ -76,6 +77,7 @@ CHDIR /D %CLIENTFILES%\tmp-build\DLL
 nmake > nmake.log 2>nmake.err || ECHO DLL build failure && EXIT /B 1
 MKDIR %CLIENTFILES%\Cdr
 COPY ReleaseUMinDependency\Cdr.dll %CLIENTFILES%\Cdr\Cdr.dll > NUL 2>&1
+IF ERRORLEVEL 1 ECHO Failed copying Cdr.dll && EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------

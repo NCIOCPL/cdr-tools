@@ -56,7 +56,7 @@ REM ----------------------------------------------------------------------
 :build_server
 CD /D %TARGET%\Bin\tmp-build
 nmake DRV=%DRIVE%: CdrServer.exe >>log 2>>err || ECHO Build failed && EXIT /B 1
-COPY CdrServer.exe .. > NUL 2>&1
+COPY CdrServer.exe .. > NUL 2>&1 || ECHO Copy CdrServer failed && EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
@@ -65,7 +65,7 @@ REM ----------------------------------------------------------------------
 :build_service
 CD /D %TARGET%\Bin\tmp-build
 nmake CdrService.exe >>log 2>>err || ECHO Building service failed && EXIT /B 1
-COPY CdrService.exe .. > NUL 2>&1
+COPY CdrService.exe .. > NUL 2>&1 || ECHO Copy CdrService failed && EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
@@ -74,7 +74,7 @@ REM ----------------------------------------------------------------------
 :build_shutdown
 CD /D %TARGET%\Bin\tmp-build
 nmake ShutdownCdr.exe >>log 2>>err || ECHO Build Shutdown failure && EXIT /B 1
-COPY ShutdownCdr.exe .. > NUL 2>&1
+COPY ShutdownCdr.exe .. > NUL 2>&1 || ECHO Copy ShutdownCdr failed && EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
