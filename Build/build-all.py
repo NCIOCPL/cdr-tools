@@ -22,17 +22,30 @@ import argparse
 import datetime
 import logging
 import os
+import shutil
 import subprocess
 import sys
 
 class Control:
     """
     Master driver with runtime configuration settings for processing.
+
+    Class values:
+      SCRIPTS - directory where the build scripts are stored
+      POPEN_OPTS - options for launching a sub process
+    Attributes:
+      dirs - sequence of directory objects to be processed
+      drive - letter representing the disk volume for the CDR
+      opts - runtime control settings
+      logger - object for recording what we do
     """
 
-    PIPE = subprocess.PIPE
-    STDOUT = subprocess.STDOUT
-    POPEN_OPTS = dict(shell=True, stdout=PIPE, stderr=STDOUT)
+    SCRIPTS = os.path.split(os.path.abspath(sys.argv[0]))[0]
+    POPEN_OPTS = dict(
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT
+    )
 
     def __init__(self):
         """
@@ -49,13 +62,30 @@ class Control:
         Generate the requested deployment package.
         """
 
-        if not os.path.isdir(self.opts.base):
-            os.makedirs(self.opts.base)
+        self.fetch_branch()
+        os.chdir(self.opts.base)
         for directory in self.dirs:
             directory.build(self)
             self.logger.info("built %s", directory.name)
         self.cleanup()
         self.logger.info("build complete")
+
+    def fetch_branch(self):
+        """
+        Pull down the files from this branch of the CDR repositories.
+        """
+
+        path = os.path.abspath(os.path.join(self.opts.base, "branch"))
+        if not os.path.isdir(path):
+            os.makedirs(path)
+        script = os.path.join(self.SCRIPTS, "fetch-branch.cmd")
+        args = script, self.opts.branch, path
+        p = subprocess.Popen(args, **self.POPEN_OPTS)
+        output, error = p.communicate()
+        if p.returncode:
+            self.logger.error("failure fetching branch: {}".format(output))
+            sys.exit(1)
+        self.logger.info("fetched files for %s", self.opts.branch)
 
     def fetch_options(self):
         """
@@ -90,7 +120,7 @@ class Control:
                     dirs.append(directory)
             self.dirs = dirs
             if not self.dirs:
-                parser.error("nothing left to build")
+                parser.error("nothing to build")
         return opts
 
     def make_argument_parser(self):
@@ -104,7 +134,7 @@ class Control:
         parser = argparse.ArgumentParser(description=desc, epilog=epilog)
         now = datetime.datetime.now()
         self.stamp = now.strftime("%Y%m%d%H%M%S")
-        base = self.drive + ":/tmp/build/{branch}-" + self.stamp
+        base = self.drive + ":/tmp/builds/{branch}-" + self.stamp
         logpath = self.drive + ":/cdr/Log/build.log"
         parser.add_argument("branch", help="version control branch")
         parser.add_argument("-b", "--base", default=base, help="output base")
@@ -118,6 +148,13 @@ class Control:
         return parser
 
     def make_logger(self):
+        """
+        Create the object used to record what we do.
+
+        The logger has two handlers, one to write to a disk log file,
+        and the other to write to stderr.
+        """
+
         stream_handler = logging.StreamHandler()
         file_handler = logging.FileHandler(self.opts.logpath)
         format = "%(asctime)s [%(levelname)s] %(message)s"
@@ -132,6 +169,10 @@ class Control:
         return logger
 
     def log_config_settings(self, logger):
+        """
+        Record the options used for this build.
+        """
+
         logger.info("building %s", os.path.normpath(self.opts.base))
         logger.info("logging to %s", os.path.normpath(self.opts.logpath))
         if self.opts.exclude:
@@ -142,6 +183,12 @@ class Control:
             logger.info("building everything")
 
     def cleanup(self):
+        """
+        Remove the working files/directories and fix the file permissions.
+        """
+
+        self.logger.info("removing temporary directories")
+        shutil.rmtree(os.path.join(self.opts.base, "branch"))
         script = self.drive + r":\cdr\Bin\fix-permissions.cmd"
         target = os.path.normpath(self.opts.base)
         args = script, target
@@ -154,60 +201,103 @@ class Control:
 
     @staticmethod
     def find_cdr_drive():
+        """
+        Figure out which disk volume the CDR is installed on.
+        """
+
         for drive in "DCEFGH":
             if os.path.isdir("{}:/cdr".format(drive)):
                 return drive
         return None
 
 class Directory:
-    URL_BASE = "https://github.com/NCIOCPL/"
-    BUILD_DIR = "build-directory.cmd"
+    """
+    Object representing a directory to be build for a CDR release.
+
+    Class values:
+      BUILD_BIN - script to build the Bin directory
+      BUILD_CLI - script to build the ClientFiles directory
+
+    Attributes:
+      name - the name of the directory to be built
+      source - relative path for the directory in the set
+               pulled down from GitHub
+    """
+
     BUILD_BIN = "build-cdr-bin.cmd"
     BUILD_CLI = "build-client-files.cmd"
-    SCRIPTS = os.path.split(os.path.abspath(sys.argv[0]))[0]
+
     def __init__(self, name, source=None):
+        """
+        Remember the directory name and optional source path.
+        """
+
         self.name = name
         self.source = source
+
     def build(self, control):
+        """
+        Install this directory's portion of the build.
+
+        The ClientFiles and Bin directories require more complicated
+        compilation and post-processing tasks, so we farm out the work
+        to separate command shell batch files. We can handle all the
+        other directories by simply making a recursive copy of the
+        files from the set retrieved from GitHub.
+        """
+
         drive = control.drive
-        branch = control.opts.branch
         base = os.path.normpath(control.opts.base)
+        script = None
         if self.name == "Bin":
-            script = os.path.join(self.SCRIPTS, self.BUILD_BIN)
-            args = script, branch, base, drive
+            script = os.path.join(control.SCRIPTS, self.BUILD_BIN)
+            args = script, base, drive
         elif self.name == "ClientFiles":
-            script = os.path.join(self.SCRIPTS, self.BUILD_CLI)
-            args = script, branch, base, drive, control.stamp
+            script = os.path.join(control.SCRIPTS, self.BUILD_CLI)
+            args = script, base, drive, control.stamp
         else:
-            url = self.URL_BASE + self.source.format(branch=branch)
-            script = os.path.join(self.SCRIPTS, self.BUILD_DIR)
-            args = script, url, base, self.name
-        p = subprocess.Popen(args, **control.POPEN_OPTS)
-        output, error = p.communicate()
-        if p.returncode:
-            control.logger.error("{}: {}".format(self.name, output))
-            sys.exit(1)
+            source = os.path.join(control.opts.base, "branch", self.source)
+            target = os.path.join(control.opts.base, self.name)
+            shutil.copytree(source, target)
+        if script is not None:
+            p = subprocess.Popen(args, **control.POPEN_OPTS)
+            output, error = p.communicate()
+            if p.returncode:
+                control.logger.error("{}: {}".format(self.name, output))
+                sys.exit(1)
 
     def __cmp__(self, other):
+        """
+        Make the directories sortable by name, ignoring case.
+
+        We do this to make the usage help screen easier to read.
+        """
+
         return cmp(self.name.lower(), other.name.lower())
 
     @classmethod
     def all_dirs(cls):
+        """
+        Instantiate and return the sequence of all buildable directories.
+        """
+
         return [
-            cls("Database", "cdr-server/branches/{branch}/Database"),
-            cls("lib", "cdr-lib/branches/{branch}"),
-            cls("Mailers", "cdr-publishing/branches/{branch}/Mailers"),
-            cls("Publishing", "cdr-publishing/branches/{branch}/Publishing"),
-            cls("Utilities", "cdr-tools/branches/{branch}/Utilities"),
-            cls("Inetpub", "cdr-admin/branches/{branch}/Inetpub"),
-            cls("Licensee", "cdr-publishing/branches/{branch}/Licensee"),
-            cls("Scheduler", "cdr-scheduler/branches/{branch}"),
-            cls("Glossifier", "cdr-glossifier/branches/{branch}"),
-            cls("Emailers", "cdr-publishing/branches/{branch}/gpmailers"),
-            cls("Schemas", "cdr-server/branches/{branch}/Schemas"),
-            cls("Build", "cdr-tools/branches/{branch}/Build"),
+            cls("Database", "server/Database"),
+            cls("lib", "lib"),
+            cls("Mailers", "publishing/Mailers"),
+            cls("Publishing", "publishing/Publishing"),
+            cls("Utilities", "tools/Utilities"),
+            cls("Inetpub", "admin/Inetpub"),
+            cls("Licensee", "publishing/Licensee"),
+            cls("Scheduler", "scheduler"),
+            cls("Glossifier", "glossifier"),
+            cls("Emailers", "publishing/gpmailers"),
+            cls("Schemas", "server/Schemas"),
+            cls("Build", "tools/Build"),
             cls("Bin"),
             cls("ClientFiles"),
         ]
 
-Control().run()
+if __name__ == "__main__":
+    "Top-level entry point."
+    Control().run()

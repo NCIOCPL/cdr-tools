@@ -11,7 +11,7 @@ The build scripts depend on having the following tools present:
 
  * a drive with \cdr\Bin
  * \bin\vsvars32.bat for Visual Studio 2013 on that drive
- * a Subversion client (GitHub supports `svn export`, but not `git archive`)
+ * cygwin tools (curl, tar, etc.)
  * a connection to the internet
  * a GitHub account, with membership in the NCIOCPL organization
  * a branch in each of the repositories from which the build will pull code
