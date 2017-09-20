@@ -3,6 +3,9 @@
 """
 Compare a CDR build package with the live file system.
 
+Note that there are separate utilities in the DevTools directory
+for comparing Filters and Schemas against the live repository.
+
 OCECDR-4300
 """
 
