@@ -31,7 +31,7 @@ class Control:
     """
 
     SCRIPTS = os.path.split(os.path.abspath(sys.argv[0]))[0]
-    EXCLUDES = os.path.join(SCRIPTS, "diff.excludes")
+    EXCLUDES = os.path.join(SCRIPTS, "diff.excludes").replace("\\", "/")
     SKIP = "Schemas", "Emailers"
     POPEN_OPTS = dict(
         shell=True,
@@ -51,10 +51,11 @@ class Control:
         """
         Compare all the directories.
 
-        Break out of the outer loop after the first iteration,
-        because diff takes care of the recursion.
+        We only do a single iteration of the outer loop, because
+        we empty out the `dirs` sequence, which leaves the `walk()`
+        method nothing to recurse with.
 
-        We build up the arguments for the diff invocations,
+        Start by building up the arguments for the diff invocations,
         adding two None placeholders for the source and target dirs.
         """
 
@@ -75,39 +76,34 @@ class Control:
             args.append("-c")
         args += [None, None]
         for path, dirs, files in os.walk(self.opts.build):
-            #for directory in dirs:
             while dirs:
                 directory = dirs.pop(0)
                 source = os.path.join(path, directory)
                 if directory in self.SKIP:
                     continue
                 elif directory == 'Inetpub':
-                    target = self.drive + r":\Inetpub"
+                    target = self.drive + ":/Inetpub"
                 else:
-                    target = self.drive + ":\\cdr\\" + directory
-                args[-2:] = source, target
+                    target = self.drive + ":/cdr/" + directory
+                args[-2:] = source.replace("\\", "/"), target
                 p = subprocess.Popen(args, **self.POPEN_OPTS)
                 output, errout = p.communicate()
                 if errout:
                     raise Exception(errout)
                 sys.stdout.write(self.filtered(output))
-            #break
 
     def filtered(self, output):
         """
+        Prepare the diff output for display.
+
         Don't clutter up the output yakking about all the dross in the
         DEV web root (unless the user has asked for everything).
         """
 
         if self.opts.all:
             return output
-        skip = (
-            "only in d:/inetpub/wwwroot: ",
-            #"only in d:/inetpub/wwwroot/cgi-bin/scheduler: static"
-        )
-        for s in skip:
-            pattern = s.replace("/", r"[\\/]") + r"[^\n]*\n"
-            output = re.sub(pattern, "", output, flags=re.IGNORECASE)
+        pattern = r"only in d:[\\/]inetpub[\\/]wwwroot: [^\n]*\n"
+        output = re.sub(pattern, "", output, flags=re.IGNORECASE)
         return output
 
     def fetch_options(self):
@@ -115,7 +111,7 @@ class Control:
         Parse and validate the command-line arguments.
         """
 
-        desc = "Compare a CDR release set to the live file system"
+        desc = "Compare the CDR live file system to a new CDR release set"
         parser = argparse.ArgumentParser(description=desc)
         parser.add_argument("build", help="location of build files")
         parser.add_argument("--brief", "-q", action="store_true",
@@ -127,7 +123,9 @@ class Control:
         parser.add_argument("--ignore-all-space", "-w", action="store_true",
                             help="ignore all white space")
         parser.add_argument("--all", "-a", action="store_true",
-                            help="don't avoid reporting expected differences")
+                            help="also report expected differences")
+        parser.add_argument("--reverse", "-r", action="store_true",
+                            help="put new release set on left side of diff")
         group = parser.add_mutually_exclusive_group()
         group.add_argument("--context", "-c", action="store_true",
                            help="output three lines of context on each side")

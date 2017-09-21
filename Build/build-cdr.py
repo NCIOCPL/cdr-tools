@@ -174,8 +174,10 @@ class Control:
         Record the options used for this build.
         """
 
-        logger.info("building %s", os.path.normpath(self.opts.base))
-        logger.info("logging to %s", os.path.normpath(self.opts.logpath))
+        build_path = os.path.normpath(self.opts.base).replace("\\", "/")
+        log_path = os.path.normpath(self.opts.logpath).replace("\\", "/")
+        logger.info("building %s", build_path)
+        logger.info("logging to %s", log_path)
         if self.opts.exclude:
             logger.info("excluding %s", " ".join(self.opts.exclude))
         elif self.opts.include:
@@ -291,7 +293,7 @@ class Directory:
             cls("Inetpub", "admin/Inetpub"),
             cls("Licensee", "publishing/Licensee"),
             cls("Scheduler", "scheduler"),
-            cls("Glossifier", "glossifier"),
+            cls("glossifier", "glossifier"),
             cls("Emailers", "publishing/gpmailers"),
             cls("Schemas", "server/Schemas"),
             cls("Build", "tools/Build"),
