@@ -103,7 +103,7 @@ class Control:
             return output
         skip = (
             "only in d:/inetpub/wwwroot: ",
-            "only in d:/inetpub/wwwroot/cgi-bin/scheduler: static"
+            #"only in d:/inetpub/wwwroot/cgi-bin/scheduler: static"
         )
         for s in skip:
             pattern = s.replace("/", r"[\\/]") + r"[^\n]*\n"
