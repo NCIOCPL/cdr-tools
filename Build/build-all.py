@@ -33,6 +33,7 @@ class Control:
     Class values:
       SCRIPTS - directory where the build scripts are stored
       POPEN_OPTS - options for launching a sub process
+
     Attributes:
       dirs - sequence of directory objects to be processed
       drive - letter representing the disk volume for the CDR
