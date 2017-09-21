@@ -1,4 +1,4 @@
-#!/Python/python.exe
+#!/usr/bin/env python
 
 """
 Compare a CDR build package with the live file system.

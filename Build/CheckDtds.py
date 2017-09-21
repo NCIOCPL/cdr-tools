@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 # Utility to reparse the schemas and determine which DTDs are out of
 # date in the manifest for the client.

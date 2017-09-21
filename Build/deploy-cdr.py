@@ -1,4 +1,4 @@
-#!D:/Python/python.exe
+#!/usr/bin/env python
 
 """
 Deploy a CDR patch or release on a Windows CDR server.

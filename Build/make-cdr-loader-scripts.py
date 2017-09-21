@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 # Used to generate CdrLoader shell scripts.  Takes the name of the
 # CDR client program as the only command-line argument.  Run this

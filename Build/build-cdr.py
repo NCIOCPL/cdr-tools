@@ -1,4 +1,4 @@
-#!/Python/python.exe
+#!/usr/bin/env python
 
 """
 Assemble the files for a CDR release deployment.
