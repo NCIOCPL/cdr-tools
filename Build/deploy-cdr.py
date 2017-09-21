@@ -33,6 +33,7 @@ class Control:
 
     Attributes:
       dirs - sequence of directory objects to be processed
+      tier - which hosting environment server we're running on
       drive - letter representing the disk volume for the CDR
       opts - runtime control settings
       logger - object for recording what we do
@@ -48,10 +49,12 @@ class Control:
     def __init__(self):
         """
         Collect and validate runtime settings and set up logging.
+
+        Fetching the tier also sets self.drive as a side effect.
         """
 
         self.dirs = self.Directory.all_dirs()
-        self.drive = self.find_cdr_drive()
+        self.tier = self.get_tier()
         self.opts = self.fetch_options()
         self.logger = self.make_logger()
 
@@ -61,9 +64,6 @@ class Control:
 
         If we running in live mode, we suspend the CDR services while
         we work.
-
-        TODO - update schemas in repo? (maybe not, now that we have new tool)
-        TODO - tier-specific favicons (and other wwwroot funkiness)?
         """
 
         self.stop_services()
@@ -192,15 +192,23 @@ class Control:
                 self.output = output
         return Result(p.returncode, output)
 
-    @staticmethod
-    def find_cdr_drive():
+    def get_tier(self):
         """
-        Figure out which disk volume the CDR is installed on.
+        Figure out which CDR tier we're running on.
+
+        As a beneficial side effect, we also learn (and remember)
+        which drive volume the CDR is installed on.
         """
 
+        self.drive = None
         for drive in "DCEFGH":
-            if os.path.isdir("{}:/cdr".format(drive)):
-                return drive
+            path = "{}:/etc/cdrtier.rc".format(drive)
+            if os.path.isfile(path):
+                self.drive = drive
+                tier = open(path).read().strip()
+                self.logger.info("running on %s", tier)
+                return tier
+        self.logger.warning("unable to find CDR drive or tier")
         return None
 
     class Service:
@@ -351,6 +359,11 @@ class Control:
                         if os.path.exists(path):
                             shutil.rmtree(path)
                 self.copy(source, target)
+            if control.tier:
+                favicon = os.path.join(target, "favicon.ico")
+                tiericon = os.path.join(target,
+                                        "favicon-{}.ico".format(control.tier))
+                shutil.copy(tiericon, favicon)
             control.fix_permissions(target)
 
         def copy(self, what, where):
