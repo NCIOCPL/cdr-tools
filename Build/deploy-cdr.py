@@ -1,4 +1,4 @@
-#!/Python/python.exe
+#!D:/Python/python.exe
 
 """
 Deploy a CDR patch or release on a Windows CDR server.
@@ -85,6 +85,9 @@ class Control:
 
         As a side effect, create a test destination directory if
         appropriate.
+
+        Pause for a few seconds after stopping the services to let
+        the dust settle.
         """
 
         if self.opts.test:
@@ -100,6 +103,7 @@ class Control:
                     self.logger.warning("%s already stopped", service.name)
                 else:
                     service.stop()
+            time.sleep(5)
 
     def start_services(self):
         """
@@ -156,8 +160,9 @@ class Control:
         logger.addHandler(file_handler)
         logger.info("deploying from %s", self.opts.source)
         if self.opts.test:
-            logger.info("performing test deployment to %s", self.opts.test)
-        logger.info("logging to %s", self.opts.logpath)
+            target = self.opts.test.replace("\\", "/")
+            logger.info("performing test deployment to %s", target)
+        logger.info("logging to %s", self.opts.logpath.replace("\\", "/"))
         return logger
 
     def fix_permissions(self, target):
@@ -244,10 +249,25 @@ class Control:
             return result.output
 
         def running(self):
+            """
+            Ask the service manager whether the service is started.
+            """
+
             return "SERVICE_RUNNING" in self.control("status")
+
         def start(self):
+            """
+            Start the service and pause before continuing.
+            """
+
             self.control("start")
+            time.sleep(2)
+
         def stop(self):
+            """
+            Ask the service manager to stop the service.
+            """
+
             self.control("stop")
 
     class Directory:
@@ -372,6 +392,7 @@ class Control:
                 cls("Scheduler"),
                 cls("Glossifier"),
                 cls("Schemas"),
+                cls("Filters"),
                 cls("Build"),
                 cls("Bin"),
                 cls("ClientFiles"),
