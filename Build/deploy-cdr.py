@@ -267,11 +267,19 @@ class Control:
         def start(self):
             """
             Start the service and pause before continuing.
+
+            Had problems with `self.control("start")` running into
+            unexpected 'PENDING' output, so switched to NET START ....
             """
 
             if not self.running():
-                self.control("start")
-            time.sleep(2)
+                args = "NET", "START", self.name
+                result = Control.execute(args)
+                if result.code:
+                    command = " ".join(args)
+                    self.logger.error("%s: %s", command, result.output)
+                    sys.exit(1)
+                time.sleep(2)
 
         def stop(self):
             """
@@ -280,6 +288,7 @@ class Control:
 
             if self.running():
                 self.control("stop")
+                time.sleep(2)
 
     class Directory:
         """
