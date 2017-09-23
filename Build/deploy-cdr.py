@@ -159,6 +159,7 @@ class Control:
         logger.setLevel("INFO")
         logger.addHandler(stream_handler)
         logger.addHandler(file_handler)
+        logger.info("running on %s", self.tier)
         logger.info("deploying from %s", self.opts.source)
         if self.opts.test:
             target = self.opts.test.replace("\\", "/")
@@ -206,10 +207,8 @@ class Control:
             if os.path.isfile(path):
                 self.drive = drive
                 tier = open(path).read().strip()
-                self.logger.info("running on %s", tier)
                 return tier
-        self.logger.warning("unable to find CDR drive or tier")
-        return None
+        raise Exception("unable to find CDR drive or tier")
 
     class Service:
         """
@@ -269,7 +268,8 @@ class Control:
             Start the service and pause before continuing.
             """
 
-            self.control("start")
+            if not self.started():
+                self.control("start")
             time.sleep(2)
 
         def stop(self):
@@ -277,7 +277,8 @@ class Control:
             Ask the service manager to stop the service.
             """
 
-            self.control("stop")
+            if self.started():
+                self.control("stop")
 
     class Directory:
         """
