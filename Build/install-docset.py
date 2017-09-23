@@ -81,7 +81,8 @@ class DocumentSet:
             sys.exit(1)
         action = "comparing" if opts.test else "installing"
         doctype = self.DOCTYPE.lower()
-        self.logger.info("%s %ss from %s", action, doctype, opts.source)
+        self.logger.info("%s %ss", action, doctype)
+        self.logger.info("from %s", opts.source)
         changes = 0
         for name in os.listdir(self.opts.source):
             if name.endswith(".xml"):
