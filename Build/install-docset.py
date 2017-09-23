@@ -112,8 +112,8 @@ class DocumentSet:
         desc = "Install a fresh set of CDR filters or schemas"
         doctypes = "schema", "filter"
         parser = argparse.ArgumentParser(description=desc)
-        parser.add_argument("doctype", choices=doctypes)
         parser.add_argument("source", help="path location of document set")
+        parser.add_argument("doctype", choices=doctypes)
         parser.add_argument("--test", "-t", action="store_true",
                             help="don't store, just compare and report")
         opts = parser.parse_args()
