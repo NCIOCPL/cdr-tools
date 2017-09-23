@@ -44,5 +44,5 @@ REM ----------------------------------------------------------------------
 SET EXE=%1.exe
 CD /D %BASE%\branch\server\Server
 nmake DRV=%DRIVE%: %EXE% >>log 2>>err || ECHO Build %EXE% failed && EXIT /B 1
-COPY %EXE% %BIN%\ > NUL 2>&1 || ECHO Copy %EXE failed && EXIT /B 1
+COPY %EXE% %BIN%\ > NUL 2>&1 || ECHO Copy %EXE% failed && EXIT /B 1
 EXIT /B 0
