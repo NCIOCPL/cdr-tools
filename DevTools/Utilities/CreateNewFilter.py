@@ -1,69 +1,63 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
-#
-# Id: CreateNewFilter.py 12382 2014-02-25 21:06:33Z bkline
-#
-# Creates a new stub filter document in the CDR.  See description below
-# in createOptionParser.
+# Creates a new stub filter document in the CDR.
 #
 # OCECDR-3694
-#
+# OCECDR-4300
 #----------------------------------------------------------------------
-import cdr, optparse, sys, cgi
+import argparse
+import cgi
+import getpass
+import cdr
 
-#----------------------------------------------------------------------
-# Create an object which can describe the behavior of this command
-# and the options and arguments accepted/required.
-#----------------------------------------------------------------------
-def createOptionParser():
-    op = optparse.OptionParser(usage='%prog UID PWD "TITLE"',
-                               description="""\
-This program creates a new stub filter document in the CDR.  The program
-is intended to be run on the production server to get the CDR ID to be
-used for the filter's version control file name (though it can be run
-on lower tiers for testing).  A file is created in the current working
-directory containing the XML content for the stub document under the
-name CDR9999999999.xml (where 9999999999 is replaced by the actual
-10-digit version of the newly created document's CDR ID).  This document
-can be edited and installed in the version control system.
+def create_parser():
+    """
+    Create the object which collects the run-time arguments.
+    """
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
+This program creates a new stub filter document in the CDR.  The
+program runs on the production server to get the CDR ID to be used for
+the filter's version control file name.  A file is created in the
+current working directory containing the XML content for the stub
+document under the name CDR9999999999.xml (where 9999999999 is
+replaced by the actual 10-digit version of the newly created
+document's CDR ID).  This document can be edited and installed in the
+version control system.
 
 Enclose the title argument in double quote marks if it contains any
 embedded spaces (which it almost certainly will).  The filter title
 will be included in the document as an XML comment, and therefore
-cannot contain the substring --.""")
-    return op
+cannot contain the substring --.
 
-#----------------------------------------------------------------------
-# Find out if the response to a CDR client-server command indicates
-# failure.  If so, describe the problem and exit.  Note that this
-# function works properly even when passed a document object, because
-# cdr.getErrors() only looks for error messages if a string is passed
-# for the first argument.
-#----------------------------------------------------------------------
-def checkForProblems(response, optionsParser):
-    errors = cdr.getErrors(response, errorsExpected=False, asSequence=True)
-    if errors:
-        for error in errors:
-            sys.stderr.write("%s\n" % error)
-        optionsParser.error("aborting")
+SEE ALSO
+  `InstallFilter.py` (adding new filter to another tier)
+  `UpdateFilter.py` (modifying existing filter on any tier)
+  `ModifyFilterTitle.py` (changing filter title)""")
+    parser.add_argument("title")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--session")
+    group.add_argument("--user")
+    return parser
 
 def main():
-    op = createOptionParser()
-    (options, args) = op.parse_args()
-    if len(args) != 3:
-        op.print_help()
-        op.exit(2)
-    uid, pwd, title = args
-    title = unicode(title.strip(), "latin-1").encode("utf-8")
+    parser = create_parser()
+    opts = parser.parse_args()
+    title = unicode(opts.title.strip(), "latin-1").encode("utf-8")
     if not title:
-        sys.stderr.write("Empty title argument.\n")
-        op.print_help()
-        op.exit(2)
+        parser.error("empty title argument")
     if "--" in title:
-        sys.stderr.write("Filter title cannot contain --\n")
-        op.print_help()
-        op.exit(2)
-    session = cdr.login(uid, pwd)
-    checkForProblems(session, op)
+        parser.error("filter title cannot contain --")
+    if not opts.session:
+        password = getpass.getpass()
+        session = cdr.login(opts.user, password, "PROD")
+        error = cdr.checkErr(session)
+        if error:
+            parser.error(error)
+    else:
+        session = opts.session
     stub = """\
 <?xml version='1.0' encoding='utf-8'?>
 <!-- Filter title: %s -->
@@ -86,18 +80,21 @@ def main():
 
 </xsl:transform>
 """ % cgi.escape(title)
-    docObj = cdr.Doc(stub, 'Filter', { 'DocTitle': title }, encoding="utf-8")
-    doc = str(docObj)
-    cdrId = cdr.addDoc(session, doc=doc)
-    checkForProblems(cdrId, op)
-    response = cdr.unlock(session, cdrId)
-    checkForProblems(response, op)
-    name = cdrId + ".xml"
-    fp = open(name, "wb")
-    fp.write(stub)
-    fp.close()
+    doc = cdr.Doc(stub, 'Filter', { 'DocTitle': title }, encoding="utf-8")
+    cdr_id = cdr.addDoc(session, doc=str(doc), host="PROD")
+    error = cdr.checkErr(cdr_id)
+    if error:
+        parser.error(error)
+    response = cdr.unlock(session, cdr_id, host="PROD")
+    error = cdr.checkErr(response)
+    if error:
+        parser.error(error)
+    name = cdr_id + ".xml"
+    with open(name, "wb") as fp:
+        fp.write(stub)
     print "Created %s" % name
-    cdr.logout(session)
+    if not opts.session:
+        cdr.logout(session, "PROD")
 
 if __name__ == '__main__':
     main()
