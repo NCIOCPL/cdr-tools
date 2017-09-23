@@ -248,13 +248,14 @@ class Control:
               output of the command
             """
 
-            args = self.nssm, option, name
+            args = self.nssm, option, self.name
             result = Control.execute(args)
+            output = unicode(result.output, "utf-16").strip()
             if result.code:
                 command = " ".join(args)
-                self.logger.error("%s: %s", command, result.output)
+                self.logger.error("%s: %s", command, output)
                 sys.exit(1)
-            return result.output
+            return output
 
         def running(self):
             """
@@ -268,7 +269,7 @@ class Control:
             Start the service and pause before continuing.
             """
 
-            if not self.started():
+            if not self.running():
                 self.control("start")
             time.sleep(2)
 
@@ -277,7 +278,7 @@ class Control:
             Ask the service manager to stop the service.
             """
 
-            if self.started():
+            if self.running():
                 self.control("stop")
 
     class Directory:
