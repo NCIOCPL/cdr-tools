@@ -3,22 +3,6 @@
 This directory contains tools which CDR developers can run without
 needing to file a CBIIT ticket.
 
-## Scripts for working with individual CDR documents
-
- * `AddCdrDoc.cmd` - create a new CDR document from a disk file
- * `GetCdrDoc.cmd` - fetch current working version of CDR document
- * `GetCdrDocVersion.cmd` - fetch numbered version of CDR document
- * `CheckoutCdrDoc.py` - fetch and lock CDR document
- * `UnlockCdrDoc.py` - release the lock for a CDR document
- * `ReplaceCdrDoc.py` - store changes to a CDR doc from file (unversioned)
- * `VersionCdrDoc.cmd` - store changes to a CDR doc in an unpublised version
- * `ReplaceCdrPubDoc.py` - store changes to a CDR doc in a published version
- * `getPubProcCGdoc.py` - fetch filtered document sent to Cancer.gov
- * `valCdrDoc.py` - run validation checks against a CDR document
- * `valDocVersion.py` - validate a specific version of a CDR document
- * `showcdrdoc.py` - show a CDR document's XML in a web browser
- * `showdoc.bat` - display a CDR document with indenting
-
 ## Scripts for managing CDR Filters
 
 ### `CreateNewFilter.py`
@@ -65,6 +49,22 @@ This makes changing the title of a CDR filter something which needs
 to be done carefully. That's what this script does. _(Possible
 enhancement: add option to have the change made on all tiers at once.)_
 
+## Scripts for working with individual CDR documents
+
+ * `AddCdrDoc.cmd` - create a new CDR document from a disk file
+ * `GetCdrDoc.cmd` - fetch current working version of CDR document
+ * `GetCdrDocVersion.cmd` - fetch numbered version of CDR document
+ * `CheckoutCdrDoc.py` - fetch and lock CDR document
+ * `UnlockCdrDoc.py` - release the lock for a CDR document
+ * `ReplaceCdrDoc.py` - store changes to a CDR doc from file (unversioned)
+ * `VersionCdrDoc.cmd` - store changes to a CDR doc in an unpublised version
+ * `ReplaceCdrPubDoc.py` - store changes to a CDR doc in a published version
+ * `getPubProcCGdoc.py` - fetch filtered document sent to Cancer.gov
+ * `valCdrDoc.py` - run validation checks against a CDR document
+ * `valDocVersion.py` - validate a specific version of a CDR document
+ * `showcdrdoc.py` - show a CDR document's XML in a web browser
+ * `showdoc.bat` - display a CDR document with indenting
+
 ## Scripts for editing the CDR online help pages
 
  * `GetHelpDocForEditing.py` - fetch pretty-printed help page document
@@ -72,10 +72,10 @@ enhancement: add option to have the change made on all tiers at once.)_
 
 ## Scripts for extracting/replaying commands from the CDR command logs
 
- * `GetCdrCommands.py`
- * `RunCdrCommands.py`
+ * `GetCdrCommands.py` - capture a set of commands by date range
+ * `RunCdrCommands.py` - replay a set of CDR commands
 
-# XML/XSLT tools
+## XML/XSLT tools
 
  * `ValidateDoc2DTD.py` - validate CDR document against a DTD file
  * `xdiffxml.bat` - normalize and compare to XML documents
@@ -84,30 +84,29 @@ enhancement: add option to have the change made on all tiers at once.)_
  * `countNodes.py` - used for diagnosing overly-large imported documents
  * `indent.xml` - used by some of the tools in this group
 
-## Low-level commands for testing CDR client-server interface
-
- * `ListCdrActions.cmd`
- * `ListCdrGroups.cmd`
- * `ListCdrUsers.cmd`
- * `DoCdrCmd.cmd`
- * `FileCmd.cmd`
-
 ## Tools used when refreshing the DEV tier from production
- * `PullDevData.py`
- * `PushDevData.py`
- * `CheckDevData.py`
- * `RemoveProdGroups.py`
+ * `PullDevData.py` - capture things we want to preserve after the refresh
+ * `PushDevData.py` - restore things which were clobbered by the refresh
+ * `CheckDevData.py` - data comparison tool used following a refresh
+ * `RemoveProdGroups.py` - restores lower tier distribution lists after refresh
 
 ## Bulk processing utilities
- * `RevalidateDocs.py`
- * `ReindexAllDoctypes.py`
- * `ReindexByDocType.py`
- * `ReindexModsByDocType.py`
- * `UpdateTitleByDocType.py`
- * `MakePubVersions.py`
- * `MakePublishableVersions.py`
- * `SaveUnversionedChanges.py`
- * `UnlockDocsForUser.py`
+ * `RevalidateDocs.py` - revalidate CDR docs and (optionally) update the DB
+ * `ReindexAllDoctypes.py` - regenerate the CDR query term tables
+ * `ReindexByDocType.py` - more surgical tool than the previous one
+ * `ReindexModsByDocType.py` - optimized version of reindexing tool
+ * `UpdateTitleByDocType.py` - regenerate the all_docs.title column
+ * `MakePublishableVersions.py` - create publishable versions for specific docs
+ * `SaveUnversionedChanges.py` - capture unversioned changes (by doctype)
+ * `UnlockDocsForUser.py` - unlock all docs for a single (departed?) user
+
+## Low-level commands for testing CDR client-server interface
+
+ * `ListCdrActions.cmd` - display the server response for list of CDR actions
+ * `ListCdrGroups.cmd` - display the server response for list of CDR groups
+ * `ListCdrUsers.cmd` - display the server response for list of CDR users
+ * `DoCdrCmd.cmd` - wrap and send CDR XML command string to CDR server
+ * `FileCmd.cmd` - same thing for command pulled from a disk file
 
 ## Miscellaneous tools
  * `DiffSchemas.py` - compare schemas in file system with CDR repository
