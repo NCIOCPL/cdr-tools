@@ -1,6 +1,5 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
-#
-# $Id$
 #
 # Script for installing a new version of a CDR publishing control document.
 #

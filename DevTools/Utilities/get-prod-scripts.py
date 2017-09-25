@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 # Tool for pulling scripts from a production directory down to the
 # local file system.  Doesn't recurse.  Handles binary files.

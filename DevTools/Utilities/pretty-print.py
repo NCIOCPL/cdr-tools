@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Use lxml to format an XML document.
+"""
+
 import lxml.etree as etree
 import sys
 

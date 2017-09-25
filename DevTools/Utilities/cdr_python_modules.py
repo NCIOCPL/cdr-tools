@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 #
 # Finds all of the import statements in all of the Python scripts in

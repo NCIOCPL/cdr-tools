@@ -1,3 +1,7 @@
+@REM ==================================================================
+@REM Wrap and send CDR XML command stored in a disk file.
+@REM ==================================================================
+
 @echo off
 if %3. == . goto usage
 @python -c "import cdr; print cdr.sendCommands(cdr.wrapCommand(open('%3', 'r').read(), ('%1','%2')))"

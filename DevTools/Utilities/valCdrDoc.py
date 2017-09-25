@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ##
 # Validate a single document against current rules.
 #

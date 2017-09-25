@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------
 # Re-index all documents of some document type for which the document
 # was saved in the last N days, where N is passed on the command line.

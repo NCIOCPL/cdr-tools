@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Report counts for unique values in cdr:id attributes in a CDR document.
+"""
+
 import cdr, cdrdb, sys, xml.dom.minidom
 
 if len(sys.argv) < 2:

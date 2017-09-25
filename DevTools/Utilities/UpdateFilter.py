@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 #
 # Script for installing a new version of an XSL/T filter in the CDR.

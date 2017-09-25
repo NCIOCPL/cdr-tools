@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # ---------------------------------------------------------------------
 # File Name: makePub.py
 #            ==========
@@ -6,14 +7,6 @@
 # changed since the last document version had been saved.
 #
 # Input:  userid, passwd
-#
-# $ID: $
-# 
-# $Log: not supported by cvs2svn $
-# Revision 1.1  2007/03/19 18:15:44  venglisc
-# Initial version of script to make a bunch of documents publishable that have
-# changed but no publishable version was created.
-#
 # ---------------------------------------------------------------------
 import sys, cdr, cdrdb
 

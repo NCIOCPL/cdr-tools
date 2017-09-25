@@ -1,6 +1,5 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
-#
-# $Id: $
 #
 # After a DB refresh all of the PROD group notifications apply to all
 # of the lower tiers.  We don't really want to send out notification

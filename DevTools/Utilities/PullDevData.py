@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 #
 # Pulls control documents and tables which need to be preserved from the

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 #
 # Extracts command sets from the CDR command log into a form which can

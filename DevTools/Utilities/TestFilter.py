@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ###########################################################
 # Test filter a CDR doc from the command line.
 #

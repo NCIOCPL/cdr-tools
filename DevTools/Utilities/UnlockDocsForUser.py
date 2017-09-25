@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 #
 # Unlocks all documents checked out by a user.

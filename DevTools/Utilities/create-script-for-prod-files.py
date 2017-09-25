@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 # Tool for generating script to drive get-prod-scripts.py.
 #

@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Store changes to a DOC document from a copy in the file system.
+"""
+
 import cdr
 import sys
 

@@ -1,8 +1,9 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 #
 # Command-line script to list filters by name with file names based
-# on Bach CDR IDs.  Useful for finding a CDR filter in a Subversion
-# sandbox.
+# on PROD CDR IDs.  Useful for finding a CDR filter in a git working
+# directory.
 #
 #----------------------------------------------------------------------
 import cdrdb, cdr

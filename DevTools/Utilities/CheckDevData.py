@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 # Data comparison tool used when refreshing CDR DEV from PROD.
 # JIRA::OCECDR-3733
