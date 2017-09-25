@@ -1,7 +1,7 @@
 @echo off
 if .%1. == .. goto usage
 setlocal
-for /F %%i in ("%0") do SET XSLT=%%~di%%~piindent.xml
+for /F %%i in ("%0") do SET XSLT=indent.xml
 echo %XSLT%
 sabcmd %XSLT% %1
 goto done
