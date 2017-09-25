@@ -26,8 +26,8 @@ finding a filter whose title you know in a git working directory.
 ### `UpdateFilter.py`
 
 This script stores changes to an existing filter on the current tier.
-Needs to be modified so that the target tier can be specified on the
-command line.
+_Needs to be modified so that the target tier can be specified on the
+command line._
 
 ### `TestFilter.py`
 
