@@ -1,6 +1,4 @@
 /*
- * $Id: DummyWebServer.cpp,v 1.6 2008-01-07 23:05:54 bkline Exp $
- *
  * Test program to catch and log HTTP requests.  This is a very crude
  * implementation: everything is handled in a single thread, and we
  * assume that the headers contain a correct Content-length header
@@ -12,23 +10,6 @@
  *
  * Non-Microsoft:
  *     g++ -o DummyWebServer DummyWebServer.cpp
- *
- * $Log: not supported by cvs2svn $
- * Revision 1.5  2008/01/07 17:07:12  bkline
- * Make sure we log headers even if an exception is thrown because
- * of an incomplete header line.
- *
- * Revision 1.4  2008/01/07 16:31:49  bkline
- * Made select() code portable.
- *
- * Revision 1.3  2008/01/07 15:58:47  bkline
- * Allowed capture of incomplete payload.
- *
- * Revision 1.2  2008/01/05 05:14:29  bkline
- * Cross-platform version.
- *
- * Revision 1.1  2008/01/05 00:45:21  bkline
- * Tool for examining requests from HTTP clients.
  */
 
 // Windows-specific cruft.
