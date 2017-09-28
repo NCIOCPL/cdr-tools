@@ -1,7 +1,7 @@
 @ECHO OFF
 @REM ======================================================================
 @REM Upgrade Python from 2.7.10 to 2.7.13 (OCECDR-4234)
-CALL :progress Python upgrade will take about 25 minutes ...
+CALL :progress Python upgrade should take under a half hour ...
 @REM ======================================================================
 SETLOCAL
 IF EXIST D:\cdr\lib\Python\cdr.py (
@@ -11,7 +11,7 @@ IF EXIST D:\cdr\lib\Python\cdr.py (
     SET DRIVE=C
     C:
 )
-IF EXIST %DRIVE%:\tmp\python-upgrade\upgrade.bat (
+IF EXIST %DRIVE%:\tmp\python-upgrade\upgrade-python.bat (
     SET UPGRADE_DIR=%DRIVE%:\tmp\python-upgrade
 ) ELSE (
     SET UPGRADE_DIR=\\nciis-p401.nci.nih.gov\cdr_deployments\python-upgrade
@@ -36,7 +36,7 @@ NET STOP "CDR Scheduler" >>%LOG% 2>>%ERR%
 NET STOP Cdr >>%LOG% 2>>%ERR%
 
 @REM ======================================================================
-CALL :progress Backing up old Python directory (well under a minute) ...
+CALL :progress Backing up old Python directory (under a minute) ...
 @REM ======================================================================
 CHDIR \
 python %BACKUP% %DRIVE% 2.7.10 || EXIT /B 1
@@ -64,7 +64,7 @@ CALL :progress Installing Python 2.7.13 (about 15 minutes) ...
 START /WAIT %UPGRADE_DIR%\%PY2713% %INSTOPTS%
 
 @REM ======================================================================
-CALL :progress Installing third-party modules (about 3 minutes) ...
+CALL :progress Installing third-party modules (about 5 minutes) ...
 @REM ======================================================================
 %PIP% pip==9.0.1 >>%LOG% 2>>%ERR%
 %PIP% Pygments==2.2.0 certifi==2017.7.27.1 chardet==3.0.4 colorama==0.3.9 httpie==0.9.9 requests==2.18.4 urllib3==1.22 >>%LOG% 2>>%ERR%
