@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -z "$2" ]
+then
+    echo "usage: get-commit-urls REPO-NAME PATTERN"
+    exit 1
+fi
+REPO=$1
+PATTERN=$2
+BASE=https://github.com/NCIOCPL/$REPO/commit
+git log --reverse --pretty=format:"$BASE/%h" --grep $PATTERN
