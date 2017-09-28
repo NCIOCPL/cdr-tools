@@ -11,7 +11,7 @@ CALL :progress Remove 2.7.13
 start /wait MsiExec.exe /qr /log \tmp\u.log /x {4E514478-E395-496B-AB86-A752E9CE3810}
 CALL :progress Install 2.7.10
 rmdir /q /s \Python
-start /wait msiexec /I ActivePython-2.7.10.12-win64-x64.msi INSTALLDIR=C:\Python /qr
+start /wait msiexec /I ActivePython-2.7.10.12-win64-x64.msi INSTALLDIR=D:\Python /qr
 call :progress Done
 exit /B 0
 
