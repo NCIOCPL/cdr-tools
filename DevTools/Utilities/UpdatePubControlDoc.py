@@ -37,14 +37,14 @@ server.
         Sample comment:   249320d (OCECDR-4285): New mailer type""")
     parser.add_argument("filename")
     parser.add_argument("--publishable", "-p", action="store_true")
-    parser.add_argument("--tier", "-t", default=cdr.DEFAULT_HOST)
+    parser.add_argument("--tier", "-t")
     parser.add_argument("--comment", "-c")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--session", "-s")
     group.add_argument("--user", "-u")
     return parser
 
-def get_doc_id(path, host):
+def get_doc_id(path, tier):
     """
     Extract the document title from the filename and look up the CDR
     document ID which matches the title.
@@ -56,7 +56,7 @@ def get_doc_id(path, host):
     title = basename[:-4]
     doctype = "PublishingSystem"
     query = 'CdrCtl/Title="{}" and CdrCtl/DocType="{}"'.format(title, doctype)
-    result = cdr.search("guest", query, host=host)
+    result = cdr.search("guest", query, tier=tier)
     if not result:
         raise Exception(u"Control document %r not found" % title)
     if len(result) > 1:
@@ -110,7 +110,7 @@ def main():
         session = opts.session
     else:
         password = getpass.getpass()
-        session = cdr.login(opts.user, password, host=opts.tier)
+        session = cdr.login(opts.user, password, tier=opts.tier)
         error_message = cdr.checkErr(session)
         if error_message:
             parser.error(error_message)
@@ -118,7 +118,7 @@ def main():
     #------------------------------------------------------------------
     # 5. Check out the document from the target CDR server.
     #------------------------------------------------------------------
-    args = dict(checkout="Y", getObject=True, host=opts.tier)
+    args = dict(checkout="Y", getObject=True, tier=opts.tier)
     doc = cdr.getDoc(session, doc_id, **args)
     error_message = cdr.checkErr(doc)
     if error_message:
@@ -136,7 +136,7 @@ def main():
         ver="Y",
         val="Y",
         verPublishable=pub,
-        host=opts.tier,
+        tier=opts.tier,
         showWarnings=True
     )
     doc_id, warnings = cdr.repDoc(session, **args)
@@ -150,14 +150,14 @@ def main():
     #------------------------------------------------------------------
     # 7. Report the number of the latest version.
     #------------------------------------------------------------------
-    versions = cdr.lastVersions(session, doc_id, host=opts.tier)
+    versions = cdr.lastVersions(session, doc_id, tier=opts.tier)
     print("Saved {} as version {}".format(doc_id, versions[0]))
 
     #------------------------------------------------------------------
     # 8. Clean up.
     #------------------------------------------------------------------
     if not opts.session:
-        cdr.logout(session, host=opts.tier)
+        cdr.logout(session, tier=opts.tier)
 
 if __name__ == "__main__":
     main()

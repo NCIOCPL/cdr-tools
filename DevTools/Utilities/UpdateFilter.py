@@ -46,7 +46,7 @@ SEE ALSO
     group.add_argument("--user", "-u")
     return parser
 
-def get_doc_id(xml, host):
+def get_doc_id(xml, tier):
     """
     Extract the filter title from the document, and look up the CDR
     document ID which matches the title.
@@ -59,7 +59,7 @@ def get_doc_id(xml, host):
     if not title:
         raise Exception("Filter title in document comment is empty")
     query = 'CdrCtl/Title="{}" and CdrCtl/DocType="Filter"'.format(title)
-    result = cdr.search("guest", query, host=host)
+    result = cdr.search("guest", query, tier=tier)
     if not result:
         raise Exception(u"Filter %r not found" % title)
     if len(result) > 1:
@@ -113,7 +113,7 @@ def main():
         session = opts.session
     else:
         password = getpass.getpass()
-        session = cdr.login(opts.user, password, host=opts.tier)
+        session = cdr.login(opts.user, password, tier=opts.tier)
         error_message = cdr.checkErr(session)
         if error_message:
             parser.error(error_message)
@@ -121,7 +121,7 @@ def main():
     #------------------------------------------------------------------
     # 5. Check out the document from the target CDR server.
     #------------------------------------------------------------------
-    args = dict(checkout="Y", getObject=True, host=opts.tier)
+    args = dict(checkout="Y", getObject=True, tier=opts.tier)
     doc = cdr.getDoc(session, doc_id, **args)
     error_message = cdr.checkErr(doc)
     if error_message:
@@ -139,7 +139,7 @@ def main():
         comment=comment,
         ver="Y",
         verPublishable=pub,
-        host=opts.tier
+        tier=opts.tier
     )
     doc_id = cdr.repDoc(session, **args)
     error_message = cdr.checkErr(doc_id)
@@ -149,14 +149,14 @@ def main():
     #------------------------------------------------------------------
     # 7. Report the number of the latest version.
     #------------------------------------------------------------------
-    versions = cdr.lastVersions(session, doc_id, host=opts.tier)
+    versions = cdr.lastVersions(session, doc_id, tier=opts.tier)
     print("Saved {} as version {}".format(doc_id, versions[0]))
 
     #------------------------------------------------------------------
     # 8. Clean up.
     #------------------------------------------------------------------
     if not opts.session:
-        cdr.logout(session, host=opts.tier)
+        cdr.logout(session, tier=opts.tier)
 
 if __name__ == "__main__":
     main()
