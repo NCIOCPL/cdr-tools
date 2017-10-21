@@ -287,7 +287,15 @@ class Control:
             """
 
             if self.running():
-                self.control("stop")
+                args = "NET", "STOP", self.name
+                result = Control.execute(args)
+                if result.code:
+                    command = " ".join(args)
+                    self.logger.error("%s: %s", command, result.output)
+                    sys.exit(1)
+                if self.name.upper() == "CDR":
+                    args = r"d:\cdr\bin\ShutdownCdr.exe", "bkline", ""
+                    Control.execute(args)
                 time.sleep(2)
 
     class Directory:
