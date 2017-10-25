@@ -224,9 +224,9 @@ for rowDocId, rowDocType in rows:
 
     # Validate next document
     try:
-        resp = cdr.valDoc (session, rowDocType, rowDocId,
-                           valLinks = valLinks, valSchema = valSchema,
-                           validateOnly = valOnly, host = host, port = port)
+        resp = cdr.valDoc (session, rowDocType, docId=rowDocId,
+                           valLinks=valLinks, valSchema=valSchema,
+                           validateOnly=valOnly, host=host, port=port)
     except StandardError, info:
         log.write("Stopped on error, doctype %s doc=%d: %s" % \
                    (rowDocType, rowDocId, str(info)), stderr=True)
