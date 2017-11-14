@@ -165,9 +165,9 @@ class Job:
         comment = row["comment"]
         schema_id = row["xml_schema"]
         schema = self._old.docs["Schema"].map[schema_id]
-        opts = {"type": "xml", "format": "Y", "schema": schema,
-                "comment": comment}
-        info = cdr.dtinfo(name, **opts)
+        opts = {"type": name, "format": "xml", "versioning": "Y",
+                "schema": schema, "comment": comment}
+        info = cdr.dtinfo(**opts)
         info = cdr.addDoctype(self._session, info)
         if info.error:
             self._log.write("unable to create doctype %s: %s" %
