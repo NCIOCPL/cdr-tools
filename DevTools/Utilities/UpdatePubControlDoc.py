@@ -1,6 +1,5 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
-#
-# $Id$
 #
 # Script for installing a new version of a CDR publishing control document.
 #
@@ -8,29 +7,21 @@
 #   UpdatePubControlDoc.py -p Y -c OCECDR-99999 elmer vewy-secwet Primary.xml
 #
 #----------------------------------------------------------------------
-import cdr, optparse, sys, cdrdb, re, os
+import argparse
+import cgi
+import getpass
+import os
+import re
+import cdr
 
-#----------------------------------------------------------------------
-# Find out if the response to a CDR client-server command indicates
-# failure.  If so, describe the problem and exit.  Note that this
-# function works properly even when passed a document object, because
-# cdr.getErrors() only looks for error messages if a string is passed
-# for the first argument.
-#----------------------------------------------------------------------
-def checkForProblems(response, optionsParser):
-    errors = cdr.getErrors(response, errorsExpected = False, asSequence = True)
-    if errors:
-        for error in errors:
-            sys.stderr.write("%s\n" % error)
-        optionsParser.error("aborting")
+def create_parser():
+    """
+    Create the object which collects the run-time arguments.
+    """
 
-#----------------------------------------------------------------------
-# Create an object which can describe the behavior of this command
-# and the options and arguments accepted/required.
-#----------------------------------------------------------------------
-def createOptionParser():
-    op = optparse.OptionParser(usage="%prog [options] UID PWD FILE",
-                               description="""\
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
 This program stores a new version of a publishing control on the CDR server.
 
 The new version of the document is obtained by reading the file named on
@@ -43,127 +34,130 @@ document in the comment option as well as the JIRA ticket number,
 particularly when storing a new version of the document on the production
 server.
 
-   Sample comment:   R54321 (JIRA::OCECDR-9999): New mailer type""")
+        Sample comment:   249320d (OCECDR-4285): New mailer type""")
+    parser.add_argument("filename")
+    parser.add_argument("--publishable", "-p", action="store_true")
+    parser.add_argument("--tier", "-t", default=cdr.DEFAULT_HOST)
+    parser.add_argument("--comment", "-c")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--session", "-s")
+    group.add_argument("--user", "-u")
+    return parser
 
-    op.add_option("-v", "--version", default="Y", help="create version [Y/N]")
-    op.add_option("-p", "--publishable", default="N",
-                  help="create pub version [Y/N]")
-    op.add_option("-c", "--comment", help="description of new version",
-                  default="")
-    return op
+def get_doc_id(path, host):
+    """
+    Extract the document title from the filename and look up the CDR
+    document ID which matches the title.
+    """
 
-#----------------------------------------------------------------------
-# Extract the document title from the filename, and look up the CDR
-# document ID which matches the title.
-#----------------------------------------------------------------------
-def getDocId(path):
-
-    # Extract the document title.
     basename = os.path.basename(path)
     if not basename.lower().endswith(".xml"):
-        raise Exception("unexpected filename pattern %s" % repr(path))
+        raise Exception("unexpected filename pattern %r" % basename)
     title = basename[:-4]
-    query = cdrdb.Query("document d", "d.id")
-    query.join("doc_type t", "t.id = d.doc_type")
-    query.where("t.name = 'PublishingSystem'")
-    query.where(query.Condition("d.title", title))
-    rows = query.execute().fetchall()
-    if not rows:
-        raise Exception(u"Control document %s not found" % repr(title))
-    if len(rows) > 1:
-        raise Exception(u"Ambiguous title %s" % repr(title))
-    return rows[0][0]
+    doctype = "PublishingSystem"
+    query = 'CdrCtl/Title="{}" and CdrCtl/DocType="{}"'.format(title, doctype)
+    result = cdr.search("guest", query, host=host)
+    if not result:
+        raise Exception(u"Control document %r not found" % title)
+    if len(result) > 1:
+        raise Exception(u"Ambiguous title %r" % title)
+    return result[0].docId
 
-#----------------------------------------------------------------------
-# Store the new version of the control document.  Processing steps:
-#
-#  1. Parse the command-line options and arguments.
-#  2. Load the new version of the control document from the file system.
-#  3. Find the CDR ID which matches the control document title
-#  4. Log into the CDR on the target server.
-#  5. Check out the document from the target CDR server.
-#  6. Store the new version on the target CDR server.
-#  7. Report the number of the new version.
-#
-#----------------------------------------------------------------------
 def main():
+    """
+    Store the new version of the filter.  Processing steps:
+
+      1. Parse the command-line options and arguments.
+      2. Load the new version of the control document from the file system.
+      3. Find the CDR ID which matches the control document title
+      4. Log into the CDR on the target server.
+      5. Check out the document from the target CDR server.
+      6. Store the new version on the target CDR server.
+      7. Report the number of the new version.
+      8. Clean up.
+    """
 
     #------------------------------------------------------------------
     # 1. Parse the command-line options and arguments.
     #------------------------------------------------------------------
-    op = createOptionParser()
-    (options, args) = op.parse_args()
-    if len(args) != 3:
-        op.error("incorrect number of arguments")
-    uid, pwd, filename = args
-    if not options.publishable:
-        options.publishable = 'N'
-    elif options.publishable == 'Y':
-        options.version = 'Y'
+    parser = create_parser()
+    opts = parser.parse_args()
+    pub = "Y" if opts.publishable else "N"
 
     # If no comment is specified the last comment used (from the
     # all_docs table) would be stored.
     # Setting the comment to something to overwrite the last comment
     # -----------------------------------------------------------------
-    if not options.comment:
-        options.comment = 'Replaced w/o user comment'
+    comment = opts.comment or "Replaced w/o user comment"
 
     #------------------------------------------------------------------
     # 2. Load the new version of the control document from the file system.
     #------------------------------------------------------------------
-    fp = open(filename, 'r')
-    docXml = fp.read()
-    fp.close()
-    if u']]>' in docXml:
-        op.error("CdrDoc wrapper must be stripped from the file")
+    with open(opts.filename) as fp:
+        xml = fp.read()
+    if "]]>" in xml:
+        parser.error("CdrDoc wrapper must be stripped from the file")
 
     #------------------------------------------------------------------
     # 3. Find out what the control document's document ID is.
     #------------------------------------------------------------------
-    docId = getDocId(filename)
+    doc_id = get_doc_id(opts.filename, opts.tier)
 
     #------------------------------------------------------------------
     # 4. Log into the CDR on the target server.
     #------------------------------------------------------------------
-    session = cdr.login(uid, pwd)
-    checkForProblems(session, op)
+    if opts.session:
+        session = opts.session
+    else:
+        password = getpass.getpass()
+        session = cdr.login(opts.user, password, host=opts.tier)
+        error_message = cdr.checkErr(session)
+        if error_message:
+            parser.error(error_message)
 
     #------------------------------------------------------------------
     # 5. Check out the document from the target CDR server.
     #------------------------------------------------------------------
-    cdrId = "CDR%010d" % docId
-    docObj = cdr.getDoc(session, cdrId, checkout='Y', getObject=True)
-    checkForProblems(docObj, op)
+    args = dict(checkout="Y", getObject=True, host=opts.tier)
+    doc = cdr.getDoc(session, doc_id, **args)
+    error_message = cdr.checkErr(doc)
+    if error_message:
+        parser.error(error_message)
 
     #------------------------------------------------------------------
     # 6. Store the new version on the target CDR server.
     #------------------------------------------------------------------
-    docObj.xml = docXml
-    print "REQUESTED OPTIONS:",
-    print 'Version: %s, Make Publishable: %s' % (options.version,
-                                                 options.publishable)
-    cdrId, warnings = cdr.repDoc(session, doc=str(docObj),
-                                 checkIn="Y", val="Y",
-                                 reason=options.comment,
-                                 comment=options.comment,
-                                 ver=options.version,
-                                 verPublishable=options.publishable,
-                                 showWarnings=True)
+    doc.xml = xml
+    args = dict(
+        doc=str(doc),
+        checkIn="Y",
+        reason=comment,
+        comment=comment,
+        ver="Y",
+        val="Y",
+        verPublishable=pub,
+        host=opts.tier,
+        showWarnings=True
+    )
+    doc_id, warnings = cdr.repDoc(session, **args)
     if warnings:
-        print cdrId and "WARNINGS" or "ERRORS"
+        print(doc_id and "WARNINGS" or "ERRORS")
         for error in cdr.getErrors(warnings, asSequence=True):
-            print " -->", error
-    if not cdrId:
+            print(" -->", error)
+    if not doc_id:
         print "aborting with failure"
 
     #------------------------------------------------------------------
     # 7. Report the number of the latest version.
     #------------------------------------------------------------------
-    if options.version == "N":
-        print "CWD for %s updated" % cdrId
-    else:
-        versions = cdr.lastVersions(session, cdrId)
-        print "Latest version of %s is %d" % (cdrId, versions[0])
+    versions = cdr.lastVersions(session, doc_id, host=opts.tier)
+    print("Saved {} as version {}".format(doc_id, versions[0]))
 
-if __name__ == '__main__':
+    #------------------------------------------------------------------
+    # 8. Clean up.
+    #------------------------------------------------------------------
+    if not opts.session:
+        cdr.logout(session, host=opts.tier)
+
+if __name__ == "__main__":
     main()

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 #
 # Compare schemas in working sandbox with those in the CDR.
@@ -21,8 +22,6 @@ args = sys.argv[1:] or ["*.xml"]
 for arg in args:
     for name in glob.glob(arg):
         baseName = os.path.basename(name)
-        if not quiet:
-            print "local file: %s" % name
         try:
             localDoc = open(name).read().replace("\r", "").splitlines(True)
         except Exception, e:
@@ -35,13 +34,13 @@ for arg in args:
         else:
             for result in results:
                 if not quiet:
-                    print "comparing document %s" % result.docId
+                    print "comparing %s to %s" % (result.docId, name)
                 doc = cdr.getDoc(session, result.docId, getObject = True)
                 if type(doc) in (str, unicode):
                     print "... getDoc(%s): %s" % (result.docId, doc)
                 else:
                     cdrDoc = doc.xml.replace("\r", "").splitlines(True)
-                    diffSeq = differ.compare(cdrDoc, localDoc)
+                    diffSeq = differ.compare(localDoc, cdrDoc)
                     diff = []
                     for line in diffSeq:
                         if line[0] != ' ':
@@ -52,10 +51,10 @@ for arg in args:
                     # from the schema when it is stored in the CDR
                     # XXX Find out where this happens and think about whether
                     #     it's appropriate.
-                    if diff.endswith("- \n"):
+                    if diff.endswith("+ \n"):
                         diff = diff[:-3]
                     if quiet:
                         if diff:
                             print "%s does not match %s" % (result.docId, name)
-                    else:
+                    elif diff.strip():
                         print diff

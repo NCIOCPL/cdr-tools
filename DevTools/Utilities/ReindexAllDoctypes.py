@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Re-index all documents in one of the CDR databases.
 #
 # Reports to terminal every 100 docs, and reports total docs to be

@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Fetch pretty-printed CDR online help page document.
+"""
+
 import cdr
 import lxml.etree as etree
 import os
@@ -5,7 +10,6 @@ import sys
 
 def usage():
     print "usage: GetHelpDocForEditing.py CDRID"
-    print "   or: GetHelpDocForEditing.py CDRID"
     print " e.g.: GetHelpDocForEditing.py 123456"
     sys.exit(1)
 

@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Store changes to a CDR document in a published version (from a disk file).
+"""
+
 import cdr
 import sys
 

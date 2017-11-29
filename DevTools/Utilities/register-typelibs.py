@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 # Register typelibs needed by CDR. Do this after upgrade of Python.
 # JIRA::OCECDR-4114

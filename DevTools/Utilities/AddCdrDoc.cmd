@@ -1,3 +1,7 @@
+@REM ==================================================================
+@REM Create a new CDR document from a disk file
+@REM ==================================================================
+
 @echo off
 if %3. == . goto usage
 @python -c "import cdr; print cdr.addDoc(('%1','%~2'), file='%3')"

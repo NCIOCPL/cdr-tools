@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #----------------------------------------------------------------------
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.

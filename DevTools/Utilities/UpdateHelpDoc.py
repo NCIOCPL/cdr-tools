@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Lock a CDR help page document and replace it from a disk file copy.
+"""
+
 import cdr
 import sys
 

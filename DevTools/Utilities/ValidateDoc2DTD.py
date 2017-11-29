@@ -1,10 +1,10 @@
-#!d:/python/python.exe
+#!/usr/bin/env python
 # *************************************************************
 # File Name:	validateDoc.py
 #               --------------
 # Script to validate a single document against a DTD.
 # By default, the document is being validated against the 
-# vendor DTD located on MAHLER:d:/cdr/licensee/pdq.dtd
+# vendor DTD located in d:/cdr/licensee/pdq.dtd
 # Alternatively, the path of the DTD can be provided.
 #
 # Input:  File name of XML document to be validated

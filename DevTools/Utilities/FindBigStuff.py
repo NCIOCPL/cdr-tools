@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Parse `du` output looking for big disk usage culprits.
+"""
+
 import sys
 # 100 megabytes (du uses kb)
 threshold = 100000

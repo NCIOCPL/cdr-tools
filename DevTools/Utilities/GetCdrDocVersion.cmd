@@ -1,3 +1,7 @@
+@REM ==================================================================
+@REM Fetch numbered version of a CDR document.
+@REM ==================================================================
+
 @echo off
 if %2. == . goto usage
 @python -c "import cdr; print cdr.getDoc('guest', '%1', version='%2')"

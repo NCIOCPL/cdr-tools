@@ -1,3 +1,7 @@
+@REM ==================================================================
+@REM Store changes to a CDR document in an unpublished version.
+@REM ==================================================================
+
 @echo off
 if %3. == . goto usage
 @python -c "import cdr; print cdr.repDoc(('%1','%2'), file='%3', checkIn='Y', ver='Y', val='Y')" 

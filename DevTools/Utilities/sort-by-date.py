@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Produce a date/time--sorted list of files in a directory tree.
+"""
+
 import datetime
 import os
 import sys

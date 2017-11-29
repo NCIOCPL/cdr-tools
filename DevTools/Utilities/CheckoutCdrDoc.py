@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Fetch and lock CDR document.
+"""
+
 import cdr
 import sys
 

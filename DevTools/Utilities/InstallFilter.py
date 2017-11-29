@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #--------------------------------------------------------------
 # Script for installing a filter on a development or test server that
 # has already been created on the production server but has not yet

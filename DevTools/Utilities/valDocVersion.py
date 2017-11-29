@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ##
 # Validate a previous version of a document against current rules.
 ##

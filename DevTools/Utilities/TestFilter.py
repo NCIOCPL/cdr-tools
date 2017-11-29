@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ###########################################################
 # Test filter a CDR doc from the command line.
 #
@@ -360,7 +361,7 @@ except ValueError:
         sys.exit(1)
 
 # Session id for access to server filtering
-session = cdr.login("CdrGuest", "never.0n-$undaY")
+session = "guest"
 
 # If tracing requested, filter the filter to add tracing
 if traceDbg:

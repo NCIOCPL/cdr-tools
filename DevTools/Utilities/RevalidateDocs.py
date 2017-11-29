@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ####################################################################
 # Validate some or all documents in the database.
 #
