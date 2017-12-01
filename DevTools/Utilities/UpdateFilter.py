@@ -58,8 +58,8 @@ def get_doc_id(xml, tier):
     title = match.group(1).strip()
     if not title:
         raise Exception("Filter title in document comment is empty")
-    query = 'CdrCtl/Title="{}" and CdrCtl/DocType="Filter"'.format(title)
-    result = cdr.search("guest", query, tier=tier)
+    query = "CdrCtl/Title = {}".format(title)
+    result = cdr.search("guest", query, doctypes=["Filter"], tier=tier)
     if not result:
         raise Exception(u"Filter %r not found" % title)
     if len(result) > 1:

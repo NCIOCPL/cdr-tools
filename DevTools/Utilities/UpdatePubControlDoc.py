@@ -55,8 +55,8 @@ def get_doc_id(path, tier):
         raise Exception("unexpected filename pattern %r" % basename)
     title = basename[:-4]
     doctype = "PublishingSystem"
-    query = 'CdrCtl/Title="{}" and CdrCtl/DocType="{}"'.format(title, doctype)
-    result = cdr.search("guest", query, tier=tier)
+    query = "CdrCtl/Title = {}".format(title)
+    result = cdr.search("guest", query, doctypes=[doctype], tier=tier)
     if not result:
         raise Exception(u"Control document %r not found" % title)
     if len(result) > 1:

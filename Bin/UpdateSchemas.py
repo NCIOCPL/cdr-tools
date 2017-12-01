@@ -62,8 +62,8 @@ for token in tokens:
     for schema in schemas:
         title = os.path.basename(schema)
         print "schema: %s" % schema
-        query = "CdrCtl/Title = '%s' and CdrCtl/DocType = 'schema'" % title
-        results = cdr.search(session, query)
+        query = "CdrCtl/Title = {}".format(title)
+        results = cdr.search(session, query, doctypes=["schema"])
         if isinstance(results, basestring):
             print results
             sys.exit(1)
