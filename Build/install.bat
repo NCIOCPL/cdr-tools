@@ -44,10 +44,10 @@ if not exist %BUILD%\Licensee\pdq.dtd (
 REM ----------------------------------------------------------------------
 REM Make sure we're actually running on a CDR server.
 REM ----------------------------------------------------------------------
-IF NOT EXIST D:\cdr\Bin\CdrServer.exe (
+IF NOT EXIST D:\etc\cdrapphosts.rc (
     ECHO .
     ECHO ********************   SCRIPT ERROR   *****************************
-    ECHO Unable to find CdrServer.exe binary. This does not appear to be
+    ECHO Unable to find CDR host names file. This does not appear to be
     ECHO running on a CDR Windows server. Please log into the CDR Windows
     ECHO app server and run this script there.
     ECHO ********************   SCRIPT ERROR   *****************************

@@ -218,7 +218,6 @@ class Directory:
     Object representing a directory to be build for a CDR release.
 
     Class values:
-      BUILD_BIN - script to build the Bin directory
       BUILD_CLI - script to build the ClientFiles directory
 
     Attributes:
@@ -227,7 +226,6 @@ class Directory:
                pulled down from GitHub
     """
 
-    BUILD_BIN = "build-cdr-bin.cmd"
     BUILD_CLI = "build-client-files.cmd"
 
     def __init__(self, name, source=None):
@@ -242,20 +240,18 @@ class Directory:
         """
         Install this directory's portion of the build.
 
-        The ClientFiles and Bin directories require more complicated
+        The ClientFiles directory requires more complicated
         compilation and post-processing tasks, so we farm out the work
-        to separate command shell batch files. We can handle all the
+        to a separate command shell batch file. We can handle all the
         other directories by simply making a recursive copy of the
         files from the set retrieved from GitHub.
+
         """
 
         drive = control.drive
         base = os.path.normpath(control.opts.base)
         script = None
-        if self.name == "Bin":
-            script = os.path.join(control.SCRIPTS, self.BUILD_BIN)
-            args = script, base, drive
-        elif self.name == "ClientFiles":
+        if self.name == "ClientFiles":
             script = os.path.join(control.SCRIPTS, self.BUILD_CLI)
             args = script, base, drive, control.stamp
         else:
@@ -298,7 +294,7 @@ class Directory:
             cls("Schemas", "server/Schemas"),
             cls("Filters", "server/Filters"),
             cls("Build", "tools/Build"),
-            cls("Bin"),
+            cls("Bin", "tools/Bin"),
             cls("ClientFiles"),
         ]
 

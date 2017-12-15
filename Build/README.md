@@ -15,10 +15,6 @@ The build scripts depend on having the following tools present:
  * a connection to the internet
  * a GitHub account, with membership in the NCIOCPL organization
  * a branch in each of the repositories from which the build will pull code
- * expat, Sablotron, and xerces
-
-See https://github.com/NCIOCPL/cdr-server/blob/master/Server/README.md
-for details about building the third-party libraries in that last bullet.
 
 ### Usage
 
