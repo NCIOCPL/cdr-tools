@@ -33,7 +33,7 @@ REM ----------------------------------------------------------------------
 if not exist %BUILD%\Licensee\pdq.dtd (
     ECHO .
     ECHO ********************   SCRIPT ERROR   *****************************
-    ECHO %RELEASE_DIR% is not reachable
+    ECHO %BUILD% is not reachable
     ECHO or does not contain the files for a complete CDR release.
     ECHO Please resolve this problem and try again.
     ECHO ********************   SCRIPT ERROR   *****************************
