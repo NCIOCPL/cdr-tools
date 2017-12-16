@@ -295,6 +295,7 @@ class Directory:
             cls("Filters", "server/Filters"),
             cls("Build", "tools/Build"),
             cls("Bin", "tools/Bin"),
+            cls("api", "server/api"),
             cls("ClientFiles"),
         ]
 
