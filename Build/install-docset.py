@@ -21,7 +21,8 @@ import re
 import subprocess
 import sys
 import cdr
-import cdrdb
+#import cdrdb
+import cdrapi.db as cdrdb
 
 class DocumentSet:
     """
@@ -51,7 +52,7 @@ class DocumentSet:
         self.logger = cdr.Logging.get_logger("deploy", console=True)
         self.opts = opts
         self.session = self.login()
-        self.cursor = cdrdb.connect("CdrGuest").cursor()
+        self.cursor = cdrdb.connect(name="CdrGuest").cursor()
 
     def login(self):
         """
@@ -160,10 +161,17 @@ class DocumentSet:
             query.where(query.Condition("t.name", self.doctype))
             query.where(query.Condition("d.title", self.title))
             rows = query.execute(self.control.cursor).fetchall()
+            if not rows:
+                return
             if len(rows) > 1:
                 self.logger.warning("multiple %r docs", self.title)
             else:
                 self.id, self.old = rows[0]
+            path = "D:/tmp/existing-filters/CDR{:010d}.xml".format(self.id)
+            with open(path, "wb") as fp:
+                fp.write(self.old.encode("utf-8"))
+                print(path)
+                
 
         def install(self):
             """

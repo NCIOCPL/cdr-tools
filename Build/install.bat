@@ -61,8 +61,8 @@ REM ----------------------------------------------------------------------
 CHDIR /D D:\
 COPY %BUILD%\..\etc\cdrpw d:\etc/y || ECHO Copy credentials failed && EXIT /B 1
 %PYTHON% %DEPLOY% %BUILD% || ECHO Deploy CDR failed && EXIT /B 1
-%PYTHON% %INSTALL_DOCSET% schema || ECHO Install schemas failed && EXIT /B 1
-%PYTHON% %INSTALL_DOCSET% filter || ECHO Install filters failed && EXIT /B 1
+%PYTHON% %INSTALL_DOCSET%\Schemas schema || ECHO Schemas failed && EXIT /B 1
+%PYTHON% %INSTALL_DOCSET%\Filters filter || ECHO Filters failed && EXIT /B 1
 
 REM ----------------------------------------------------------------------
 REM You might need to add commands here for things which aren't taken
