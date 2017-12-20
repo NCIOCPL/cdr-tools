@@ -21,7 +21,6 @@ import re
 import subprocess
 import sys
 import cdr
-#import cdrdb
 import cdrapi.db as cdrdb
 
 class DocumentSet:
@@ -211,6 +210,7 @@ class DocumentSet:
             opts = { "type": self.doctype, "encoding": "utf-8", "ctrl": ctrl }
             cdr_doc = cdr.Doc(self.xml, **opts)
             opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
+            opts["publishable"] = self.PUBLISHABLE
             cdr_id = cdr.addDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
             if error:
@@ -236,6 +236,7 @@ class DocumentSet:
             opts["id"] = cdr.normalize(self.id)
             cdr_doc = cdr.Doc(self.xml, **opts)
             opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
+            opts["publishable"] = self.PUBLISHABLE
             cdr_id = cdr.repDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
             if error:
@@ -260,6 +261,7 @@ class SchemaSet(DocumentSet):
     REFRESH_MANIFEST = cdr.WORK_DRIVE + r":\cdr\Build\RefreshManifest.py"
     ACCOUNT = "SchemaUpdater"
     DOCTYPE = "schema"
+    PUBLISHABLE = "N"
 
     def post_process(self):
         """
@@ -320,6 +322,7 @@ class FilterSet(DocumentSet):
 
     DOCTYPE = "Filter"
     ACCOUNT = "ReleaseInstaller"
+    PUBLISHABLE = "Y"
 
     class Document(DocumentSet.Document):
         """
