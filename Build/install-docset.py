@@ -210,7 +210,7 @@ class DocumentSet:
             opts = { "type": self.doctype, "encoding": "utf-8", "ctrl": ctrl }
             cdr_doc = cdr.Doc(self.xml, **opts)
             opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
-            opts["publishable"] = self.PUBLISHABLE
+            opts["publishable"] = self.control.PUBLISHABLE
             cdr_id = cdr.addDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
             if error:
@@ -236,7 +236,7 @@ class DocumentSet:
             opts["id"] = cdr.normalize(self.id)
             cdr_doc = cdr.Doc(self.xml, **opts)
             opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
-            opts["publishable"] = self.PUBLISHABLE
+            opts["publishable"] = self.control.PUBLISHABLE
             cdr_id = cdr.repDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
             if error:
