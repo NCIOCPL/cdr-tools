@@ -39,7 +39,7 @@ SEE ALSO
   `ModifyFilterTitle.py` (changing filter title)""")
     parser.add_argument("filename")
     parser.add_argument("--publishable", "-p", action="store_true")
-    parser.add_argument("--tier", "-t", default=cdr.DEFAULT_HOST)
+    parser.add_argument("--tier", "-t")
     parser.add_argument("--comment", "-c")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--session", "-s")
