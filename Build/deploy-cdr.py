@@ -431,6 +431,7 @@ class Control:
                 cls("Filters"),
                 cls("Build"),
                 cls("Bin"),
+                cls("api"),
                 cls("ClientFiles"),
             ]
             return dict([(d.name.lower(), d) for d in dirs])
