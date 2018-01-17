@@ -119,6 +119,8 @@ class Control:
         do it by hand. It is not necessarily safe to restart the services
         (particularly the scheduling service) in the wake of a broken
         deployment.
+
+        [Note: as of the Gauss release, the CDR service is no longer used.]
         """
 
         for service in self.services:
