@@ -166,11 +166,6 @@ class DocumentSet:
                 self.logger.warning("multiple %r docs", self.title)
             else:
                 self.id, self.old = rows[0]
-            path = "D:/tmp/existing-filters/CDR{:010d}.xml".format(self.id)
-            with open(path, "wb") as fp:
-                fp.write(self.old.encode("utf-8"))
-                print(path)
-                
 
         def install(self):
             """
