@@ -12,17 +12,17 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--tier", "-t")
 opts = parser.parse_args()
 query = cdrapi.db.Query("document", "id").order("id")
-cursor = cdrapi.db.connect(tier=opts.tier)
+cursor = cdrapi.db.connect(tier=opts.tier).cursor()
 doc_ids = [row[0] for row in query.execute(cursor).fetchall()]
 done = 0
 print "reindexing %d documents" % len(doc_ids)
 for doc_id in doc_ids:
     try:
-        cdr.reindex("guest", doc_id, tier=tier)
+        cdr.reindex("guest", doc_id, tier=opts.tier)
     except Exception as e:
         print("CDR{}: {}".format(doc_id, e))
-    count += 1
-    if count % 100 == 0:
+    done += 1
+    if done % 100 == 0:
         message = "Completed {} docs, last doc processed = CDR{}"
-        print(message.format(count, doc_id))
-print("Completed reindex of {} total documents".format(count))
+        print(message.format(done, doc_id))
+print("Completed reindex of {} total documents".format(done))
