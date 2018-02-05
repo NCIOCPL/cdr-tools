@@ -46,7 +46,7 @@ SEE ALSO
     group.add_argument("--user", "-u")
     return parser
 
-def get_doc_id(xml, tier):
+def get_doc_id(xml, tier, session):
     """
     Extract the filter title from the document, and look up the CDR
     document ID which matches the title.
@@ -59,7 +59,7 @@ def get_doc_id(xml, tier):
     if not title:
         raise Exception("Filter title in document comment is empty")
     query = "CdrCtl/Title = {}".format(title)
-    result = cdr.search("guest", query, doctypes=["Filter"], tier=tier)
+    result = cdr.search(session, query, doctypes=["Filter"], tier=tier)
     if not result:
         raise Exception(u"Filter %r not found" % title)
     if len(result) > 1:
@@ -72,8 +72,8 @@ def main():
 
       1. Parse the command-line options and arguments.
       2. Load the new version of the filter from the file system.
-      3. Find the CDR ID which matches the filter title
-      4. Log into the CDR on the target server.
+      3. Log into the CDR on the target server.
+      4. Find the CDR ID which matches the filter title
       5. Check out the document from the target CDR server.
       6. Store the new version on the target CDR server.
       7. Report the number of the new version.
@@ -102,12 +102,7 @@ def main():
         parser.error("CdrDoc wrapper must be stripped from the file")
 
     #------------------------------------------------------------------
-    # 3. Find out what the filter's document ID is.
-    #------------------------------------------------------------------
-    doc_id = get_doc_id(xml, opts.tier)
-
-    #------------------------------------------------------------------
-    # 4. Log into the CDR on the target server.
+    # 3. Log into the CDR on the target server.
     #------------------------------------------------------------------
     if opts.session:
         session = opts.session
@@ -117,6 +112,11 @@ def main():
         error_message = cdr.checkErr(session)
         if error_message:
             parser.error(error_message)
+
+    #------------------------------------------------------------------
+    # 4. Find out what the filter's document ID is.
+    #------------------------------------------------------------------
+    doc_id = get_doc_id(xml, opts.tier, session)
 
     #------------------------------------------------------------------
     # 5. Check out the document from the target CDR server.
