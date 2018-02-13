@@ -76,19 +76,17 @@ class DocumentSet:
         Install the documents and perform any necessary postprocessing.
         """
 
-        directory = "{}s".format(self.DOCTYPE.capitalize())
-        path = os.path.join(self.opts.source, directory)
-        if not os.path.isdir(path):
-            self.logger.error("%s not found", path)
+        if not os.path.isdir(opts.source):
+            self.logger.error("%s not found", opts.source)
             sys.exit(1)
         action = "comparing" if opts.test else "installing"
         doctype = self.DOCTYPE.lower()
         self.logger.info("%s %ss", action, doctype)
-        self.logger.info("from %s", path)
+        self.logger.info("from %s", opts.source)
         changes = 0
-        for name in os.listdir(path):
+        for name in os.listdir(self.opts.source):
             if name.endswith(".xml"):
-                xml = open(os.path.join(path, name), "rb").read()
+                xml = open(os.path.join(self.opts.source, name), "rb").read()
                 doc = self.Document(self, name, xml)
                 if doc.install():
                     changes += 1
