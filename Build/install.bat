@@ -25,7 +25,7 @@ REM Set the rest of the variables.
 REM ----------------------------------------------------------------------
 SET PYTHON=D:\Python\python.exe
 SET DEPLOY=%BUILD%\Build\deploy-cdr.py
-SET INSTALL_DOCSET=%BUILD%\Build\install-docset.py %BUILD%
+SET UPDATE=%BUILD%\Build\install-docset.py %BUILD%
 
 REM ----------------------------------------------------------------------
 REM Make sure the share is reachable, and we really have a release there.
@@ -33,7 +33,7 @@ REM ----------------------------------------------------------------------
 if not exist %BUILD%\Licensee\pdq.dtd (
     ECHO .
     ECHO ********************   SCRIPT ERROR   *****************************
-    ECHO %RELEASE_DIR% is not reachable
+    ECHO %BUILD% is not reachable
     ECHO or does not contain the files for a complete CDR release.
     ECHO Please resolve this problem and try again.
     ECHO ********************   SCRIPT ERROR   *****************************
@@ -44,10 +44,10 @@ if not exist %BUILD%\Licensee\pdq.dtd (
 REM ----------------------------------------------------------------------
 REM Make sure we're actually running on a CDR server.
 REM ----------------------------------------------------------------------
-IF NOT EXIST D:\cdr\Bin\CdrServer.exe (
+IF NOT EXIST D:\etc\cdrapphosts.rc (
     ECHO .
     ECHO ********************   SCRIPT ERROR   *****************************
-    ECHO Unable to find CdrServer.exe binary. This does not appear to be
+    ECHO Unable to find CDR host names file. This does not appear to be
     ECHO running on a CDR Windows server. Please log into the CDR Windows
     ECHO app server and run this script there.
     ECHO ********************   SCRIPT ERROR   *****************************
@@ -59,10 +59,9 @@ REM ----------------------------------------------------------------------
 REM This is the part where we actually do the deployment.
 REM ----------------------------------------------------------------------
 CHDIR /D D:\
-COPY %BUILD%\..\etc\cdrpw d:\etc/y || ECHO Copy credentials failed && EXIT /B 1
 %PYTHON% %DEPLOY% %BUILD% || ECHO Deploy CDR failed && EXIT /B 1
-%PYTHON% %INSTALL_DOCSET% schema || ECHO Install schemas failed && EXIT /B 1
-%PYTHON% %INSTALL_DOCSET% filter || ECHO Install filters failed && EXIT /B 1
+%PYTHON% %UPDATE%\Schemas schema || ECHO Update schemas failed && EXIT /B 1
+%PYTHON% %UPDATE%\Filters filter || ECHO Update filters failed && EXIT /B 1
 
 REM ----------------------------------------------------------------------
 REM You might need to add commands here for things which aren't taken

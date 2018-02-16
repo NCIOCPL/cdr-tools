@@ -10,13 +10,9 @@ import requests
 
 #----------------------------------------------------------------------
 # Get the host name used by the CDR Windows server to talk to the
-# emailers Linux server.  Some CDR servers in the OCE environment
-# won't have cdr.h yet.
+# emailers Linux server.
 #----------------------------------------------------------------------
-try:
-    EMAILERSWEB = "https://%s.%s/cgi-bin" % tuple(cdr.h.host["EMAILERSWEB"])
-except:
-    EMAILERSWEB = cdr.emailerCgi()
+EMAILERSWEB = "https://%s/cgi-bin" % cdr.Tier().hosts["EMAILERSWEB"]
 
 #----------------------------------------------------------------------
 # Logging to mailer-specific logfile.

@@ -27,8 +27,8 @@ for arg in args:
         except Exception, e:
             print "... unable to open %s: %s" % (name, e)
             continue
-        query = "CdrCtl/Title = '%s' and CdrCtl/DocType = 'schema'" % baseName
-        results = cdr.search(session, query)
+        query = "CdrCtl/Title = {}".format(baseName)
+        results = cdr.search(session, query, doctypes=["schema"])
         if len(results) < 1:
             print "... schema %s not found in CDR" % baseName
         else:

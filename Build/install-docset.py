@@ -21,7 +21,7 @@ import re
 import subprocess
 import sys
 import cdr
-import cdrdb
+import cdrapi.db as cdrdb
 
 class DocumentSet:
     """
@@ -51,7 +51,7 @@ class DocumentSet:
         self.logger = cdr.Logging.get_logger("deploy", console=True)
         self.opts = opts
         self.session = self.login()
-        self.cursor = cdrdb.connect("CdrGuest").cursor()
+        self.cursor = cdrdb.connect(name="CdrGuest").cursor()
 
     def login(self):
         """
@@ -76,19 +76,17 @@ class DocumentSet:
         Install the documents and perform any necessary postprocessing.
         """
 
-        directory = "{}s".format(self.DOCTYPE.capitalize())
-        path = os.path.join(self.opts.source, directory)
-        if not os.path.isdir(path):
-            self.logger.error("%s not found", path)
+        if not os.path.isdir(opts.source):
+            self.logger.error("%s not found", opts.source)
             sys.exit(1)
         action = "comparing" if opts.test else "installing"
         doctype = self.DOCTYPE.lower()
         self.logger.info("%s %ss", action, doctype)
-        self.logger.info("from %s", path)
+        self.logger.info("from %s", opts.source)
         changes = 0
-        for name in os.listdir(path):
+        for name in os.listdir(self.opts.source):
             if name.endswith(".xml"):
-                xml = open(os.path.join(path, name), "rb").read()
+                xml = open(os.path.join(self.opts.source, name), "rb").read()
                 doc = self.Document(self, name, xml)
                 if doc.install():
                     changes += 1
@@ -162,6 +160,8 @@ class DocumentSet:
             query.where(query.Condition("t.name", self.doctype))
             query.where(query.Condition("d.title", self.title))
             rows = query.execute(self.control.cursor).fetchall()
+            if not rows:
+                return
             if len(rows) > 1:
                 self.logger.warning("multiple %r docs", self.title)
             else:
@@ -205,6 +205,7 @@ class DocumentSet:
             opts = { "type": self.doctype, "encoding": "utf-8", "ctrl": ctrl }
             cdr_doc = cdr.Doc(self.xml, **opts)
             opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
+            opts["publishable"] = self.control.PUBLISHABLE
             cdr_id = cdr.addDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
             if error:
@@ -230,6 +231,7 @@ class DocumentSet:
             opts["id"] = cdr.normalize(self.id)
             cdr_doc = cdr.Doc(self.xml, **opts)
             opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
+            opts["publishable"] = self.control.PUBLISHABLE
             cdr_id = cdr.repDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
             if error:
@@ -254,6 +256,7 @@ class SchemaSet(DocumentSet):
     REFRESH_MANIFEST = cdr.WORK_DRIVE + r":\cdr\Build\RefreshManifest.py"
     ACCOUNT = "SchemaUpdater"
     DOCTYPE = "schema"
+    PUBLISHABLE = "N"
 
     def post_process(self):
         """
@@ -314,6 +317,7 @@ class FilterSet(DocumentSet):
 
     DOCTYPE = "Filter"
     ACCOUNT = "ReleaseInstaller"
+    PUBLISHABLE = "Y"
 
     class Document(DocumentSet.Document):
         """

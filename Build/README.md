@@ -15,21 +15,17 @@ The build scripts depend on having the following tools present:
  * a connection to the internet
  * a GitHub account, with membership in the NCIOCPL organization
  * a branch in each of the repositories from which the build will pull code
- * expat, Sablotron, and xerces
-
-See https://github.com/NCIOCPL/cdr-server/blob/master/Server/README.md
-for details about building the third-party libraries in that last bullet.
 
 ### Usage
 
 While it is possible to run the separate batch files for the individual
 portions of a CDR build, the simplest way to create a complete or partial
-build is to run `build-all.py` with the appropriate command-line arguments.
+build is to run `build-cdr.py` with the appropriate command-line arguments.
 The script has one required argument naming the branch from which the build
 is to be created. For details on the available options, invoke the script
 with the `--help` option:
 
-```build-all.py --help```
+```build-cdr.py --help```
 
 It is necessary, as noted above, that the branch named on the command line
 be present in all of the CDR repositories from which code will be pulled.
@@ -41,7 +37,7 @@ of this writing).
 
 Example usage:
 
-```build-all.py fermi```
+```build-cdr.py fermi```
 
 ## Deploy
 

@@ -4,37 +4,25 @@
 # Reports to terminal every 100 docs, and reports total docs to be
 # indexed and actually indexed.
 
-import cdr, cdrdb, sys, time
+import argparse
+import cdrapi.db
+import cdr
 
-if len(sys.argv) < 3:
-    sys.stderr.write(\
-      "usage: ReindexAllDoctypes uid pwd {host} {port}\n")
-    sys.exit(1)
-uid	    = sys.argv[1]
-pwd  	= sys.argv[2]
-# host    = len(sys.argv) > 3 and sys.argv[3] or cdr.DEFAULT_HOST
-host    = len(sys.argv) > 3 and sys.argv[3] or cdr.h.host['APP'][0]
-port    = len(sys.argv) > 4 and int(sys.argv[4]) or cdr.DEFAULT_PORT
-session = cdr.login(uid, pwd, host=host, port=port)
-# conn    = cdrdb.connect('CdrGuest', host)
-conn    = cdrdb.connect('CdrGuest')
-cursor  = conn.cursor()
-
-cursor.execute("""\
-        SELECT id
-          FROM document
-      ORDER BY id""")
-rows = cursor.fetchall()
-print "reindexing %d documents" % len(rows)
-count = 0
-for row in rows:
-    resp = cdr.reindex('guest', row[0], host, port)
-    if resp: print resp
-
-    # Count and report
-    count += 1
-    if count % 100 == 0:
-        print("Completed %d docs, last doc processed = CDR%010d" % (count,
-               row[0]))
-
-print("Completed reindex of %d total documents" % count)
+parser = argparse.ArgumentParser()
+parser.add_argument("--tier", "-t")
+opts = parser.parse_args()
+query = cdrapi.db.Query("document", "id").order("id")
+cursor = cdrapi.db.connect(tier=opts.tier).cursor()
+doc_ids = [row[0] for row in query.execute(cursor).fetchall()]
+done = 0
+print "reindexing %d documents" % len(doc_ids)
+for doc_id in doc_ids:
+    try:
+        cdr.reindex("guest", doc_id, tier=opts.tier)
+    except Exception as e:
+        print("CDR{}: {}".format(doc_id, e))
+    done += 1
+    if done % 100 == 0:
+        message = "Completed {} docs, last doc processed = CDR{}"
+        print(message.format(done, doc_id))
+print("Completed reindex of {} total documents".format(done))

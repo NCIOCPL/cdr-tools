@@ -39,7 +39,7 @@ class Control:
       logger - object for recording what we do
     """
 
-    SERVICES = "Cdr", "CDRScheduler"
+    SERVICES = "Cdr", "CDRScheduler", "W3SVC"
     POPEN_OPTS = dict(
         shell=True,
         stdout=subprocess.PIPE,
@@ -119,11 +119,14 @@ class Control:
         do it by hand. It is not necessarily safe to restart the services
         (particularly the scheduling service) in the wake of a broken
         deployment.
+
+        [Note: as of the Gauss release, the CDR service is no longer used.]
         """
 
         for service in self.services:
-            service.start()
-            self.logger.info("started %s service", service.name)
+            if service.name.upper() != "CDR":
+                service.start()
+                self.logger.info("started %s service", service.name)
 
     def fetch_options(self):
         """
@@ -428,6 +431,7 @@ class Control:
                 cls("Filters"),
                 cls("Build"),
                 cls("Bin"),
+                cls("api"),
                 cls("ClientFiles"),
             ]
             return dict([(d.name.lower(), d) for d in dirs])

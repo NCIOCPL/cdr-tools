@@ -28,6 +28,6 @@ EXIT /B 0
 :fetch_repo
 SET RNAME=%1
 SET URL=%NCIOCPL%/cdr-%RNAME%/tarball/%BRANCH%
-curl -L -s -k %URL% | tar -xz || ECHO %RNAME% fetch failed && EXIT /B 1
+curl -L -s -k %URL% | tar -xz || ECHO %RNAME% fetch %URL% failed && EXIT /B 1
 mv NCIOCPL-cdr-%RNAME%* %RNAME% || ECHO %RNAME% rename failed && EXIT /B 1
 EXIT /B 0

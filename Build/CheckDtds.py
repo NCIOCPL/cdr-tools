@@ -4,21 +4,29 @@
 # date in the manifest for the client.
 #----------------------------------------------------------------------
 
-import cdr, sys
+import sys
+from lxml import etree
+import cdr
 
 CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
 def getDocTypeResponses(docType):
-    cmd = "<CdrGetDocType Type='%s' OmitDtd='Y' GetEnumValues='Y'/>" % docType
-    response = cdr.sendCommands(cdr.wrapCommand(cmd, 'guest'))
-    start = response.find('<CdrGetDocTypeResp')
-    if not start:
-        sys.stderr.write("CdrGetDocType FAILURE: " + response + "\n")
-        raise Exception("CdrGetDocType FAILURE: " + response)
-    end = response.find('</CdrGetDocTypeResp>')
+    opts = dict(Type=docType, OmitDtd="Y", GetEnumValues="Y")
+    cmd = etree.Element("CdrGetDocType", **opts)
+    commands = etree.Element("CdrCommandSet")
+    etree.SubElement(commands, "SessionId").text = "guest"
+    wrapper = etree.SubElement(commands, "CdrCommand")
+    wrapper.append(cmd)
+    response = cdr._Control.send_commands(commands)
+    xml = etree.tostring(response.node, encoding="utf-8")
+    start = xml.find('<CdrGetDocTypeResp')
+    if start < 0:
+        sys.stderr.write("CdrGetDocType FAILURE: " + xml + "\n")
+        raise Exception("CdrGetDocType FAILURE: " + xml)
+    end = xml.find('</CdrGetDocTypeResp>')
     if not end:
-        sys.stderr.write("CdrGetDocType FAILURE: " + response + "\n")
-        raise Exception("CdrGetDocType FAILURE: " + response)
-    return response[start:end] + '</CdrGetDocTypeResp>\n'
+        sys.stderr.write("CdrGetDocType FAILURE: " + xml + "\n")
+        raise Exception("CdrGetDocType FAILURE: " + xml)
+    return xml[start:end] + '</CdrGetDocTypeResp>\n'
 
 def saveDocTypeResponses(docTypeFilePath, docTypeResponses):
     f = file(docTypeFilePath, 'wb')
@@ -37,7 +45,7 @@ docTypeFilePath = '%s/%s' % (CLIENT_FILES_DIR, docTypeFileName)
 docTypes = cdr.getDoctypes('guest')
 docTypeResponses = ['<DocTypeResponses>\n']
 for docType in docTypes:
-    if docType.upper() in ("FILTER", "CSS"): continue
+    if docType.upper() in ("FILTER", "CSS", "SCHEMA"): continue
     try:
         dtInfo = cdr.getDoctype('guest', docType)
         docTypeResponses.append(getDocTypeResponses(docType))
@@ -79,7 +87,7 @@ for docType in docTypes:
         except Exception as e:
             sys.stderr.write("failure writing %s: %s\n" % (path, str(e)))
     except Exception, e:
-        sys.stderr.write(str(e))
+        sys.stderr.write(str(e) + "\n")
         #pass
 docTypeResponses.append('</DocTypeResponses>\n')
 docTypeResponses = "".join(docTypeResponses)

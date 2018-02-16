@@ -52,7 +52,7 @@ def main():
         parser.error("filter title cannot contain --")
     if not opts.session:
         password = getpass.getpass()
-        session = cdr.login(opts.user, password, "PROD")
+        session = cdr.login(opts.user, password, tier="PROD")
         error = cdr.checkErr(session)
         if error:
             parser.error(error)
@@ -81,11 +81,11 @@ def main():
 </xsl:transform>
 """ % cgi.escape(title)
     doc = cdr.Doc(stub, 'Filter', { 'DocTitle': title }, encoding="utf-8")
-    cdr_id = cdr.addDoc(session, doc=str(doc), host="PROD")
+    cdr_id = cdr.addDoc(session, doc=str(doc), tier="PROD")
     error = cdr.checkErr(cdr_id)
     if error:
         parser.error(error)
-    response = cdr.unlock(session, cdr_id, host="PROD")
+    response = cdr.unlock(session, cdr_id, tier="PROD")
     error = cdr.checkErr(response)
     if error:
         parser.error(error)
@@ -94,7 +94,7 @@ def main():
         fp.write(stub)
     print "Created %s" % name
     if not opts.session:
-        cdr.logout(session, "PROD")
+        cdr.logout(session, tier="PROD")
 
 if __name__ == '__main__':
     main()
