@@ -168,7 +168,7 @@ Use CreateFilter.py to create the filter in the production database, then
                      encoding='utf-8')
     wrappedXml = str(docObj)
 
-    session = cdr.login(userid, passwd)
+    session = str(cdr.login(userid, passwd))
     if session.find("<Err") != -1:
         fatal("Error logging in to CDR: %s" % session)
     # DEBUG
