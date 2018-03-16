@@ -11,7 +11,7 @@
 # JIRA::OCECDR-3694
 #--------------------------------------------------------------
 import sys, optparse, cdr, cdrdb, re
-etree = cdr.importEtree()
+from lxml import etree
 
 EXPECTED_ROOT = "{http://www.w3.org/1999/XSL/Transform}transform"
 
