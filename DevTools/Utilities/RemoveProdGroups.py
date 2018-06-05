@@ -26,7 +26,6 @@ def updateGroups(uid, pwd, testMode):
                "CTGov Duplicate Notification":    ['volker'],
                "CTGov Export Notification":       ['bkline', 'volker'],
                "CTGov Link Fix Notification":     ['bkline', 'volker'],
-               "CTRPDownload Notification":       ['bkline', 'volker'],
                "Hotfix Remove Notification":      ['operator', 'volker'],
                "ICRDB Statistics Notification":   ['operator', 'volker'],
                "Licensee Report Notification":    ['operator', 'volker'],
@@ -37,14 +36,18 @@ def updateGroups(uid, pwd, testMode):
                "Test Group Dada": ['volker'],
                "Weekly Publishing Notification":  ['operator', 'volker']}
 
+    ierror = 0
     for group_name in groups:
         group = cdr.getGroup(session, group_name)
 
         # If the group doesn't exist on this tier continue
         # ------------------------------------------------
-        if (type(group) == type("")):
+        if not group:
+            ierror += 1
             l.write("***** ERROR *****", stdout = True)
-            l.write(group, stdout = True)
+            l.write("Group not available on this tier!!!", 
+                                         stdout = True)
+            l.write(group_name,          stdout = True)
             l.write("***** ERROR *****", stdout = True)
             continue
 
@@ -63,7 +66,7 @@ def updateGroups(uid, pwd, testMode):
             l.write("%s: %s" % (group_name, error or "saved"), stdout = True)
         l.write("----", stdout = True)
 
-    return
+    return ierror
 
 # -----------------------------------------------------------------
 # Main program starts here
@@ -96,7 +99,8 @@ if __name__ == "__main__":
     else:
         testMode = False
 
-    updateGroups(uid, pwd, testMode)
+    error_count = updateGroups(uid, pwd, testMode)
 
     l.write('RemoveProdGroups - Finished', stdout = True)
+    l.write('Missing groups: %d' % error_count, stdout = True)
     sys.exit(0)
