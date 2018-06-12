@@ -56,7 +56,7 @@ def updateGroups(session, testMode, tier):
                "Test Group Dada":                 ['volker'],
                "Test Publishing Notification":    ['operator', 'volker'],
                "VOL Notification":                ['operator', 'volker'],
-               "Weekly Publishing Notification":  ['operator', 'volker']}
+               "Weekly Publishing Notification":  ['operator', 'volker']
                }
 
     ierror = 0
