@@ -1,3 +1,7 @@
+"""
+Restore permissions for Regression Testers group after db refresh from PROD
+"""
+
 from cdrapi import db
 
 conn = db.connect()
