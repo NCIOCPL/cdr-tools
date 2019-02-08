@@ -8,7 +8,7 @@ Uses the lxml.etree parser to perform the document modifications.
 from argparse import ArgumentParser
 from lxml import etree
 from ModifyDocs import Job
-import cdrdb
+from cdrapi import db as cdrdb
 import re
 import sys
 
@@ -38,11 +38,11 @@ class OneOffGlobal(Job):
         Return the sequence of CDR document IDs for this job
 
         Looking for all ExternalRef elements within a Summary
-        containing an xref attribute pointing to CT.gov and 
+        containing an xref attribute pointing to CT.gov and
         including a NCT-ID indicated by 'NCTxxxxxxxx'
         """
 
-        # SQL query to select all summary documents with 
+        # SQL query to select all summary documents with
         # ExternalRef element
         # ----------------------------------------------------
         qry = """
@@ -63,7 +63,7 @@ class OneOffGlobal(Job):
         # Connecting to the DB and executing the query
         # ----------------------------------------------------
         try:
-            conn = cdrdb.connect()
+            conn = cdrdb.connect(tier=opts.tier)
             cursor = conn.cursor()
             cursor.execute(qry)
             rows = cursor.fetchall()
@@ -83,12 +83,12 @@ class OneOffGlobal(Job):
     def transform(self, doc):
         """
         - Find all ExternalRef element within the document
-        - Create a new ProtocolRef element with the information 
+        - Create a new ProtocolRef element with the information
           from the ExternalRef element
         - Replace the ExternalRef with the ProtocolRef elements
-        
+
         Note: The ExternalRef is an inline element and therefore
-              the findall() function includes a tail of the 
+              the findall() function includes a tail of the
               element that needs to be added to the ProtocolRef
 
         Pass:
@@ -110,7 +110,7 @@ class OneOffGlobal(Job):
             url = attribs['{cips.nci.nih.gov/cdr}xref']
             urlSub = re.search('NCT(........)', url)
 
-            # For those links including a NCT-ID create a 
+            # For those links including a NCT-ID create a
             # replacement element
             # --------------------------------------------------
             if urlSub:
