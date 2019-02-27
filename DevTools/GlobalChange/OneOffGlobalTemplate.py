@@ -36,6 +36,19 @@ class OneOffGlobal(Job):
         Invoke the base class constructor with the user's options,
         then determine the list of documents to be transformed.
 
+        Typically, the actual determination as to which documents
+        are to be processed will have been made by the time the
+        constructor has completed. However, there would be no harm
+        done if the work to make this determination were deferred
+        until the `select()` method is invoked.
+
+        Different types of global change jobs call for various
+        techniques for selecting documents. For example, for some
+        requests, the users will supply a spreadsheet file containing
+        a column containing the CDR IDs of the documents to be
+        transformed (and frequently other columns with information
+        about specific values to be used in that transformation).
+
         Optional keyword arguments:
           session - string representing CDR login
           user - CDR user account name (exactly one of `sesssion` or `user`
@@ -57,12 +70,18 @@ class OneOffGlobal(Job):
         # Some things to note:
         #   - query_term_pub.path takes care of determining document type
         #   - the `Job` class comes with its own read-only cursor
-        #   - IDs will be sorted by the `select()` method
+        #   - when document IDs are specified on the command line, the
+        #     order of specification is preserved, but when we use the
+        #     database we're sorting by document ID (at least in this case).
+        #     Typically, the order doesn't really matter, but it might in
+        #     some cases. Do whatever you need to do for the requirements
+        #     of the specific job you're working on.
         if not self.__doc_ids:
             query = db.Query("pub_proc_cg c", "c.id", "u.value")
             query.join("query_term_pub u", "u.doc_id = c.id")
             query.where("u.path LIKE '/Summary%ExternalRef/@cdr:xref'")
             query.where("u.value LIKE 'https://clinicaltrials.gov/%NCT%'")
+            query.order("c.id")
             rows = query.execute(self.cursor).fetchall()
             self.__doc_ids = [row[0] for row in rows]
 
