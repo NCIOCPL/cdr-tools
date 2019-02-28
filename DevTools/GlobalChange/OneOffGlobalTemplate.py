@@ -77,10 +77,10 @@ class OneOffGlobal(Job):
         #     some cases. Do whatever you need to do for the requirements
         #     of the specific job you're working on.
         if not self.__doc_ids:
-            query = db.Query("pub_proc_cg c", "c.id", "u.value")
+            query = db.Query("pub_proc_cg c", "c.id").unique()
             query.join("query_term_pub u", "u.doc_id = c.id")
             query.where("u.path LIKE '/Summary%ExternalRef/@cdr:xref'")
-            query.where("u.value LIKE 'https://clinicaltrials.gov/%NCT%'")
+            query.where("u.value LIKE '%NCT[0-9]%'")
             query.order("c.id")
             rows = query.execute(self.cursor).fetchall()
             self.__doc_ids = [row[0] for row in rows]
