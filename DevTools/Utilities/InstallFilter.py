@@ -1,155 +1,137 @@
 #!/usr/bin/env python
-#--------------------------------------------------------------
-# Script for installing a filter on a development or test server that
-# has already been created on the production server but has not yet
-# appeared on the server on which it will be installed now.
-#
-# The program will add the filter as a new document, with a new ID, using
-# the title stored in the document on disk and in the production database.
-#
-# BZIssue::4652
-# JIRA::OCECDR-3694
-#--------------------------------------------------------------
-import sys, optparse, cdr, cdrdb, re
+"""
+Install a new filter on a lower-tier server
+
+Script for installing a filter on a development or test server that
+has already been created on the production server but has not yet
+appeared on the server on which it will be installed now.
+
+The program will add the filter as a new document, with a new ID, using
+the title stored in the document on disk and in the production database.
+"""
+
+import argparse
+import getpass
+import re
+import cdr
+from cdrapi import db
 from lxml import etree
 
-EXPECTED_ROOT = "{http://www.w3.org/1999/XSL/Transform}transform"
 
-def fatal(msg, parser=None):
-    """
-    Write message and quit.
-
-    Pass:
-        msg    - Message to write
-        parser - If not None, invoke parser.print_help()
-    """
-    sys.stderr.write("Fatal error.\n")
-    sys.stderr.write(msg)
-    sys.stderr.write("\n\n")
-    if parser:
-        parser.print_help()
-    sys.exit(1)
-
-def createOptionParser():
+def create_parser():
     """
     Create an option parser and associated usage, help, etc.
     """
-    parser = optparse.OptionParser(
-      usage = """%prog userid password filterfile
 
-  args:
-    userid     = CDR user id.
-    password   = CDR password.
-    filterfile = Name of filter, must be in CDRnnnnnnnnn.xml format.""",
-      description = """Install a filter on a test or development server
-for the first time.  Filter must already have been created on the production
-server.  Filter will be installed on the requested server using the existing
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
+Install a filter on a test or development server for the first time.
+Filter must already have been created on the production server.
+Filter will be installed on the requested server using the existing
 name/title from production, and (almost certainly) a new CDR ID.
 
-""")
-
+SEE ALSO
+  `CreateNewFilter.py` (get a stable CDR ID on production for a new filter)
+  `UpdateFilter.py` (modifying existing filter on any tier)
+  `ModifyFilterTitle.py` (changing filter title)""")
+    parser.add_argument("filename")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--session")
+    group.add_argument("--user")
+    parser.add_argument("--tier")
     return parser
 
-class DocDesc:
+class DocInfo:
     """
     Hold information parsed from the filter file on disk.
     """
-    def __init__(self, filename):
+
+    EXPECTED_ROOT = "{http://www.w3.org/1999/XSL/Transform}transform"
+
+    def __init__(self, filename, parser):
         """
-        Load filter from disk.
-        Locate relevant parts.
+        Load filter from disk and locate relevant parts
 
         Pass:
-            Name of file on disk containing XML for filter.
+            filename - name of file on disk containing XML for filter
+            parser - used for reporting errors
         """
 
         # Initial values.
-        self.cdrIdNum = self.xml = self.title = None
+        self.xml = self.title = None
 
-        # Parse filename to get CDR ID
+        # Parse filename to verify format.
         if not re.match("^CDR\\d{10}.xml$", filename):
-            fatal("File name must be in the form CDRnnnnnnnnnn.xml")
-        self.cdrIdNum = int(re.sub("[^\\d]+", "", filename))
+            parser.error("File name must be in the form CDRnnnnnnnnnn.xml")
 
         # Load file
-        self.xml = None
         try:
-            # Translate line ends if needed to plain linefeed
-            fp = open(filename, "r")
-            self.xml = fp.read()
-            fp.close()
-        except IOError, info:
-            fatal("Error opening/reading/closing file: %s" % info)
+            # Translate line ends if needed to plain linefeed.
+            with open(filename, "rb") as fp:
+                self.xml = fp.read().replace(b"\r", b"")
+        except Exception as e:
+            parser.error("{}: {}".format(filename, e))
 
         # Parse.  Since we're creating the filters from our own
         # templates, we expect transform as the root element,
         # not stylesheet (which is also valid in the wild).
         try:
             root = etree.fromstring(self.xml)
-            if root.tag != EXPECTED_ROOT:
-                fatal("%s is not a CDR XSL/T filter" % filename)
-        except SyntaxError, info:
-            fatal("Error parsing contents of %s:\n%s" % (filename, info))
-        except:
-            raise
+            if root.tag != self.EXPECTED_ROOT:
+                parser.error("{} is not a CDR XSL/T filter".format(filename))
+        except SyntaxError as e:
+            parser.error("Error parsing {}:\n{}".format(filename, e))
 
         # Extract the filter title.
-        match = re.search("<!--\\s*filter title:(.*?)-->", self.xml, re.I)
+        xml = self.xml.decode("utf-8")
+        match = re.search(u"<!--\\s*filter title:(.*?)-->", xml, re.I)
         if not match:
-            fatal("Filter title comment not found in %s" % filename)
+            parser.error("{}: filter title comment not found".format(filename))
         self.title = match.group(1).strip()
         if not self.title:
-            fatal("Filter title comment in %s is empty" % filename)
+            parser.error("{}: filter title comment is empty".format(filename))
 
-    def checkTargetTitle(self):
+    def check_unique_title(self, tier, parser):
         """
+        Look for the title in the target server
+
         Make sure the document is not already installed in the target
         server.  This check is actually redundant, as the CDR server
         will enforce the assumption.  Can't hurt to check twice, though.
 
-        Return:
-            Void.
-            Exits with fatal error if filter already installed.
+        Pass:
+          tier - location of target server (if not localhost)
+            parser - used for reporting errors
+
+        Raise:
+          exception if filter is already install on specified tier
         """
-        try:
-            conn = cdrdb.connect("CdrGuest")
-            cursor = conn.cursor()
-            cursor.execute("""
-SELECT d.id
-  FROM document d
-  JOIN doc_type t
-    ON d.doc_type = t.id
- WHERE title = ?
-   AND t.name = 'Filter'
-""", unicode(self.title, "utf-8"))
-            rows = cursor.fetchall()
-            cursor.close()
-        except cdrdb.Error, info:
-            fatal("Database error checking title in database: %s" % info)
+
+        cursor = db.connect(name="CdrGuest", tier=tier).cursor()
+        query = db.Query("document d", "d.id")
+        query.join("doc_type t", "t.id = d.doc_type")
+        query.where(query.Condition("d.title", self.title))
+        query.where("t.name = 'Filter'")
+        rows = query.execute(cursor).fetchall()
+        cursor.close()
         if rows:
             ids = ", ".join([str(row[0]) for row in rows])
-            fatal("%s already present (%s) in the CDR" % (self.title, ids))
+            args = self.title, ids
+            parser.error("{!r} already present ({}) in the CDR".format(*args))
 
-#----------------------------------------------------------
-# Main
-#----------------------------------------------------------
-if __name__ == "__main__":
+def main():
+    """
+    Top-level entry point
+    """
 
-    # Args
-    op = createOptionParser()
-    (options, args) = op.parse_args()
+    # Process the command-line arguments.
+    parser = create_parser()
+    opts = parser.parse_args()
 
-    if len(args) != 3:
-        op.print_help()
-        op.exit(2)
-
-    userid = args[0]
-    passwd = args[1]
-    fname  = args[2]
-
-    # Make sure we're not on the production server.
-    if cdr.isProdHost():
-        fatal("""
+    # Make sure we're not doing this on the production server.
+    if not opts.tier and cdr.isProdHost() or opts.tier == "PROD":
+        parser.error("""
 This program can only be used to install a filter on the development or
   test server, not production.
 Use CreateFilter.py to create the filter in the production database, then
@@ -157,28 +139,39 @@ Use CreateFilter.py to create the filter in the production database, then
   title/name and (almost certainly) a different local CDR ID.
 """)
 
-    # Load the document
-    doc = DocDesc(fname)
+    # If we don't already have a session ID, make one.
+    if not opts.session:
+        password = getpass.getpass()
+        session = cdr.login(opts.user, password, tier=opts.tier)
+        error = cdr.checkErr(session)
+        if error:
+            parser.error(error)
+    else:
+        session = opts.session
+
+    # Load the document.
+    info = DocInfo(opts.filename, parser)
 
     # Make sure the filter isn't already installed
-    doc.checkTargetTitle()
+    info.check_unique_title(opts.tier, parser)
 
-    # All checks passed.  Add the document
-    docObj = cdr.Doc(doc.xml, 'Filter', {'DocTitle': doc.title},
-                     encoding='utf-8')
-    wrappedXml = str(docObj)
+    # All checks passed: add the document.
+    ctrl = dict(DocTitle=info.title.encode("utf-8"))
+    doc = cdr.Doc(info.xml, doctype="Filter", ctrl=ctrl, encoding="utf-8")
+    comment = "New filter install"
+    add_opts = dict(doc=str(doc), comment=comment, tier=opts.tier)
+    cdr_id = cdr.addDoc(session, **add_opts)
+    error = cdr.checkErr(cdr_id)
+    if error:
+        parser.error(error)
 
-    session = str(cdr.login(userid, passwd))
-    if session.find("<Err") != -1:
-        fatal("Error logging in to CDR: %s" % session)
-    # DEBUG
-    # sys.exit(0)
-    comment = 'New filter install'
-    newCdrId = cdr.addDoc(session, doc=wrappedXml, comment=comment)
-    if newCdrId.startswith("CDR"):
-        error = cdr.unlock(session, newCdrId)
-        if error:
-            print error
+    # Unlock the document and display its ID.
+    response = cdr.unlock(session, cdr_id, tier=opts.tier)
+    error = cdr.checkErr(response)
+    if error:
+        parser.error(error)
+    else:
+        print(cdr_id)
 
-    # Display result, doc ID or error message
-    print(newCdrId)
+if __name__ == "__main__":
+    main()
