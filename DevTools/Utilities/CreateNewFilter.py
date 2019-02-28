@@ -1,14 +1,21 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
-# Creates a new stub filter document in the CDR.
-#
-# OCECDR-3694
-# OCECDR-4300
-#----------------------------------------------------------------------
+"""
+Create a new stub filter document in the CDR
+
+See CreateNewFilter.py --help for details.
+"""
+
 import argparse
-import cgi
 import getpass
 import cdr
+
+# Support Python 3
+try:
+    unicode
+    from cgi import escape
+except:
+    unicode = str
+    from html import escape
 
 def create_parser():
     """
@@ -45,9 +52,11 @@ SEE ALSO
 def main():
     parser = create_parser()
     opts = parser.parse_args()
-    title = unicode(opts.title.strip(), "latin-1").encode("utf-8")
+    title = opts.title
     if not title:
         parser.error("empty title argument")
+    if not isinstance(title, unicode):
+        title = unicode(title.strip(), "latin-1")
     if "--" in title:
         parser.error("filter title cannot contain --")
     if not opts.session:
@@ -58,9 +67,9 @@ def main():
             parser.error(error)
     else:
         session = opts.session
-    stub = """\
+    stub = u"""\
 <?xml version='1.0' encoding='utf-8'?>
-<!-- Filter title: %s -->
+<!-- Filter title: {} -->
 <xsl:transform               xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
                              xmlns:cdr = 'cips.nci.nih.gov/cdr'
                                version = '1.0'>
@@ -79,8 +88,11 @@ def main():
  </xsl:template>
 
 </xsl:transform>
-""" % cgi.escape(title)
-    doc = cdr.Doc(stub, 'Filter', { 'DocTitle': title }, encoding="utf-8")
+""".format(escape(title)).encode("utf-8")
+    title = title.encode("utf-8")
+    ctrl = dict(DocTitle=title)
+    doc_opts = dict(doctype="Filter", ctrl=ctrl, encoding="utf-8")
+    doc = cdr.Doc(stub, **doc_opts)
     cdr_id = cdr.addDoc(session, doc=str(doc), tier="PROD")
     error = cdr.checkErr(cdr_id)
     if error:
@@ -92,7 +104,7 @@ def main():
     name = cdr_id + ".xml"
     with open(name, "wb") as fp:
         fp.write(stub)
-    print "Created %s" % name
+    print("Created {}".format(name))
     if not opts.session:
         cdr.logout(session, tier="PROD")
 
