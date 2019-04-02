@@ -130,7 +130,7 @@ def main():
     #------------------------------------------------------------------
     # 6. Store the new version on the target CDR server.
     #------------------------------------------------------------------
-    doc.xml = xml
+    doc.xml = xml.encode("utf-8")
     args = dict(
         doc=str(doc),
         checkIn="Y",
@@ -142,8 +142,7 @@ def main():
         tier=opts.tier
     )
     doc_id = cdr.repDoc(session, **args)
-    error_message = cdr.checkErr(doc_id)
-    if error_message:
+    if not doc_id.startswith("CDR"):
         parser.error(error_message)
 
     #------------------------------------------------------------------
