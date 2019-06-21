@@ -59,7 +59,7 @@ def main():
     print "Saving files to %s" % outputDir
     for table in ("action", "active_status", "doc_type", "filter_set",
                   "filter_set_member", "format", "grp", "grp_action",
-                  "grp_usr", "import_disposition", "link_prop_type",
+                  "grp_usr", "link_prop_type",
                   "link_properties", "link_target", "link_type", "link_xml",
                   "query", "query_term_def", "query_term_rule", "usr"):
         saveTable(cursor, outputDir, table)
