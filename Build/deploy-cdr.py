@@ -341,6 +341,12 @@ class Control:
             the existing location, leaving in place any files
             or subdirectories which were present in the target
             location but not in the build set.
+
+            Note: we discovered when deploying Ising to QA that
+            Windows didn't really do what it was asked all the
+            time by the `shutil.rmtree()` call. Hence the more
+            robust loop which checks to make sure the old files
+            and directories are gone before proceeding.
             """
 
             source = os.path.join(control.opts.source, self.name)
@@ -350,13 +356,18 @@ class Control:
             if control.opts.overlay and os.path.exists(target):
                 self.copy(source, target)
             else:
-                if os.path.exists(target):
+                tries = 10
+                pattern = "removing %s (%d tries left)"
+                while os.path.exists(target):
+                    if not tries:
+                        raise Exception("can't remove {!r}".format(target))
+                    control.logger.info(pattern, target, tries)
                     shutil.rmtree(target)
+                    tries -= 1
+                    time.sleep(2)
                 shutil.copytree(source, target)
             control.fix_permissions(target)
 
-        def install_client_files(self, control):
-            control.logger.info("installing client files")
         def install_inetpub_files(self, control):
             """
             Replace the Inetpub/wwwroot tree.
