@@ -145,7 +145,7 @@ def main():
         for error in cdr.getErrors(warnings, asSequence=True):
             print(" -->", error)
     if not doc_id:
-        print "aborting with failure"
+        print("aborting with failure")
 
     #------------------------------------------------------------------
     # 7. Report the number of the latest version.
