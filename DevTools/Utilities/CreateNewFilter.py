@@ -68,22 +68,22 @@ def main():
     else:
         session = opts.session
     stub = u"""\
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!-- Filter title: {} -->
-<xsl:transform               xmlns:xsl = 'http://www.w3.org/1999/XSL/Transform'
-                             xmlns:cdr = 'cips.nci.nih.gov/cdr'
-                               version = '1.0'>
+<xsl:transform               xmlns:xsl = "http://www.w3.org/1999/XSL/Transform"
+                             xmlns:cdr = "cips.nci.nih.gov/cdr"
+                               version = "1.0">
 
- <xsl:output                    method = 'xml'
-                              encoding = 'utf-8'/>
+ <xsl:output                    method = "xml"
+                              encoding = "utf-8"/>
 
- <xsl:param                       name = 'sample-param'
-                                select = '"default-value"'/>
+ <xsl:param                       name = "sample-param"
+                                select = "'default-value'"/>
 
  <!-- Sample template -->
- <xsl:template                   match = '@*|node()'>
+ <xsl:template                   match = "@*|node()">
   <xsl:copy>
-   <xsl:apply-templates         select = '@*|node()'/>
+   <xsl:apply-templates         select = "@*|node()"/>
   </xsl:copy>
  </xsl:template>
 
