@@ -32,4 +32,4 @@ findIds(dom.documentElement)
 keys = ids.keys()
 keys.sort()
 for key in keys:
-    print "%d %s" % (ids[key], key)
+    print("%d %s" % (ids[key], key))

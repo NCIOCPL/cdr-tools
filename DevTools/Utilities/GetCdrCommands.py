@@ -90,7 +90,7 @@ row = cursor.fetchone()
 #----------------------------------------------------------------------
 # Top-level wrapper element.
 #----------------------------------------------------------------------
-print "<CdrCommandSets>"
+print("<CdrCommandSets>")
 
 #----------------------------------------------------------------------
 # Add each set of commands, filtering if requested.
@@ -99,10 +99,10 @@ while row:
     commandSet, thread, received = row
     if not guestOnly or commandSet.find("<SessionId>guest</SessionId>") != -1:
         commandSet = pattern.sub(insertAttrs, commandSet)
-        print decode(commandSet)
+        print(decode(commandSet))
     row = cursor.fetchone()
 
 #----------------------------------------------------------------------
 # Close top-level wrapper element.
 #----------------------------------------------------------------------
-print "</CdrCommandSets>"
+print("</CdrCommandSets>")

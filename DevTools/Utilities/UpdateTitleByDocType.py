@@ -27,7 +27,7 @@ cursor.execute("""\
            AND t.name = '%s'
       ORDER BY d.id""" % (maxDocs, docType))
 rows = cursor.fetchall()
-print "reindexing %d documents" % len(rows)
+print("reindexing %d documents" % len(rows))
 count = 0
 for row in rows:
     sys.stdout.write("Updating title for CDR%010d" % row[0])

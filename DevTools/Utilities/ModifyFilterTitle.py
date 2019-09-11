@@ -137,8 +137,8 @@ def main():
     # 6. Store the new version on the target CDR server.
     #------------------------------------------------------------------
     doc = str(docObj)
-    print 'Versioned: %s, Publishable: %s' % (options.version,
-                                              options.publishable)
+    print('Versioned: %s, Publishable: %s' % (options.version,
+                                              options.publishable))
     cdrId = cdr.repDoc(session, doc=doc, checkIn="Y", setLinks="N",
                        reason=options.comment, comment=options.comment,
                        ver=options.version, verPublishable=options.publishable)
@@ -149,11 +149,11 @@ def main():
     #------------------------------------------------------------------
     versions = cdr.lastVersions(session, cdrId)
     if options.version == "N":
-        print "CWD for %s updated" % cdrId
+        print("CWD for %s updated" % cdrId)
     else:
-        print "Latest version of %s is %d" % (cdrId, versions[0])
-    print ""
-    print "DON'T FORGET TO CHANGE THE TITLE OF THIS FILTER ON ALL TIERS!"
+        print("Latest version of %s is %d" % (cdrId, versions[0]))
+    print("")
+    print("DON'T FORGET TO CHANGE THE TITLE OF THIS FILTER ON ALL TIERS!")
 
 if __name__ == '__main__':
     main()

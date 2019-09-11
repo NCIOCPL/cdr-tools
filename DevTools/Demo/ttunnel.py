@@ -16,4 +16,4 @@ request = """\
   </CdrGetDoc>
  </CdrCommand>
 </CdrCommandSet>"""
-print requests.post(url, request).text
+print(requests.post(url, request).text)

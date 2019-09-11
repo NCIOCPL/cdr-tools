@@ -27,4 +27,4 @@ for name, processes, batchsize in values:
     opts["name"] = name + "-batchsize"
     opts["value"] = str(batchsize)
     cdr.updateCtl(session, "Create", **opts)
-    print("set {name}={value}".format(**opts))
+    print(("set {name}={value}".format(**opts)))

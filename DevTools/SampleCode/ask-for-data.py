@@ -35,7 +35,7 @@ def parseArgs(argv):
     try:
         longopts = ["testmode", "livemode", "product=", "logfile="]
         opts, args = getopt.getopt(args[1:], "tlp:o:", longopts)
-    except getopt.GetoptError, e:
+    except getopt.GetoptError as e:
         usage(argv)
 
     for o, a in opts:
@@ -64,7 +64,7 @@ def parseArgs(argv):
 # Module to display the default usage
 # ------------------------------------------------------------------
 def usage(args):
-    print args
+    print(args)
     sys.stderr.write("""\
 usage: %s [options]
 
@@ -97,4 +97,4 @@ else:
 f = urllib2.urlopen(
           "https://cdr-dev.cancer.gov/cgi-bin/cdr/get-pdq-contacts.py?p=%s" %
                                                                   product)
-print f.read()
+print(f.read())

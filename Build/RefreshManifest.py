@@ -6,12 +6,14 @@
 import cdr
 import hashlib
 import lxml.etree as etree
+import platform
 import sys
 import socket
 import os
 
 CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
-MANIFEST_PATH    = "%s/%s" % (CLIENT_FILES_DIR, cdr.MANIFEST_NAME)
+MANIFEST_PATH    = f"{CLIENT_FILES_DIR}/{cdr.MANIFEST_NAME}"
+IS_WINDOWS       = platform.platform().lower() == "windows"
 
 class File:
     """
@@ -30,11 +32,11 @@ class File:
     2016-04-05: Eliminating timestamps as promised.
     """
     def __init__(self, path):
-        self.name = unicode(path, "latin-1")
+        self.name = path
         self.key = self.name.lower() # for sorting
-    def __cmp__(self, other):
-        "Sort by file names, ignoring case."
-        return cmp(self.key, other.key)
+    def __lt__(self, other):
+        "Compare by file names, ignoring case."
+        return self.key < other.key
 
 def gather_files(dir_path):
     """
@@ -62,13 +64,13 @@ def create_ticket(md5):
     etree.SubElement(ticket, "Checksum").text = md5.hexdigest().lower()
     return ticket
 
-def md5(bytes):
+def md5(file_bytes):
     """
     Generate a checksum for the bytes from a file; used to detect when
     a file has changed.
     """
     m = hashlib.md5()
-    m.update(bytes)
+    m.update(file_bytes)
     return m.hexdigest().lower()
 
 def create_filelist(files, manifest_md5):
@@ -81,11 +83,10 @@ def create_filelist(files, manifest_md5):
         child = etree.SubElement(wrapper, "File")
         etree.SubElement(child, "Name").text = f.name
         if cdr.MANIFEST_NAME not in f.name:
-            fp = open(f.name, "rb")
-            bytes = fp.read()
-            fp.close()
-            etree.SubElement(child, "Checksum").text = md5(bytes)
-            manifest_md5.update(bytes)
+            with open(f.name, "rb") as fp:
+                file_bytes = fp.read()
+            etree.SubElement(child, "Checksum").text = md5(file_bytes)
+            manifest_md5.update(file_bytes)
     return wrapper
 
 def write_manifest(manifest_xml):
@@ -98,9 +99,8 @@ def write_manifest(manifest_xml):
 
     2016-04-05: date/time stamp dropped as promised.
     """
-    manifest_file = file(MANIFEST_PATH, 'w')
-    manifest_file.write(manifest_xml)
-    manifest_file.close()
+    with open(MANIFEST_PATH, "w") as fp:
+        fp.write(manifest_xml)
 
 def refresh_manifest(where):
     """
@@ -119,24 +119,24 @@ def refresh_manifest(where):
     except:
         pass
     os.chdir(where)
-    files = gather_files('.')
-    files.append(File(os.path.join('.', cdr.MANIFEST_NAME)))
-    files.sort()
+    files = gather_files(".")
+    files.append(File(os.path.join(".", cdr.MANIFEST_NAME)))
     md5 = hashlib.md5()
-    filelist = create_filelist(files, md5)
+    filelist = create_filelist(sorted(files), md5)
     root = etree.Element("Manifest")
     root.append(create_ticket(md5))
     root.append(filelist)
     xml = etree.tostring(root, pretty_print=True)
     write_manifest(xml)
-    target = CLIENT_FILES_DIR.replace("/", "\\")
-    command = r"%s:\cdr\bin\fix-permissions.cmd %s" % (cdr.WORK_DRIVE, target)
-    print "fixing permissions..."
-    result = cdr.runCommand(command)
-    if result.code:
-        print "return code: %s" % result.code
+    if IS_WINDOWS:
+        command = f"{cdr.BASEDIR}/bin/fix-permissions.cmd {CLIENT_FILES_DIR}"
+        command = command.replace("/", os.path.sep)
+        print("fixing permissions...")
+        result = cdr.runCommand(command)
+        if result.code:
+            print(f"return code: {result.code}")
         if result.output:
-            print result.output
+            print(result.output)
 
 if __name__ == "__main__":
     """

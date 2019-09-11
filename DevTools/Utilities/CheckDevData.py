@@ -96,20 +96,20 @@ def compare_table(name, old, new):
         for row, which_set in sorted(deltas):
             items.append("%s: %s" % (which_set, row))
     if not items:
-        print """<p class="ok">&#x2713;</p>"""
+        print("""<p class="ok">&#x2713;</p>""")
     else:
-        print "  <ul>\n   "
-        print "\n   ".join(["<li>%s</li>" % i for i in items])
-        print "\n  </ul>"
+        print("  <ul>\n   ")
+        print("\n   ".join(["<li>%s</li>" % i for i in items]))
+        print("\n  </ul>")
 
 def compare_tables(old, new):
-    print "  <h2>Table Comparisons</h2>"
+    print("  <h2>Table Comparisons</h2>")
     for name in sorted(old.tables):
-        print "  <h3>%s</h3>" % name
+        print("  <h3>%s</h3>" % name)
         if name in new.tables:
             compare_table(name, old, new)
         else:
-            print "  <ul><li><b>TABLE LOST</b></li></ul>"
+            print("  <ul><li><b>TABLE LOST</b></li></ul>")
 
 def fix_xml(x):
     # This didn't work so well for our XSL/T filters, which have lots of
@@ -145,12 +145,12 @@ def diff_xml(old, new):
     return "".join(lines)
 
 def compare_docs(old, new):
-    print "  <h2>Document Comparisons</h2>"
+    print("  <h2>Document Comparisons</h2>")
     for name in sorted(old.docs):
-        print "  <h3>%s Docs</h3>" % name
+        print("  <h3>%s Docs</h3>" % name)
         new_docs = new.docs[name]
         if not new_docs.docs:
-            print "  <ul><li><b>DOCUMENT TYPE LOST</b></li></ul>"
+            print("  <ul><li><b>DOCUMENT TYPE LOST</b></li></ul>")
         else:
             old_docs = old.docs[name]
             items = []
@@ -165,12 +165,12 @@ def compare_docs(old, new):
                         show.append("<pre class='fixed'>%s</pre>" % diffs)
                         items.append("".join(show))
             if not items:
-                print "<p class='ok'>&#x2713;</p>"
+                print("<p class='ok'>&#x2713;</p>")
             else:
-                print "  <ul>"
-                print "   " + "\n   ".join(["<li>%s</li>" % i.encode("utf-8")
-                                            for i in items])
-                print "  </ul>"
+                print("  <ul>")
+                print("   " + "\n   ".join(["<li>%s</li>" % i.encode("utf-8")
+                                            for i in items]))
+                print("  </ul>")
 
 if len(sys.argv) > 1:
     old_source = sys.argv[1]
@@ -179,16 +179,16 @@ if len(sys.argv) > 1:
     else:
         new_source = cdrdb.connect("CdrGuest").cursor()
 else:
-    print "Content-type: text/html; charset=utf-8\n"
+    print("Content-type: text/html; charset=utf-8\n")
     fields = cgi.FieldStorage()
     old_source = fields.getvalue("path")
     if not old_source:
-        print FORM
+        print(FORM)
         sys.exit(0)
     new_source = cdrdb.connect("CdrGuest").cursor()
 old = cdr_dev_data.Data(old_source)
 new = cdr_dev_data.Data(new_source, old)
-print PROLOG
+print(PROLOG)
 compare_tables(old, new)
 compare_docs(old, new)
-print EPILOG
+print(EPILOG)

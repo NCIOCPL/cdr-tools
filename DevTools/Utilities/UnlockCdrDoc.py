@@ -22,4 +22,4 @@ err = cdr.unlock(session, docId)
 if err:
     sys.stderr.write("Failure unlocking %s: %s" % (docId, err))
 else:
-    print "unlocked " + docId
+    print("unlocked " + docId)

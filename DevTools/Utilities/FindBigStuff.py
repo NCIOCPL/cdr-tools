@@ -14,4 +14,4 @@ for line in sys.stdin.readlines():
     if len(parts) == 2:
         kbytes = int(parts[0])
         if kbytes > threshold:
-            print line.strip()
+            print(line.strip())

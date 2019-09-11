@@ -141,9 +141,9 @@ def main():
     )
     doc_id, warnings = cdr.repDoc(session, **args)
     if warnings:
-        print(doc_id and "WARNINGS" or "ERRORS")
+        print((doc_id and "WARNINGS" or "ERRORS"))
         for error in cdr.getErrors(warnings, asSequence=True):
-            print(" -->", error)
+            print((" -->", error))
     if not doc_id:
         print("aborting with failure")
 
@@ -151,7 +151,7 @@ def main():
     # 7. Report the number of the latest version.
     #------------------------------------------------------------------
     versions = cdr.lastVersions(session, doc_id, tier=opts.tier)
-    print("Saved {} as version {}".format(doc_id, versions[0]))
+    print(("Saved {} as version {}".format(doc_id, versions[0])))
 
     #------------------------------------------------------------------
     # 8. Clean up.

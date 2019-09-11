@@ -25,4 +25,4 @@ cursor.execute("""\
               WHERE a.name LIKE '%s'
            ORDER BY ActionName, GroupName, UserName""" % pattern)
 for row in cursor.fetchall():
-    print "\t".join(row)
+    print("\t".join(row))

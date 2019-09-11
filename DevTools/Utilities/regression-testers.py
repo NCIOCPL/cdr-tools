@@ -114,7 +114,7 @@ for action_name, doctype_name in ACTIONS:
             actions[action_name] = row.id
         else:
             actions[action_name] = None
-            print("skipping unknown action {!r}".format(action_name))
+            print(("skipping unknown action {!r}".format(action_name)))
     if doctype_name not in doctypes:
         cursor.execute("SELECT id FROM doc_type WHERE name = ?",
                        (doctype_name,))
@@ -123,16 +123,16 @@ for action_name, doctype_name in ACTIONS:
             doctypes[doctype_name] = row.id
         else:
             doctypes[doctype_name] = None
-            print("skipping unknown doctype {!r}".format(doctype_name))
+            print(("skipping unknown doctype {!r}".format(doctype_name)))
     action = actions[action_name]
     doctype = doctypes[doctype_name]
     if action is not None and doctype is not None:
         args = (group, action, doctype) * 2
         if doctype_name:
-            print("Granting {} on {} documents".format(action_name,
-                                                       doctype_name))
+            print(("Granting {} on {} documents".format(action_name,
+                                                       doctype_name)))
         else:
-            print("Granting {}".format(action_name))
+            print(("Granting {}".format(action_name)))
         cursor.execute("""\
             INSERT INTO grp_action (grp, action, doc_type)
             SELECT {:d}, {:d}, {:d}

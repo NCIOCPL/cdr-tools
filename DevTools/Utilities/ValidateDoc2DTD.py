@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # *************************************************************
-# File Name:	validateDoc.py
+# File Name:    validateDoc.py
 #               --------------
 # Script to validate a single document against a DTD.
-# By default, the document is being validated against the 
+# By default, the document is being validated against the
 # vendor DTD located in d:/cdr/licensee/pdq.dtd
 # Alternatively, the path of the DTD can be provided.
 #
@@ -25,7 +25,7 @@ def main():
       doc   = input.read()
       input.close()
    except:
-      print "ERROR in main: Unable to read file %s\n" % sys.argv[1]
+      print("ERROR in main: Unable to read file %s\n" % sys.argv[1])
       sys.exit(2)
 
    # print doc
@@ -34,26 +34,26 @@ def main():
    # against this.  Otherwise use the default.
    # ------------------------------------------------------------
    if len(sys.argv) < 3:
-      x = cdrpub.validateDoc(doc, docId = 0) 
+      x = cdrpub.validateDoc(doc, docId = 0)
    else:
       try:
          dtd = open(sys.argv[2], "rb")
       except:
-         print "ERROR in main: Unable to read DTD %s\n" % sys.argv[2]
-	 sys.exit(3)
+         print("ERROR in main: Unable to read DTD %s\n" % sys.argv[2])
+         sys.exit(3)
 
       x = cdrpub.validateDoc(doc, docId = 0, dtd = sys.argv[2])
 
    # Print the result of the validation
    # ----------------------------------
-   print "\nValidation Errors detected"
-   print "=========================="
+   print("\nValidation Errors detected")
+   print("==========================")
    if len(x.Errors) > 0:
       for i in range(len(x.Errors)):
-         print "%s" % x.Errors[i]
+         print("%s" % x.Errors[i])
    else:
-         print "None"
-   print " "
+         print("None")
+   print(" ")
 
 
 main()

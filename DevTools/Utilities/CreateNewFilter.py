@@ -104,7 +104,7 @@ def main():
     name = cdr_id + ".xml"
     with open(name, "wb") as fp:
         fp.write(stub)
-    print("Created {}".format(name))
+    print(("Created {}".format(name)))
     if not opts.session:
         cdr.logout(session, tier="PROD")
 

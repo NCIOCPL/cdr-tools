@@ -329,7 +329,7 @@ def main():
                             #print "import", alias.name
                             if search_for:
                                 if alias.name == search_for:
-                                    print path
+                                    print(path)
                             else:
                                 modules[alias.name] = modules.get(alias.name,
                                                                   0) + 1
@@ -337,7 +337,7 @@ def main():
                         #print "from %s import ..." % node.module
                         if search_for:
                             if node.module == search_for:
-                                print path
+                                print(path)
                         else:
                             modules[node.module] = modules.get(node.module,
                                                                0) + 1
@@ -347,14 +347,14 @@ def main():
     if counts:
         names = sorted(modules, key=lambda k: (modules[k], k.lower()))
         for name in names:
-            print "%5d %-30s (%s module)" % (modules[name], name,
-                                             mod_type(name))
+            print("%5d %-30s (%s module)" % (modules[name], name,
+                                             mod_type(name)))
     elif not search_for:
         for name in sorted(modules):
             if is_unknown(name):
-                print name
-    print "%d scripts parsed in %.3f seconds" % (parsed, elapsed)
-    print "%d files examined" % total
+                print(name)
+    print("%d scripts parsed in %.3f seconds" % (parsed, elapsed))
+    print("%d files examined" % total)
 
 #----------------------------------------------------------------------
 # Only run the report if the file is loaded as a script (instead of

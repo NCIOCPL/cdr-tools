@@ -39,12 +39,12 @@ cursor.execute("""\
            AND a.dt > GETDATE() - %s
       ORDER BY d.id""" % (docType, daysBack))
 rows = cursor.fetchall()
-print "reindexing %d documents" % len(rows)
+print("reindexing %d documents" % len(rows))
 count = 0
 for row in rows:
-    print "reindexing CDR%010d" % row[0]
+    print("reindexing CDR%010d" % row[0])
     resp = cdr.reindex('guest', row[0])
-    if resp: print resp
+    if resp: print(resp)
 
     # Pause every 50 docs (to avoid swallowing the machine? swamping sshd?)
     count += 1

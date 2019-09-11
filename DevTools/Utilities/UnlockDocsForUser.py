@@ -21,7 +21,7 @@ cursor.execute("""\
          WHERE u.name = ?
            AND c.dt_in IS NULL""", sys.argv[1])
 rows = cursor.fetchall()
-print "unlocking %d documents" % len(rows)
+print("unlocking %d documents" % len(rows))
 if rows:
     session = cdr.login(sys.argv[1], sys.argv[2])
     if session.find("<Err") != -1:
@@ -32,4 +32,4 @@ if rows:
         if err: 
             sys.stderr.write("Failure unlocking CDR%010d: %s" % (row[0], err))
         else:
-            print "unlocked CDR%010d" % row[0]
+            print("unlocked CDR%010d" % row[0])

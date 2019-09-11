@@ -12,5 +12,5 @@ if len(sys.argv) == 4:
     filename = sys.argv[3]
 else:
     session, filename = sys.argv[1:3]
-print cdr.repDoc(session, file=filename, val="Y", ver="Y", checkIn="Y",
-                 verPublishable="Y", showWarnings=True, comment=comment)
+print(cdr.repDoc(session, file=filename, val="Y", ver="Y", checkIn="Y",
+                 verPublishable="Y", showWarnings=True, comment=comment))

@@ -17,4 +17,4 @@ cursor.execute("""\
      WHERE t.name = 'filter'
   ORDER BY d.title""")
 for docId, docTitle in cursor.fetchall():
-    print "CDR%010d.xml %s" % (docId, docTitle.encode('utf-8'))
+    print("CDR%010d.xml %s" % (docId, docTitle.encode('utf-8')))

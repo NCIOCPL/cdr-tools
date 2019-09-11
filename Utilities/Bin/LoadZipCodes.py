@@ -21,7 +21,7 @@ try:
     cursor.execute("TRUNCATE TABLE zipcode_backup")
     conn.commit()
 except:
-    print "Error:  Unable to truncate zipcode_backup"
+    print("Error:  Unable to truncate zipcode_backup")
     sys.exit(1)
 
 try:
@@ -30,7 +30,7 @@ try:
                       FROM zipcode""")
     conn.commit()
 except:
-    print "Error:  Unable to populate zipcode_backup"
+    print("Error:  Unable to populate zipcode_backup")
     sys.exit(1)
 
 # Drop the zipcode table and recreate it with proper permissions
@@ -72,16 +72,16 @@ for row in reader:
                   VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", zipInfo)
             conn.commit()
             added += 1
-            if not added % 2500: print "added %d rows" % added
+            if not added % 2500: print("added %d rows" % added)
         elif len(row) > 19:
-            print "Data format change!!!  Adjust data columns."
+            print("Data format change!!!  Adjust data columns.")
             sys.exit(1)
         else:
             errCount += 1
-            print "invalid line: %s" % row
+            print("invalid line: %s" % row)
             if errCount > 50:
-                print "ERROR: Too many errors detected!!!"
+                print("ERROR: Too many errors detected!!!")
                 sys.exit(1)
     header += 1
-print "\nTotal number of rows loaded: %d" % added
+print("\nTotal number of rows loaded: %d" % added)
 file.close()

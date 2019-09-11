@@ -31,7 +31,7 @@ if len(sys.argv) > 1:
     try:
         parm = datetime.datetime.strptime(sys.argv[1], "%Y-%m-%d")
     except:
-        print "usage: python CallProcDemo.py [YYYY-MM-DD]"
+        print("usage: python CallProcDemo.py [YYYY-MM-DD]")
 else:
     parm= datetime.datetime.today() - datetime.timedelta(2)
-print getLastResultsSet(cursor, "cdr_changed_docs", (parm,))
+print(getLastResultsSet(cursor, "cdr_changed_docs", (parm,)))

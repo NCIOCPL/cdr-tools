@@ -18,7 +18,7 @@ import cdrdb, os, sys, time
 #----------------------------------------------------------------------
 def saveDocs(cursor, outputDir, docType):
     docType = unicode(docType, "latin-1")
-    print (u"Saving %s documents" % docType).encode("utf-8")
+    print((u"Saving %s documents" % docType).encode("utf-8"))
     os.mkdir("%s/%s" % (outputDir, docType))
     cursor.execute("""\
 SELECT d.id, d.title, d.xml
@@ -41,7 +41,7 @@ SELECT d.id, d.title, d.xml
 # Use Python's eval() to reconstruct the row values.
 #----------------------------------------------------------------------
 def saveTable(cursor, outputDir, tableName):
-    print "Saving %s table" % tableName
+    print("Saving %s table" % tableName)
     cursor.execute("SELECT * FROM %s" % tableName)
     fp = open("%s/tables/%s" % (outputDir, tableName), "w")
     fp.write("%s\n" % repr([col[0] for col in cursor.description]))
@@ -56,7 +56,7 @@ def main():
     outputDir = time.strftime('DevData-%Y%m%d%H%M%S')
     cursor = cdrdb.connect("CdrGuest").cursor()
     os.makedirs("%s/tables" % outputDir)
-    print "Saving files to %s" % outputDir
+    print("Saving files to %s" % outputDir)
     for table in ("action", "active_status", "doc_type", "filter_set",
                   "filter_set_member", "format", "grp", "grp_action",
                   "grp_usr", "link_prop_type",

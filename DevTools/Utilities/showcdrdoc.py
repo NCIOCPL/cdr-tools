@@ -18,7 +18,7 @@ if len(sys.argv) < 2 or len(sys.argv) > 5:
     sys.exit(1);
 try:
     docId = cdr.exNormalize(sys.argv[1])[1]
-except cdr.Exception, info:
+except cdr.Exception as info:
     sys.stderr.write(str(info))
     sys.exit(1)
 if len(sys.argv) > 2:

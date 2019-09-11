@@ -46,7 +46,7 @@ class Job:
         """Print the python representation of the job_state dictionary.
         """
 
-        print repr(self.job_state)
+        print(repr(self.job_state))
 
     def print_short(self):
         """Show a brief display for the task.
@@ -55,26 +55,26 @@ class Job:
         Also indicates that the task is disable where appropriate.
         """
 
-        print self.name
-        print json.dumps(self.args[2:])
-        print self.trigger
+        print(self.name)
+        print(json.dumps(self.args[2:]))
+        print(self.trigger)
         if not self.next_run_time:
-            print "Disabled"
-        print
+            print("Disabled")
+        print()
 
     def print_full(self):
         """
         Display a more complete listing of the properties of the task.
         """
 
-        print "=" * 70
-        print "%10s: %s" % ("Job ID", self.job_id)
-        print "%10s: %s" % ("Job Name", self.name)
-        print "%10s: %s" % ("Enabled?", self.next_run_time and "Yes" or "No")
-        print "%10s: %s" % ("Class", self.args[0])
-        print "%10s: %s" % ("Task", self.args[2])
-        print "%10s: %s" % ("Options", self.args[3])
-        print "%10s: %s" % ("Trigger", self.job_state.get("trigger"))
+        print("=" * 70)
+        print("%10s: %s" % ("Job ID", self.job_id))
+        print("%10s: %s" % ("Job Name", self.name))
+        print("%10s: %s" % ("Enabled?", self.next_run_time and "Yes" or "No"))
+        print("%10s: %s" % ("Class", self.args[0]))
+        print("%10s: %s" % ("Task", self.args[2]))
+        print("%10s: %s" % ("Options", self.args[3]))
+        print("%10s: %s" % ("Trigger", self.job_state.get("trigger")))
 
 class Trigger:
     """

@@ -39,6 +39,7 @@ class DocumentSet:
 
     POPEN_OPTS = dict(
         shell=True,
+        text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT
     )
@@ -252,8 +253,8 @@ class SchemaSet(DocumentSet):
       ACCOUNT - name of CDR account for installing schemas
     """
 
-    CHECK_DTDS = cdr.WORK_DRIVE + r":\cdr\Build\CheckDtds.py"
-    REFRESH_MANIFEST = cdr.WORK_DRIVE + r":\cdr\Build\RefreshManifest.py"
+    CHECK_DTDS = f"{cdr.BASEDIR}/BuildCheckDtds.py"
+    REFRESH_MANIFEST = f"{cdr.BASEDIR}/Build/RefreshManifest.py"
     ACCOUNT = "SchemaUpdater"
     DOCTYPE = "schema"
     PUBLISHABLE = "N"
@@ -271,10 +272,10 @@ class SchemaSet(DocumentSet):
         Reflect changes to the schemas in regenerated DTDs for XMetaL.
         """
 
-        args = "python", self.CHECK_DTDS
+        args = cdr.PYTHON, self.CHECK_DTDS
         result = self.execute(args)
         if result.code:
-            self.logger.error("failure rebuilding DTDs: %s", result.output)
+            self.logger.error(f"failure rebuilding DTDs: {result.output}")
             sys.exit(1)
         self.logger.info("rebuild client dtds")
 
@@ -283,7 +284,7 @@ class SchemaSet(DocumentSet):
         Make sure the client manifest refrects changes to the DTDs
         """
 
-        args = "python", self.REFRESH_MANIFEST
+        args = cdr.PYTHON, self.REFRESH_MANIFEST
         result = self.execute(args)
         if result.code:
             self.logger.error("failure refreshing manifest: %s", result.output)

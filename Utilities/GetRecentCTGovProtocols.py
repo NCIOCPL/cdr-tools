@@ -78,7 +78,7 @@ def fetch(since):
     try:
         response = requests.get(url)
         page = response.content
-    except Exception, e:
+    except Exception as e:
         error = "Failure downloading trial set using %s: %s" % (url, e)
         raise Exception(error)
     fp = open(ZIPFILE, "wb")
@@ -119,7 +119,7 @@ INSERT INTO ctgov_trial_sponsor (nct_id, position, sponsor)
                     position += 1
                 conn.commit()
                 loaded += 1
-        except Exception, e:
+        except Exception as e:
             cdr.logwrite("%s: %s" % (name, e), LOGFILE)
     cdr.logwrite("processed %d trials, %d new" % (len(names), loaded), LOGFILE)
 
@@ -147,5 +147,5 @@ if __name__ == "__main__":
         cutoff = get_cutoff()
         fetch(cutoff)
         load()
-    except Exception, e:
+    except Exception as e:
         cdr.logwrite("Failure: %s" % e, LOGFILE, True, True)

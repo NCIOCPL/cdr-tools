@@ -15,14 +15,14 @@ query = cdrapi.db.Query("document", "id").order("id")
 cursor = cdrapi.db.connect(tier=opts.tier).cursor()
 doc_ids = [row[0] for row in query.execute(cursor).fetchall()]
 done = 0
-print "reindexing %d documents" % len(doc_ids)
+print("reindexing %d documents" % len(doc_ids))
 for doc_id in doc_ids:
     try:
         cdr.reindex("guest", doc_id, tier=opts.tier)
     except Exception as e:
-        print("CDR{}: {}".format(doc_id, e))
+        print(("CDR{}: {}".format(doc_id, e)))
     done += 1
     if done % 100 == 0:
         message = "Completed {} docs, last doc processed = CDR{}"
-        print(message.format(done, doc_id))
-print("Completed reindex of {} total documents".format(done))
+        print((message.format(done, doc_id)))
+print(("Completed reindex of {} total documents".format(done)))

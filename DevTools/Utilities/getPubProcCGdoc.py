@@ -19,5 +19,5 @@ row = cursor.fetchone()
 if not row:
     sys.stderr.write("Doc %d not found in pub_proc_cg")
     sys.exit(1)
-print row[0].encode("utf-8")
+print(row[0].encode("utf-8"))
 

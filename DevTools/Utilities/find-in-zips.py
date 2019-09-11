@@ -20,9 +20,9 @@ def searchZip(name, filePattern, targetPattern):
             if filePattern.search(n):
                 d = z.read(n)
                 if targetPattern.search(d):
-                    print name, n
-    except Exception, e:
-        print "%s: %s" % (name, e)
+                    print(name, n)
+    except Exception as e:
+        print("%s: %s" % (name, e))
 
 def main():
     if len(sys.argv) != 4:

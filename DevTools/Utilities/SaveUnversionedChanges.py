@@ -137,7 +137,7 @@ for docId, cwdDate, lastverDate, lastVer in rows:
            (docId, lastVer, lastverDate, cwdDate))
     cwdXml = getNormalizedXml(cursor, docId)
     lastXml = getNormalizedXml(cursor, docId, lastVer)
-    if cwdXml <> lastXml:
+    if cwdXml != lastXml:
         if versionChanges(session, docId):
             versioned += 1
 

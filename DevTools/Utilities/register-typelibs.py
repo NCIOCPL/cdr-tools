@@ -45,7 +45,7 @@ class TLB:
                     self.tlbs[pattern] = self
                     break
     def show(self):
-        print self.dll, self.desc
+        print(self.dll, self.desc)
 
     def register(self):
         cmd = "python %s \"%s\"" % (self.makepy, self.dll)
@@ -57,7 +57,7 @@ class TLB:
         code = stream.returncode
         if code:
             raise Exception("can't register %s (%s)" % (self.dll, self.desc))
-        print "registered",
+        print("registered", end=' ')
         self.show()
 
     @classmethod
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         os.mkdir(TLB.gen_py)
         if not os.path.isdir(TLB.gen_py):
             raise Exception("can't create %s" % TLB.gen_py)
-        print "created", TLB.gen_py
+        print("created", TLB.gen_py)
     TLB.find_tlbs()
     #TLB.show_tlbs()
     TLB.reg_tlbs()

@@ -149,7 +149,7 @@ def main():
     # 7. Report the number of the latest version.
     #------------------------------------------------------------------
     versions = cdr.lastVersions(session, doc_id, tier=opts.tier)
-    print("Saved {} as version {}".format(doc_id, versions[0]))
+    print(("Saved {} as version {}".format(doc_id, versions[0])))
 
     #------------------------------------------------------------------
     # 8. Clean up.

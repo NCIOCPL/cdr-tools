@@ -247,7 +247,7 @@ def getFileContent(fname):
         fp = open(fname, "r")
         text = fp.read()
         fp.close()
-    except IOError, info:
+    except IOError as info:
         sys.stderr.write(str(info))
         sys.exit(1)
     return text
@@ -454,7 +454,7 @@ else:
 
 # Output to stdout
 if fullOutput:
-    print ("""
+    print(("""
 RESPONSE FROM HOST:  cdr.filterDoc time = %f seconds
 DOCUMENT
 ----------------------------------
@@ -465,7 +465,7 @@ MESSAGES
 ----------------------------------
 %s
 ----------------------------------
-""" % (stopClock - startClock, xml, msgs))
+""" % (stopClock - startClock, xml, msgs)))
 
 else:
-    print (resp[0])
+    print((resp[0]))

@@ -23,7 +23,7 @@ import sys
 
 def report(what):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print("{} {}".format(now, what))
+    print(("{} {}".format(now, what)))
 
 if len(sys.argv) != 3:
     sys.stderr.write("usage: backup-python.py DRIVE VERSION\n")
