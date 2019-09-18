@@ -11,14 +11,18 @@
 #   SaveDevDocs.py [newdoctype [newdoctype ...] ]
 #
 #----------------------------------------------------------------------
-import cdrdb, os, sys, time
+
+import datetime
+import os
+import sys
+import time
+from cdrapi import db
 
 #----------------------------------------------------------------------
 # Save all documents of a given type.
 #----------------------------------------------------------------------
 def saveDocs(cursor, outputDir, docType):
-    docType = unicode(docType, "latin-1")
-    print((u"Saving %s documents" % docType).encode("utf-8"))
+    print("Saving %s documents" % docType)
     os.mkdir("%s/%s" % (outputDir, docType))
     cursor.execute("""\
 SELECT d.id, d.title, d.xml
@@ -28,9 +32,9 @@ SELECT d.id, d.title, d.xml
  WHERE t.name = ?""", docType)
     row = cursor.fetchone()
     if not row:
-        raise Exception(u"no documents found of type %s" % docType)
+        raise Exception("no documents found of type %s" % docType)
     while row:
-        fp = open(u"%s/%s/%d.cdr" % (outputDir, docType, row[0]), "w")
+        fp = open("%s/%s/%d.cdr" % (outputDir, docType, row[0]), "w")
         fp.write(repr(row))
         fp.close()
         row = cursor.fetchone()
@@ -46,7 +50,12 @@ def saveTable(cursor, outputDir, tableName):
     fp = open("%s/tables/%s" % (outputDir, tableName), "w")
     fp.write("%s\n" % repr([col[0] for col in cursor.description]))
     for row in cursor.fetchall():
-        fp.write("%s\n" % repr(row))
+        values = []
+        for value in row:
+            if isinstance(value, datetime.datetime):
+                value = str(value)
+            values.append(value)
+        fp.write("%s\n" % repr(tuple(values)))
     fp.close()
 
 #----------------------------------------------------------------------
@@ -54,7 +63,7 @@ def saveTable(cursor, outputDir, tableName):
 #----------------------------------------------------------------------
 def main():
     outputDir = time.strftime('DevData-%Y%m%d%H%M%S')
-    cursor = cdrdb.connect("CdrGuest").cursor()
+    cursor = db.connect(user="CdrGuest").cursor()
     os.makedirs("%s/tables" % outputDir)
     print("Saving files to %s" % outputDir)
     for table in ("action", "active_status", "doc_type", "filter_set",

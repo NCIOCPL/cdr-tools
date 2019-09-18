@@ -10,12 +10,12 @@
 # JIRA::OCECDR-3877
 #----------------------------------------------------------------------
 import cdr
-import cdrdb
 import datetime
 import lxml.etree as etree
 import sys
 import requests
 import zipfile
+from cdrapi import db
 
 LOGFILE = cdr.DEFAULT_LOGDIR + "/RecentCTGovProtocols.log"
 ZIPFILE = cdr.BASEDIR + "/Output/RecentCTGovProtocols.zip"
@@ -142,7 +142,7 @@ def get_cutoff():
 #----------------------------------------------------------------------
 if __name__ == "__main__":
     try:
-        conn = cdrdb.connect()
+        conn = db.connect()
         cursor = conn.cursor()
         cutoff = get_cutoff()
         fetch(cutoff)

@@ -5,7 +5,8 @@
 # Run without args for usage info.
 ###########################################################
 
-import sys, getopt, re, time, cdr, cdrdb
+import sys, getopt, re, time, cdr
+from cdrapi import db
 
 # For nicely indented output
 INDENT_FILTER = """<?xml version="1.0"?>
@@ -373,7 +374,7 @@ if traceDbg:
             filterTitle = filter[5:]
 
             # Fetch filter xml from the database, fail if exception
-            conn = cdrdb.connect()
+            conn = db.connect()
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT xml
@@ -391,7 +392,7 @@ if traceDbg:
         # Else filter supplied by CDR doc id
         else:
             # Fetch filter xml from the database, fail if exception
-            conn = cdrdb.connect()
+            conn = db.connect()
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT xml

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-"""
-Dump CDR scheduled tasks.
+
+"""Dump CDR scheduled tasks.
 
 Run `python get-tasks.py --help` for usage information
 """
@@ -9,8 +9,8 @@ import argparse
 import datetime
 import json
 import pickle
-import pytz
-import cdrdb
+import apscheduler
+from cdrapi import db
 
 class Job:
     """Task managed from the CDR Scheduler
@@ -31,16 +31,16 @@ class Job:
 
         self.job_id = job_id
         self.next_run_time = next_run_time
-        self.job_state = pickle.loads(job_state)
+        self.job_state = pickle.loads(job_state, encoding="latin-1")
         self.name = self.job_state.get("name")
         self.args = self.job_state.get("args") or ["None", "None", "None"]
         self.trigger = Trigger(self.job_state.get("trigger"))
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         """Sort the tasks on their display names.
         """
 
-        return cmp((self.name, self.args), (other.name, other.args))
+        return (self.name, self.args) < (other.name, other.args)
 
     def print_raw(self):
         """Print the python representation of the job_state dictionary.
@@ -101,8 +101,7 @@ class Trigger:
         return "   ".join(values)
 
 def main():
-    """
-    Collect command-line options and dump the tasks as requested.
+    """Collect command-line options and dump the tasks as requested.
     """
 
     parser = argparse.ArgumentParser()
@@ -110,10 +109,12 @@ def main():
                         help="output Python code for values")
     parser.add_argument("-s", "--short", action="store_true",
                         help="show brief display of task information")
+    parser.add_argument("-t", "--tier")
     opts = parser.parse_args()
+    cursor = db.connect(tier=opts.tier).cursor()
     fields = "id", "next_run_time", "job_state"
-    query = cdrdb.Query("scheduler_jobs", *fields)
-    for job in sorted([Job(*row) for row in query.execute().fetchall()]):
+    query = db.Query("scheduler_jobs", *fields)
+    for job in sorted([Job(*row) for row in query.execute(cursor).fetchall()]):
         if opts.raw:
             job.print_raw()
         elif opts.short:

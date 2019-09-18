@@ -5,11 +5,12 @@
 # ---------------------------------------------------------------------
 # OCECDR-3848: Automate Quarterly ZIP Code Updates
 #----------------------------------------------------------------------
-import cdrdb, sys
+import sys
 import csv   #http://www.object-craft.com.au/projects/csv/
+from cdrapi import db
 
 file   = open(sys.argv[1])
-conn   = cdrdb.connect()
+conn   = db.connect()
 cursor = conn.cursor()
 reader = csv.reader(file)
 added  = 0

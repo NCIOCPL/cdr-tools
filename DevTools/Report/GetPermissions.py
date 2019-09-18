@@ -1,28 +1,24 @@
-#======================================================================
-#
-# Fetch a list of who can do what.
-#
-#======================================================================
+#!/usr/bin/env python
 
-import cdrdb, sys
-pattern = len(sys.argv) > 1 and sys.argv[1] or '%'
-host    = len(sys.argv) > 2 and sys.argv[2] or 'localhost'
-conn    = cdrdb.connect(dataSource = host)
-cursor  = conn.cursor()
-cursor.execute("""\
-    SELECT DISTINCT a.name ActionName,
-                    g.name GroupName,
-                    u.name UserName
-               FROM usr u
-               JOIN grp_usr gu
-                 ON gu.usr = u.id
-               JOIN grp g
-                 ON g.id = gu.grp
-               JOIN grp_action ga
-                 ON ga.grp = g.id
-               JOIN action a
-                 ON a.id = ga.action
-              WHERE a.name LIKE '%s'
-           ORDER BY ActionName, GroupName, UserName""" % pattern)
-for row in cursor.fetchall():
+"""Fetch a list of who can do what.
+"""
+
+from argparse import ArgumentParser
+from cdrapi import db
+
+FIELDS = "a.name AS ActionName", "g.name AS GroupName", "u.name AS UserName"
+
+parser = ArgumentParser()
+parser.add_argument("--pattern")
+parser.add_argument("--tier")
+opts = parser.parse_args()
+cursor = db.connect(tier=opts.tier).cursor()
+query = db.Query("usr u", *FIELDS).unique().order(1, 2, 3)
+query.join("grp_usr gu", "gu.usr = u.id")
+query.join("grp g", "g.id = gu.grp")
+query.join("grp_action ga", "ga.grp = g.id")
+query.join("action a", "a.id = ga.action")
+if opts.pattern:
+    query.where(query.Condition("a.name", opts.pattern, "LIKE"))
+for row in query.execute(cursor).fetchall():
     print("\t".join(row))

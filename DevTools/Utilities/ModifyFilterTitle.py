@@ -11,7 +11,7 @@
 # JIRA::OCECDR-3694
 #
 #----------------------------------------------------------------------
-import cdr, optparse, sys, cdrdb, re
+import cdr, optparse, sys, re
 
 #----------------------------------------------------------------------
 # Find out if the response to a CDR client-server command indicates

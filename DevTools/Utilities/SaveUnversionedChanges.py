@@ -5,17 +5,14 @@
 # given CDR document type.
 #
 #----------------------------------------------------------------------
-import cdr, cdrdb, re, sys
 
-LOGFILE = cdr.DEFAULT_LOGDIR + "/SaveUnversionedChanges.log"
+import re
+import sys
+import cdr
+from cdrapi import db
+
+LOGGER = cdr.Logging.get_logger("SaveUnversionedChanges")
 COMMENT = "Versioning unversioned changes"
-
-#----------------------------------------------------------------------
-# Record what's happening and display it for the operator.
-#----------------------------------------------------------------------
-def report(what):
-    sys.stderr.write(what + "\n")
-    cdr.logwrite(what, LOGFILE)
 
 #----------------------------------------------------------------------
 # Get the XML for the version (possibly CWD) specified, with whitespace
@@ -36,11 +33,11 @@ def getNormalizedXml(cursor, docId, docVer = None):
 # Create a new version for a document.
 #----------------------------------------------------------------------
 def versionChanges(session, docId):
-    report("saving unversioned changes for CDR%d" % docId)
+    LOGGER.info("saving unversioned changes for CDR%d", docId)
     doc = cdr.getDoc(session, docId, 'Y')
     err = cdr.checkErr(doc)
     if err:
-        report("failure for CDR%d: %s" % (docId, err))
+        LOGGER.error("failure for CDR%d: %s", docId, err)
         return False
     docId, errors = cdr.repDoc(session, doc = doc, comment = COMMENT,
                                reason = COMMENT, val = 'Y', ver = 'Y',
@@ -48,7 +45,7 @@ def versionChanges(session, docId):
                                verPublishable = 'N')
     if errors:
         for e in cdr.getErrors(errors, asSequence = True):
-            report(e)
+            LOGGER.error(e)
     return docId and True or False
 
 #----------------------------------------------------------------------
@@ -63,7 +60,7 @@ if errors:
     sys.stderr.write("login failure: %s" % errors)
     sys.exit(1)
 docType = sys.argv[3]
-cursor = cdrdb.connect('CdrGuest').cursor()
+cursor = db.connect(user='CdrGuest', timeout=300).cursor()
 
 #----------------------------------------------------------------------
 # Determine the last version number for each versioned document of
@@ -83,8 +80,9 @@ cursor.execute("""\
      JOIN doc_type t
        ON t.id = d.doc_type
     WHERE t.name = '%s'
- GROUP BY v.id""" % docType, timeout = 300)
-report("found %d versioned %s documents" % (cursor.rowcount, docType))
+ GROUP BY v.id""" % docType)
+args = cursor.rowcount, docType
+LOGGER.info("found %d versioned %s documents", *args)
 
 #----------------------------------------------------------------------
 # Determine the date/time each document was last saved (with or without
@@ -99,7 +97,7 @@ cursor.execute("""\
      JOIN action n
        ON n.id = a.action
     WHERE n.name IN ('ADD DOCUMENT', 'MODIFY DOCUMENT')
- GROUP BY a.document""", timeout = 300)
+ GROUP BY a.document""")
 
 #----------------------------------------------------------------------
 # When a CDR document is saved, the date/time of the save action is
@@ -121,10 +119,10 @@ cursor.execute("""\
      JOIN doc_version v
        ON v.id = lv.id
       AND v.num = lv.num
-    WHERE v.updated_dt < c.dt""", timeout = 300)
+    WHERE v.updated_dt < c.dt""")
 rows = cursor.fetchall()
-report("%d %s documents have CWD later than the last version" % (len(rows),
-                                                                 docType))
+args = len(rows), docType
+LOGGER.info("%d %s documents have CWD later than the last version", *args)
 
 #----------------------------------------------------------------------
 # Create new versions for these documents if the XML for the current
@@ -133,8 +131,8 @@ report("%d %s documents have CWD later than the last version" % (len(rows),
 #----------------------------------------------------------------------
 versioned = 0
 for docId, cwdDate, lastverDate, lastVer in rows:
-    report("CDR%d version %d saved %s; CWD saved %s" %
-           (docId, lastVer, lastverDate, cwdDate))
+    args = docId, lastVer, lastverDate, cwdDate
+    LOGGER.info("CDR%d version %d saved %s; CWD saved %s", *args)
     cwdXml = getNormalizedXml(cursor, docId)
     lastXml = getNormalizedXml(cursor, docId, lastVer)
     if cwdXml != lastXml:
@@ -150,9 +148,10 @@ cursor.execute("""\
       JOIN doc_type t
         ON t.id = d.doc_type
      WHERE t.name = '%s'
-       AND d.id NOT IN (SELECT id FROM #lastver)""" % docType, timeout = 300)
+       AND d.id NOT IN (SELECT id FROM #lastver)""" % docType)
 docIds = [row[0] for row in cursor.fetchall()]
-report("%d %s documents have never been versioned" % (len(docIds), docType))
+args = len(docIds), docType
+LOGGER.info("%d %s documents have never been versioned", *args)
 for docId in docIds:
     if versionChanges(session, docId):
         versioned += 1
@@ -160,5 +159,5 @@ for docId in docIds:
 #----------------------------------------------------------------------
 # Clean up and go home.
 #----------------------------------------------------------------------
-report("saved %d new versions" % versioned)
+LOGGER.info("saved %d new versions", versioned)
 cdr.logout(session)
