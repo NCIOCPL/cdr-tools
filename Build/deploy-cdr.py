@@ -253,7 +253,7 @@ class Control:
 
             args = self.nssm, option, self.name
             result = Control.execute(args)
-            output = unicode(result.output, "utf-16").strip()
+            output = str(result.output, "utf-16").strip()
             if result.code:
                 command = " ".join(args)
                 self.logger.error("%s: %s", command, output)

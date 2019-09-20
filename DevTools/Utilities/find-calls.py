@@ -55,7 +55,7 @@ class Finder:
                         if self.__wanted(node):
                             pieces = [message.format(path)]
                             if self.opts.list_files:
-                                print(path)
+                                print(path.replace("\\", "/"))
                                 break
                             if self.opts.show_locations:
                                 pieces.append(f"at line {node.lineno:d},")

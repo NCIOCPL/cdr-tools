@@ -126,7 +126,7 @@ def refresh_manifest(where):
     root = etree.Element("Manifest")
     root.append(create_ticket(md5))
     root.append(filelist)
-    xml = etree.tostring(root, pretty_print=True)
+    xml = etree.tostring(root, pretty_print=True, encoding="unicode")
     write_manifest(xml)
     if IS_WINDOWS:
         command = f"{cdr.BASEDIR}/bin/fix-permissions.cmd {CLIENT_FILES_DIR}"
