@@ -47,10 +47,8 @@ standard_library_modules = {
     "calendar",
     "cgi",
     "cgitb",
-    "codecs",
     "concurrent", # from futures - used by ndscheduler
     "copy",
-    "cPickle",
     "csv",
     "cStringIO",
     "ctypes",
@@ -145,6 +143,9 @@ standard_library_modules = {
 #----------------------------------------------------------------------
 third_party_modules = {
     "apns",            # https://github.com/djacobs/PyAPNs (for scheduler)
+    "apscheduler.executors", # https://pypi.python.org/pypi/APScheduler
+    "apscheduler.jobstores", # (sits underneath ndscheduler)
+    "apscheduler.schedulers",
     "dateutil.parser", # https://pypi.python.org/pypi/python-dateutil
     "dateutil.tz",     #  (used by ndscheduler)
     "dateutil.relativedelta",
@@ -158,14 +159,21 @@ third_party_modules = {
     # "MP3Info",         # http://www.lab49.com/~vivake/python/MP3Info.py
                        # (but not currently maintained, so we have it
                        # in subversion in lib/Python)
+    "ndscheduler",     # https://github.com/Nextdoor/ndscheduler
+    "ndscheduler.core",
+    "ndscheduler.core.datastore",
+    "ndscheduler.core.datastore.providers",
+    "ndscheduler.core.scheduler",
+    "ndscheduler.server",
+    "ndscheduler.server.handlers",
     "PIL",             # https://python-pillow.org/
     "pip",             # https://pypi.python.org/pypi/pip
-    "xlrd",            # http://www.python-excel.org/
-    "xlwt",
     "paramiko",        # http://www.paramiko.org/
     "pkg_resources",   # https://setuptools.readthedocs.io/en/latest/index.html
     "psutil",          # https://github.com/giampaolo/psutil (used by scheduler)
+    "pymssql",         # http://www.pymssql.org (used by ndscheduler)
     "pyodbc",          # https://github.com/mkleehammer/pyodbc (db api)
+    "pytz",            # https://pypi.python.org/pypi/pytz (used by ndscheduler)
     "requests",        # http://requests.readthedocs.io/en/master/ (HTTP api)
     "requests.packages.urllib3.exceptions",
     "setuptools",      # https://pypi.python.org/pypi/setuptools
@@ -181,15 +189,14 @@ third_party_modules = {
     "tornado.testing",
     "tornado.web",
     "xlsxwriter",
+    "xlrd",            # http://www.python-excel.org/
+    "xlwt",
 }
 
 #----------------------------------------------------------------------
 # Modules implemented specifically for the CDR project.
 #----------------------------------------------------------------------
 custom_modules = {
-    "apscheduler.executors", # https://pypi.python.org/pypi/APScheduler
-    "apscheduler.jobstores", # (sits underneath ndscheduler)
-    "apscheduler.schedulers",
     "AssignGroupNums", # imported by cdrpub module
     "cdr",             # used throughout system
     "cdr2gk",          # used by Publishing subsystem (to communicate with GK)
@@ -215,8 +222,6 @@ custom_modules = {
     "cdrmailer",       # used by mailer subsystem
     "cdrpub",          # used by publishing subsystem
     "cdrpw",           # interface to file containing system passwords
-    "cdrutil",         # abstractions of platform characteristics
-    "cdrxdiff",        # used by batch jobs to compare documents
     "CgiQuery",        # used by CGI script CdrQueries.py (for ad hoc SQL)
     "core.const",      # part of CDR scheduler
     "core.exceptions",
@@ -224,15 +229,6 @@ custom_modules = {
                        # (unit testing for ndscheduler)
     "ModifyDocs",      # used extensively by global change jobs
     "nci_thesaurus",   # used by scripts dealing with terminology documents
-    "ndscheduler",     # https://github.com/Nextdoor/ndscheduler
-    "ndscheduler.core",
-    "ndscheduler.core.datastore",
-    "ndscheduler.core.datastore.providers",
-    "ndscheduler.core.scheduler",
-    "ndscheduler.server",
-    "ndscheduler.server.handlers",
-    "pymssql",         # http://www.pymssql.org (used by ndscheduler)
-    "pytz",            # https://pypi.python.org/pypi/pytz (used by ndscheduler)
     "RepublishDocs",   # imported by CGI script Republish.py
     "RtfWriter",       # used by mailer subsystem
     "task_property_bag", # part of CDR scheduler

@@ -1,13 +1,15 @@
-#----------------------------------------------------------------------
-# Launch web browser to display a CDR XML document from the command line.
-#----------------------------------------------------------------------
+#!/usr/bin/env python
+
+"""Launch web browser to display a CDR XML document from the command line.
+"""
+
 import argparse
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import webbrowser
 
 try:
-    import cdrutil
-    TIER = cdrutil.getTier()
+    from cdrapi.settings import Tier
+    TIER = Tier().name
 except:
     TIER = "PROD"
 
@@ -35,6 +37,6 @@ if args.version:
     parms["vtype"] = "num"
 elif args.named_version:
     parms["vtype"] = args.named_version
-parms = urllib.urlencode(parms)
+parms = urllib.parse.urlencode(parms)
 url = "https://%s/cgi-bin/cdr/ShowCdrDocument.py?%s" % (host, parms)
 webbrowser.open_new_tab(url)

@@ -13,7 +13,7 @@ import os
 
 CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
 MANIFEST_PATH    = f"{CLIENT_FILES_DIR}/{cdr.MANIFEST_NAME}"
-IS_WINDOWS       = platform.platform().lower() == "windows"
+IS_WINDOWS       = True if "windows" in platform.platform().lower() else False
 
 class File:
     """
@@ -136,7 +136,7 @@ def refresh_manifest(where):
         if result.code:
             print(f"return code: {result.code}")
         if result.output:
-            print(result.output)
+            print(result.output.decode("utf-8"))
 
 if __name__ == "__main__":
     """
