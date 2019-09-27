@@ -65,7 +65,7 @@ for docType in docTypes:
         try:
             current = open(path).read()
         except Exception as e:
-            sys.stderr.write("failure opening %s: %s\n" % (path, str(e)))
+            sys.stderr.write("failure opening %s: %s\n" % (path, e))
             LOGGER.exception("failure opening %s", path)
             current = None
         #sys.stderr.write("old DTD read\n")
@@ -86,7 +86,7 @@ for docType in docTypes:
         try:
             open(path, "w").write(dtInfo.dtd)
         except Exception as e:
-            sys.stderr.write("failure writing %s: %s\n" % (path, str(e)))
+            sys.stderr.write("failure writing %s: %s\n" % (path, e))
             LOGGER.exception("failure writing %s", path)
     except Exception as e:
         LOGGER.exception("loadDocTypeResponses failure")

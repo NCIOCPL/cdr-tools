@@ -5,15 +5,21 @@
 # ---------------------------------------------------------------------
 # OCECDR-3848: Automate Quarterly ZIP Code Updates
 #----------------------------------------------------------------------
+from argparse import ArgumentParser
+from datetime import datetime
 import sys
 import csv   #http://www.object-craft.com.au/projects/csv/
 from cdrapi import db
 
-file   = open(sys.argv[1])
-conn   = db.connect()
+start = datetime.now()
+parser = ArgumentParser()
+parser.add_argument("csv_file")
+opts = parser.parse_args()
+csv_file = open(opts.csv_file)
+reader = csv.reader(csv_file)
+conn = db.connect()
 cursor = conn.cursor()
-reader = csv.reader(file)
-added  = 0
+added = 0
 header = 0
 
 # Create a backup of the current zipcode table
@@ -84,5 +90,7 @@ for row in reader:
                 print("ERROR: Too many errors detected!!!")
                 sys.exit(1)
     header += 1
-print("\nTotal number of rows loaded: %d" % added)
-file.close()
+print(f"\nTotal number of rows loaded: {added:d}")
+csv_file.close()
+elapsed = datetime.now() - start
+print(f"Elapsed time: {elapsed}")

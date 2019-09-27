@@ -132,11 +132,11 @@ def refresh_manifest(where):
         command = f"{cdr.BASEDIR}/bin/fix-permissions.cmd {CLIENT_FILES_DIR}"
         command = command.replace("/", os.path.sep)
         print("fixing permissions...")
-        result = cdr.runCommand(command)
-        if result.code:
-            print(f"return code: {result.code}")
-        if result.output:
-            print(result.output.decode("utf-8"))
+        result = cdr.run_command(command, merge_output=True)
+        if result.returncode:
+            print(f"return code: {result.returncode}")
+        if result.stdout:
+            print(result.stdout)
 
 if __name__ == "__main__":
     """

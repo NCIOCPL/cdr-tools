@@ -9,7 +9,7 @@ import argparse
 import datetime
 import json
 import pickle
-import apscheduler
+#import apscheduler
 from cdrapi import db
 
 class Job:
@@ -110,10 +110,11 @@ def main():
     parser.add_argument("-s", "--short", action="store_true",
                         help="show brief display of task information")
     parser.add_argument("-t", "--tier")
+    parser.add_argument("--table", default="scheduler_jobs")
     opts = parser.parse_args()
     cursor = db.connect(tier=opts.tier).cursor()
     fields = "id", "next_run_time", "job_state"
-    query = db.Query("scheduler_jobs", *fields)
+    query = db.Query(opts.table, *fields)
     for job in sorted([Job(*row) for row in query.execute(cursor).fetchall()]):
         if opts.raw:
             job.print_raw()
