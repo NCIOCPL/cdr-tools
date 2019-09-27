@@ -17,8 +17,10 @@ import requests
 import zipfile
 from cdrapi import db
 
-LOGFILE = cdr.DEFAULT_LOGDIR + "/RecentCTGovProtocols.log"
-ZIPFILE = cdr.BASEDIR + "/Output/RecentCTGovProtocols.zip"
+LOGNAME = "RecentCTGovProtocols"
+LOGFILE = f"{cdr.DEFAULT_LOGDIR}/RecentCTGovProtocols.log"
+ZIPFILE = f"{cdr.BASEDIR}/Output/RecentCTGovProtocols.zip"
+LOGGER = cdr.Logging.get_logger(LOGNAME)
 
 #----------------------------------------------------------------------
 # Get stripped text content from a node. Assumes no mixed content.
@@ -61,7 +63,7 @@ class Trial:
 # Fetch the cancer trials added since a certain point in time.
 #----------------------------------------------------------------------
 def fetch(since):
-    cdr.logwrite("fetching trials added on or after %s" % since, LOGFILE)
+    LOGGER.info("fetching trials added on or after %s", since)
     conditions = ['cancer', 'lymphedema', 'myelodysplastic syndromes',
                   'neutropenia', 'aspergillosis', 'mucositis']
     diseases = ['cancer', 'neoplasm']
@@ -74,7 +76,7 @@ def fetch(since):
     params = params.replace(" ", "+")
     base  = "http://clinicaltrials.gov/ct2/results"
     url = "%s?%s" % (base, params)
-    cdr.logwrite(url, LOGFILE)
+    LOGGER.info(url)
     try:
         response = requests.get(url)
         page = response.content
@@ -120,8 +122,8 @@ INSERT INTO ctgov_trial_sponsor (nct_id, position, sponsor)
                 conn.commit()
                 loaded += 1
         except Exception as e:
-            cdr.logwrite("%s: %s" % (name, e), LOGFILE)
-    cdr.logwrite("processed %d trials, %d new" % (len(names), loaded), LOGFILE)
+            LOGGER.exception("%s failure", name)
+    LOGGER.info("processed %d trials, %d new", len(names), loaded)
 
 #----------------------------------------------------------------------
 # Figure out how far back to go.
@@ -148,4 +150,4 @@ if __name__ == "__main__":
         fetch(cutoff)
         load()
     except Exception as e:
-        cdr.logwrite("Failure: %s" % e, LOGFILE, True, True)
+        LOGGER.exception("Failure")
