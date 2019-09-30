@@ -50,7 +50,6 @@ standard_library_modules = {
     "concurrent", # from futures - used by ndscheduler
     "copy",
     "csv",
-    "cStringIO",
     "ctypes",
     "datetime",
     "difflib",
@@ -142,7 +141,6 @@ standard_library_modules = {
 # URL in a comment, see the closest comment above the module.
 #----------------------------------------------------------------------
 third_party_modules = {
-    "apns",            # https://github.com/djacobs/PyAPNs (for scheduler)
     "apscheduler.executors", # https://pypi.python.org/pypi/APScheduler
     "apscheduler.jobstores", # (sits underneath ndscheduler)
     "apscheduler.schedulers",
@@ -180,7 +178,6 @@ third_party_modules = {
                        # (used by ndscheduler)
     "sqlalchemy",      # http://www.sqlalchemy.org/ (DB API for scheduler)
     "sqlalchemy.pool",
-    "suds.client",     # http://sourceforge.net/projects/python-suds/
     "tornado",         # http://www.tornadoweb.org (web server for scheduler)
     "tornado.concurrent",
     "tornado.gen",
@@ -218,7 +215,6 @@ custom_modules = {
     "cdrdocobject",    # classes representing CDR document of specific types
     "cdrlite",         # stripped-down version of cdr module for secure login
     "CdrLongReports",  # reports that exceed the web server timeout
-    "cdrmailcommon",   # used by mailer subsystem
     "cdrmailer",       # used by mailer subsystem
     "cdrpub",          # used by publishing subsystem
     "cdrpw",           # interface to file containing system passwords
