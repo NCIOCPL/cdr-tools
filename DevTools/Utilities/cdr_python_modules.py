@@ -218,7 +218,6 @@ custom_modules = {
     "cdrmailer",       # used by mailer subsystem
     "cdrpub",          # used by publishing subsystem
     "cdrpw",           # interface to file containing system passwords
-    "CgiQuery",        # used by CGI script CdrQueries.py (for ad hoc SQL)
     "core.const",      # part of CDR scheduler
     "core.exceptions",
     "mock",            # https://pypi.python.org/pypi/mock
