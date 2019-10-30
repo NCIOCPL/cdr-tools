@@ -5,8 +5,9 @@
 # Run without args for usage info.
 ###########################################################
 
-import sys, getopt, re, time, cdr
+import sys, getopt, re, cdr
 from cdrapi import db
+from datetime import datetime
 
 # For nicely indented output
 INDENT_FILTER = """<?xml version="1.0"?>
@@ -430,10 +431,10 @@ if not inline:
     filter = [filter,]
 
 # Filter doc
-startClock = time.clock()
+startClock = datetime.now()
 resp = cdr.filterDoc(session, filter=filter, docId=docId, doc=doc,
                      inline=inline, parm=parms)
-stopClock = time.clock()
+stopClock = datetime.now()
 
 if type(resp) in (type(""), type(u"")):
     sys.stderr.write("Error response:\n  %s" % resp)
@@ -466,7 +467,7 @@ MESSAGES
 ----------------------------------
 %s
 ----------------------------------
-""" % (stopClock - startClock, xml, msgs)))
+""" % ((stopClock - startClock).total_seconds(), xml, msgs)))
 
 else:
     print((resp[0]))
