@@ -10,7 +10,8 @@ the CDR server.
 The build scripts depend on having the following tools present:
 
  * a drive with \cdr\Bin
- * \bin\vsvars32.bat for Visual Studio 2013 on that drive
+ * \VisualStudio\VC\Auxiliary\Build\vcvars64.bat for Visual Studio 2019
+    on that drive
  * cygwin tools (curl, tar, etc.)
  * a connection to the internet
  * a GitHub account, with membership in the NCIOCPL organization
