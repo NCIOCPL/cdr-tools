@@ -300,7 +300,6 @@ class Directory:
             cls("Licensee", "publishing/Licensee"),
             cls("Scheduler", "scheduler"),
             cls("glossifier", "glossifier"),
-            cls("Emailers", "publishing/gpmailers"),
             cls("Schemas", "server/Schemas"),
             cls("Filters", "server/Filters"),
             cls("Build", "tools/Build"),
