@@ -34,7 +34,7 @@ SET XMETAL=%BRANCH%\client\XMetaL
 SET CLIENTFILES=%BASE%\ClientFiles
 SET LOADER=CdrClient-%STAMP%.exe
 MKDIR %CLIENTFILES% || ECHO Failed creating %CLIENTFILES% && EXIT /B 1
-CALL %VSVARS% || ECHO Failed Visual Studio Init && EXIT /B 1
+%VSVARS% || ECHO Failed Visual Studio Init && EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
@@ -56,7 +56,7 @@ REM ----------------------------------------------------------------------
 :build_loader
 CHDIR /D %XMETAL%\CdrClient
 nmake > nmake.log 2>nmake.err || ECHO Failed building loader && EXIT /B 1
-COPY Release\CdrClient.exe %CLIENTFILES%\%LOADER% > NUL 2>&1
+COPY x64\Release\CdrClient.exe %CLIENTFILES%\%LOADER% > NUL 2>&1
 IF ERRORLEVEL 1 ECHO Failed copying CdrClient.exe && EXIT /B 1
 CHDIR /D %CLIENTFILES%
 SET SCRIPT=%BUILD%\make-cdr-loader-scripts.py
