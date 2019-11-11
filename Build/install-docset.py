@@ -253,7 +253,7 @@ class SchemaSet(DocumentSet):
       ACCOUNT - name of CDR account for installing schemas
     """
 
-    CHECK_DTDS = f"{cdr.BASEDIR}/BuildCheckDtds.py"
+    CHECK_DTDS = f"{cdr.BASEDIR}/Build/CheckDtds.py"
     REFRESH_MANIFEST = f"{cdr.BASEDIR}/Build/RefreshManifest.py"
     ACCOUNT = "SchemaUpdater"
     DOCTYPE = "schema"
