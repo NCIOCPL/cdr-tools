@@ -39,7 +39,7 @@ class Control:
       logger - object for recording what we do
     """
 
-    SERVICES = "Cdr", "CDRScheduler", "W3SVC"
+    SERVICES = "CDRScheduler", "W3SVC"
     POPEN_OPTS = dict(
         shell=True,
         stdout=subprocess.PIPE,
