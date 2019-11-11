@@ -330,6 +330,7 @@ class FilterSet(DocumentSet):
             Store the properties, encoding the xml using utf-8.
             """
 
+            xml = xml.decode("utf-8")
             DocumentSet.Document.__init__(self, control, name, xml)
             match = re.search("<!--\\s*filter title:(.*?)-->", xml, re.I)
             if not match:
