@@ -21,7 +21,7 @@ rows = query.execute(cursor).fetchall()
 for es, en, published in rows:
     if not published:
         print(f"CDR{es} is translation of unpublished CDR{en}")
-client = DrupalClient(Session("guest"))
+client = DrupalClient(Session("guest"), base=opts.cms)
 catalog = client.list()
 on_cms = set([summary.cdr_id for summary in catalog])
 for es, en, published in rows:
