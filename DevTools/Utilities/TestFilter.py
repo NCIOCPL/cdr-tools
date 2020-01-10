@@ -5,7 +5,9 @@
 # Run without args for usage info.
 ###########################################################
 
-import sys, getopt, re, time, cdr, cdrdb
+import sys, getopt, re, cdr
+from cdrapi import db
+from datetime import datetime
 
 # For nicely indented output
 INDENT_FILTER = """<?xml version="1.0"?>
@@ -247,7 +249,7 @@ def getFileContent(fname):
         fp = open(fname, "r")
         text = fp.read()
         fp.close()
-    except IOError, info:
+    except IOError as info:
         sys.stderr.write(str(info))
         sys.exit(1)
     return text
@@ -373,7 +375,7 @@ if traceDbg:
             filterTitle = filter[5:]
 
             # Fetch filter xml from the database, fail if exception
-            conn = cdrdb.connect()
+            conn = db.connect()
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT xml
@@ -391,7 +393,7 @@ if traceDbg:
         # Else filter supplied by CDR doc id
         else:
             # Fetch filter xml from the database, fail if exception
-            conn = cdrdb.connect()
+            conn = db.connect()
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT xml
@@ -429,10 +431,10 @@ if not inline:
     filter = [filter,]
 
 # Filter doc
-startClock = time.clock()
+startClock = datetime.now()
 resp = cdr.filterDoc(session, filter=filter, docId=docId, doc=doc,
                      inline=inline, parm=parms)
-stopClock = time.clock()
+stopClock = datetime.now()
 
 if type(resp) in (type(""), type(u"")):
     sys.stderr.write("Error response:\n  %s" % resp)
@@ -454,7 +456,7 @@ else:
 
 # Output to stdout
 if fullOutput:
-    print ("""
+    print(("""
 RESPONSE FROM HOST:  cdr.filterDoc time = %f seconds
 DOCUMENT
 ----------------------------------
@@ -465,7 +467,7 @@ MESSAGES
 ----------------------------------
 %s
 ----------------------------------
-""" % (stopClock - startClock, xml, msgs))
+""" % ((stopClock - startClock).total_seconds(), xml, msgs)))
 
 else:
-    print (resp[0])
+    print((resp[0]))

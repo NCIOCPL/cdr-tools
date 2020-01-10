@@ -163,7 +163,7 @@ if __name__ == "__main__":
                     row = "%20s: %s (%s secs.)" % (cmd.name,
                                                    cmd.result,
                                                    cmd.time)
-                    print row
+                    print(row)
                     sys.stderr.write("%s\n" % row)
                     for err in cmd.errors:
-                        print "ERROR: %s" % err
+                        print("ERROR: %s" % err)

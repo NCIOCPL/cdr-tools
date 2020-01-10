@@ -24,20 +24,20 @@ for arg in args:
         baseName = os.path.basename(name)
         try:
             localDoc = open(name).read().replace("\r", "").splitlines(True)
-        except Exception, e:
-            print "... unable to open %s: %s" % (name, e)
+        except Exception as e:
+            print("... unable to open %s: %s" % (name, e))
             continue
         query = "CdrCtl/Title = {}".format(baseName)
         results = cdr.search(session, query, doctypes=["schema"])
         if len(results) < 1:
-            print "... schema %s not found in CDR" % baseName
+            print("... schema %s not found in CDR" % baseName)
         else:
             for result in results:
                 if not quiet:
-                    print "comparing %s to %s" % (result.docId, name)
+                    print("comparing %s to %s" % (result.docId, name))
                 doc = cdr.getDoc(session, result.docId, getObject = True)
                 if type(doc) in (str, unicode):
-                    print "... getDoc(%s): %s" % (result.docId, doc)
+                    print("... getDoc(%s): %s" % (result.docId, doc))
                 else:
                     cdrDoc = doc.xml.replace("\r", "").splitlines(True)
                     diffSeq = differ.compare(localDoc, cdrDoc)
@@ -55,6 +55,6 @@ for arg in args:
                         diff = diff[:-3]
                     if quiet:
                         if diff:
-                            print "%s does not match %s" % (result.docId, name)
+                            print("%s does not match %s" % (result.docId, name))
                     elif diff.strip():
-                        print diff
+                        print(diff)

@@ -6,9 +6,10 @@
 # directory.
 #
 #----------------------------------------------------------------------
-import cdrdb, cdr
 
-cursor = cdrdb.connect('CdrGuest').cursor()
+from cdrapi import db
+
+cursor = db.connect(user='CdrGuest').cursor()
 cursor.execute("""\
     SELECT d.id, d.title
       FROM document d
@@ -17,4 +18,4 @@ cursor.execute("""\
      WHERE t.name = 'filter'
   ORDER BY d.title""")
 for docId, docTitle in cursor.fetchall():
-    print "CDR%010d.xml %s" % (docId, docTitle.encode('utf-8'))
+    print(f"CDR{docId:010d}.xml {docTitle}")

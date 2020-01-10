@@ -17,4 +17,4 @@ for base, dirs, names in os.walk(start):
         stamp = mtime.strftime("%Y-%m-%d %H:%M:%S.%f")
         files.append((stamp, path))
 for stamp, path in sorted(files):
-    print stamp, path
+    print(stamp, path)

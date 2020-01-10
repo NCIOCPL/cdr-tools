@@ -59,11 +59,11 @@ else:
 
 # Let the user know how things went
 if warnings:
-    print(doc_id and "WARNINGS" or "ERRORS")
+    print((doc_id and "WARNINGS" or "ERRORS"))
     for error in cdr.getErrors(warnings, asSequence=True):
-        print(" -->", error)
+        print((" -->", error))
 if not doc_id:
     print("*** DOCUMENT NOT SAVED ***")
 else:
     versions = cdr.lastVersions(opts.session, doc_id, tier=opts.tier)
-    print("Saved {} as version {}".format(doc_id, versions[0]))
+    print(("Saved {} as version {}".format(doc_id, versions[0])))

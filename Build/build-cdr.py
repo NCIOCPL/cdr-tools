@@ -265,14 +265,24 @@ class Directory:
                 control.logger.error("{}: {}".format(self.name, output))
                 sys.exit(1)
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         """
         Make the directories sortable by name, ignoring case.
 
         We do this to make the usage help screen easier to read.
         """
 
-        return cmp(self.name.lower(), other.name.lower())
+        return self.sortkey < other.sortkey
+
+    @property
+    def sortkey(self):
+        """
+        Sort without regard to case.
+        """
+
+        if not hasattr(self, "_sortkey"):
+            self._sortkey = self.name.lower()
+        return self._sortkey
 
     @classmethod
     def all_dirs(cls):
@@ -290,7 +300,6 @@ class Directory:
             cls("Licensee", "publishing/Licensee"),
             cls("Scheduler", "scheduler"),
             cls("glossifier", "glossifier"),
-            cls("Emailers", "publishing/gpmailers"),
             cls("Schemas", "server/Schemas"),
             cls("Filters", "server/Filters"),
             cls("Build", "tools/Build"),

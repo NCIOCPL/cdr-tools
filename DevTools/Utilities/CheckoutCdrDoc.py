@@ -11,4 +11,4 @@ if len(sys.argv) == 4:
     cdr_id = sys.argv[3]
 else:
     session, cdr_id = sys.argv[1:3]
-print cdr.getDoc(session, cdr_id, "Y")
+print(cdr.getDoc(session, cdr_id, "Y"))

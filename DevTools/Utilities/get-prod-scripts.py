@@ -39,7 +39,7 @@ for name in sorted(names):
         script = response.content
         with open("%s/%s" % (opts.dir, name), "wb") as fp:
             fp.write(script)
-    except Exception, e:
+    except Exception as e:
         with open("get-prod-scripts.err", "a") as fp:
             fp.write("%s: %s\n" % (path, e))
         sys.stderr.write("\n%s: %s\n" % (path, e))

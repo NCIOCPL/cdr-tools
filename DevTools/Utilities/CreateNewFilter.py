@@ -68,7 +68,7 @@ def main():
     else:
         session = opts.session
     stub = u"""\
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" ?>
 <!-- Filter title: {} -->
 <xsl:transform               xmlns:xsl = "http://www.w3.org/1999/XSL/Transform"
                              xmlns:cdr = "cips.nci.nih.gov/cdr"
@@ -104,7 +104,7 @@ def main():
     name = cdr_id + ".xml"
     with open(name, "wb") as fp:
         fp.write(stub)
-    print("Created {}".format(name))
+    print(("Created {}".format(name)))
     if not opts.session:
         cdr.logout(session, tier="PROD")
 

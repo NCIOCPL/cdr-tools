@@ -5,14 +5,21 @@
 # ---------------------------------------------------------------------
 # OCECDR-3848: Automate Quarterly ZIP Code Updates
 #----------------------------------------------------------------------
-import cdrdb, sys
+from argparse import ArgumentParser
+from datetime import datetime
+import sys
 import csv   #http://www.object-craft.com.au/projects/csv/
+from cdrapi import db
 
-file   = open(sys.argv[1])
-conn   = cdrdb.connect()
+start = datetime.now()
+parser = ArgumentParser()
+parser.add_argument("csv_file")
+opts = parser.parse_args()
+csv_file = open(opts.csv_file)
+reader = csv.reader(csv_file)
+conn = db.connect()
 cursor = conn.cursor()
-reader = csv.reader(file)
-added  = 0
+added = 0
 header = 0
 
 # Create a backup of the current zipcode table
@@ -21,7 +28,7 @@ try:
     cursor.execute("TRUNCATE TABLE zipcode_backup")
     conn.commit()
 except:
-    print "Error:  Unable to truncate zipcode_backup"
+    print("Error:  Unable to truncate zipcode_backup")
     sys.exit(1)
 
 try:
@@ -30,7 +37,7 @@ try:
                       FROM zipcode""")
     conn.commit()
 except:
-    print "Error:  Unable to populate zipcode_backup"
+    print("Error:  Unable to populate zipcode_backup")
     sys.exit(1)
 
 # Drop the zipcode table and recreate it with proper permissions
@@ -72,16 +79,18 @@ for row in reader:
                   VALUES(?, ?, ?, ?, ?, ?, ?, ?)""", zipInfo)
             conn.commit()
             added += 1
-            if not added % 2500: print "added %d rows" % added
+            if not added % 2500: print("added %d rows" % added)
         elif len(row) > 19:
-            print "Data format change!!!  Adjust data columns."
+            print("Data format change!!!  Adjust data columns.")
             sys.exit(1)
         else:
             errCount += 1
-            print "invalid line: %s" % row
+            print("invalid line: %s" % row)
             if errCount > 50:
-                print "ERROR: Too many errors detected!!!"
+                print("ERROR: Too many errors detected!!!")
                 sys.exit(1)
     header += 1
-print "\nTotal number of rows loaded: %d" % added
-file.close()
+print(f"\nTotal number of rows loaded: {added:d}")
+csv_file.close()
+elapsed = datetime.now() - start
+print(f"Elapsed time: {elapsed}")

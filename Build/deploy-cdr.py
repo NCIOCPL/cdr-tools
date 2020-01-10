@@ -39,7 +39,7 @@ class Control:
       logger - object for recording what we do
     """
 
-    SERVICES = "Cdr", "CDRScheduler", "W3SVC"
+    SERVICES = "CDRScheduler", "W3SVC"
     POPEN_OPTS = dict(
         shell=True,
         stdout=subprocess.PIPE,
@@ -253,7 +253,7 @@ class Control:
 
             args = self.nssm, option, self.name
             result = Control.execute(args)
-            output = unicode(result.output, "utf-16").strip()
+            output = str(result.output, "utf-16").strip()
             if result.code:
                 command = " ".join(args)
                 self.logger.error("%s: %s", command, output)

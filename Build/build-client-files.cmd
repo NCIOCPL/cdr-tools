@@ -5,6 +5,7 @@
 @ECHO OFF
 SETLOCAL
 SET SCRIPTNAME=%0
+
 @REM Invoke each subscript, exit /B 1 inside any of them causes abort
 CALL :init %*           || EXIT /B 1
 CALL :move_dirs         || EXIT /B 1
@@ -26,13 +27,14 @@ IF "%3." == "." (
 SET BASE=%1
 SET DRIVE=%2
 SET STAMP=%3
+SET VSVARS=%DRIVE%:\VisualStudio\VC\Auxiliary\Build\vcvars64.bat
 SET BRANCH=%BASE%\branch
 SET BUILD=%BRANCH%\tools\Build
 SET XMETAL=%BRANCH%\client\XMetaL
 SET CLIENTFILES=%BASE%\ClientFiles
 SET LOADER=CdrClient-%STAMP%.exe
 MKDIR %CLIENTFILES% || ECHO Failed creating %CLIENTFILES% && EXIT /B 1
-%DRIVE%:\bin\vsvars32.bat || ECHO Failed Visual Studio Init && EXIT /B 1
+%VSVARS% || ECHO Failed Visual Studio Init && EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------

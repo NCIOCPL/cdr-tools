@@ -10,10 +10,9 @@
 #----------------------------------------------------------------------
 import argparse
 import getpass
-import cdr, sys
+import sys
+import cdr
 
-LOGFILE = "RemoveProdGroups.log"
-LOGLEVEL = 1
 
 def create_parser():
     """
@@ -24,9 +23,9 @@ def create_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
 This program needs to be run on the lower tiers after database refresh.
-Since the DB is refreshed with the data from PROD the script will update 
+Since the DB is refreshed with the data from PROD the script will update
 the email notification groups and remove all users.""")
-    parser.add_argument("--runmode", "-r", choices=['live', 'test'], 
+    parser.add_argument("--runmode", "-r", choices=['live', 'test'],
                                            required=True)
     parser.add_argument("--tier", "-t", choices=['PROD','STAGE','QA','DEV'])
     group = parser.add_mutually_exclusive_group(required=True)
@@ -67,27 +66,26 @@ def updateGroups(session, testMode, tier):
             # If the group doesn't exist on this tier continue
             # ------------------------------------------------
             ierror += 1
-            l.write("***** ERROR *****", stdout = True)
-            l.write("Group not available on this tier!!!", 
-                                         stdout = True)
-            l.write(group_name,          stdout = True)
-            l.write("***** ERROR *****", stdout = True)
+            logger.error("***** ERROR *****")
+            logger.error("Group not available on this tier!!!")
+            logger.error(group_name)
+            logger.error("***** ERROR *****")
             continue
 
-        l.write("Group Name: %s" % group_name, stdout = True)
-        l.write("Member(s): ",                 stdout = True)
-        l.write("   Old: %s" % group.users,    stdout = True)
+        logger.info("Group Name: %s", group_name)
+        logger.info("Member(s):")
+        logger.info("   Old: %s", group.users)
         group.users = groups[group_name]
         group.users.sort()
-        l.write("   New: %s" % group.users,    stdout = True)
+        logger.info("   New: %s", group.users)
 
         error = ''
         if testMode:
-            l.write("TESTMODE:  No update", stdout = True)
+            logger.info("TESTMODE:  No update")
         else:
             error = cdr.putGroup(session, group_name, group, tier=tier)
-            l.write("%s: %s" % (group_name, error or "saved"), stdout = True)
-        l.write("----", stdout = True)
+            logger.info("%s: %s", group_name, error or "saved")
+        logger.info("----")
 
     return ierror
 
@@ -103,9 +101,9 @@ if __name__ == "__main__":
 
     # Open Log file and enter start message
     # -------------------------------------
-    l = cdr.Log(LOGFILE)
-    l.write('RemoveProdGroups - Started', stdout = True)
-    # l.write('Arguments: %s' % opts, stdout=True)
+    logger = cdr.Logging.get_logger("RemoveProdGroups", console=True)
+    logger.info('RemoveProdGroups - Started')
+    logger.debug('Arguments: %s', opts)
 
     # Live or test mode
     # -----------------
@@ -129,6 +127,6 @@ if __name__ == "__main__":
 
     error_count = updateGroups(session, testMode, tier)
 
-    l.write('RemoveProdGroups - Finished', stdout = True)
-    l.write('Missing groups: %d' % error_count, stdout = True)
+    logger.info('RemoveProdGroups - Finished')
+    logger.info('Missing groups: %d', error_count)
     sys.exit(0)

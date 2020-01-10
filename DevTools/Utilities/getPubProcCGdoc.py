@@ -1,23 +1,28 @@
 #!/usr/bin/env python
-#######################################################
-# Get one XML document from pub_proc_cg to stdout
-#######################################################
-import sys, cdrdb, cdr
 
-if len(sys.argv) != 2:
-    sys.stderr.write("usage: getPubProcCGdoc.py docId\n")
-    sys.stderr.write("       Enter docId as plain integer\n")
-    sys.stderr.write("       Writes xml to stdout\n")
-    sys.exit(1)
+"""Get one XML document from pub_proc_cg to stdout.
 
-docId = int(sys.argv[1])
+If your document has non-ascii characters in it it may not work well
+to try and pipe the output to a tool which expects ascii to be coming
+from stdout. Consider instead using the --save option and loading the
+encoded document directly into your tool.
+"""
 
-conn = cdrdb.connect("CdrGuest")
-cursor = conn.cursor()
-cursor.execute("SELECT xml FROM pub_proc_cg WHERE id=%d" % docId)
-row = cursor.fetchone()
+from argparse import ArgumentParser
+from cdrapi.db import Query
+
+parser = ArgumentParser()
+parser.add_argument("id", type=int)
+parser.add_argument("--tier")
+parser.add_argument("--save", action="store_true")
+opts = parser.parse_args()
+query = Query("pub_proc_cg", "xml")
+query.where(query.Condition("id", opts.id))
+row = query.execute().fetchone()
 if not row:
-    sys.stderr.write("Doc %d not found in pub_proc_cg")
-    sys.exit(1)
-print row[0].encode("utf-8")
-
+    raise Exception(f"CDR{opts.id:d} not found in pub_proc_cg")
+if opts.save:
+    with open(f"pub_proc_cg-{opts.id:d}.xml", "wb") as fp:
+        fp.write(row.xml.encode("utf-8"))
+else:
+    print(row.xml)

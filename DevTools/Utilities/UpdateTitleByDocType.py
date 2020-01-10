@@ -3,39 +3,33 @@
 # Regenerate and update document table titles for all docs of a
 # given doctype.
 #----------------------------------------------------------
-import cdr, cdrdb, sys, time
 
-if len(sys.argv) < 4:
-    sys.stderr.write(\
-      "usage: UpdateTitleByDocType uid pwd doctype {max-docs} {host} {port}\n")
-    sys.exit(1)
-uid	    = sys.argv[1]
-pwd  	= sys.argv[2]
-docType = sys.argv[3]
-maxDocs = len(sys.argv) > 4 and ("TOP %s " % sys.argv[4]) or ""
-host    = len(sys.argv) > 5 and sys.argv[5] or cdr.DEFAULT_HOST
-port    = len(sys.argv) > 6 and int(sys.argv[6]) or cdr.DEFAULT_PORT
-session = cdr.login(uid, pwd, host=host, port=port)
-conn    = cdrdb.connect('CdrGuest', host)
-cursor  = conn.cursor()
+from argparse import ArgumentParser
+import time
+import cdr
+from cdrapi import db
 
-cursor.execute("""\
-        SELECT %s d.id
-          FROM document d
-          JOIN doc_type t
-            ON t.id = d.doc_type
-           AND t.name = '%s'
-      ORDER BY d.id""" % (maxDocs, docType))
-rows = cursor.fetchall()
-print "reindexing %d documents" % len(rows)
+parser = ArgumentParser()
+parser.add_argument("--doctype", required=True)
+parser.add_argument("--max-docs", type=int)
+parser.add_argument("--tier")
+opts = parser.parse_args()
+cursor = db.connect(user="CdrGuest", tier=opts.tier).cursor()
+query = db.Query("document d", "d.id").order("d.id")
+query.join("doc_type t", "t.id = d.doc_type")
+query.where(query.Condition("t.name", opts.doctype))
+if opts.max_docs is not None:
+    query.limit(opts.max_docs)
+rows = query.execute(cursor).fetchall()
+print(f"reindexing {len(rows):d} documents")
 count = 0
 for row in rows:
-    sys.stdout.write("Updating title for CDR%010d" % row[0])
-    resp = cdr.updateTitle('guest', row[0], host, port)
+    print(f"Updating title for CDR{row.id:010d}", end="")
+    resp = cdr.updateTitle("guest", row.id, tier=opts.tier)
     if resp:
-        print(" - changed")
+        print(" - changed", flush=True)
     else:
-        print(" - no change needed")
+        print(" - no change needed", flush=True)
 
     # Pause every so many docs (to avoid swamping the machine or sshd)
     # We had a problem at one time that this fixed - though it may

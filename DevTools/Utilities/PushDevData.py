@@ -1,20 +1,25 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
-#
-# Replaces copies of CDR control documents which have been preserved
-# from the development server, after a refresh of the database on
-# the development server from the production server.  This allows us
-# to work with the users' current production documents without losing
-# work done by developers on the development server.
-#
-#----------------------------------------------------------------------
+
+"""
+Restore development work following a refresh from PROD
+
+Replaces copies of CDR control documents which have been preserved
+from the development server, after a refresh of the database on
+the development server from the production server.  This allows us
+to work with the users' current production documents without losing
+work done by developers on the development server.
+"""
+
+# Standard libraries
+from argparse import ArgumentParser
+from datetime import datetime
+from glob import glob
+
+# Local project libraries
 import cdr
-import cdrdb
-import cdrutil
+from cdrapi import db
+from cdrapi.settings import Tier
 import cdr_dev_data
-import glob
-import re
-import sys
 
 def main():
     """
@@ -55,34 +60,28 @@ class Job:
         3. Create the control object for the job.
         """
 
-        # Safety check.
-        if cdrutil.getTier() != "DEV":
-            sys.stderr.write("This script must only be run on the DEV tier.\n")
-            sys.exit(1)
+        # 1. Safety check.
+        if Tier().name != "DEV":
+            raise Exception("This script must only be run on the DEV tier.")
 
-        # Check for required command line arguments.
-        if len(sys.argv) != 4:
-            sys.stderr.write("usage: PushDevDocs cdr-uid cdr-pwd directory\n")
-            sys.stderr.write(" e.g.: PushDevDocs elmer vewy-secwet")
-            sys.stderr.write(" DevData-20140227073812\n")
-            sys.exit(1)
-        self._uid = sys.argv[1]
-        self._pwd = sys.argv[2]
-        self._dir = sys.argv[3]
+        # 2. Get what we need from the command line.
+        default = f"DevData-{stamp}"
+        parser = ArgumentParser()
+        parser.add_argument("--directory", required=True)
+        parser.add_argument("--user", required=True)
+        group.add_argument("--session")
+        opts = parser.parse_args()
 
-        # Create objects used to do the job's work.
-        self._conn = cdrdb.connect('CdrGuest')
+        # 3. Create objects used to do the job's work.
+        self._logger = cdr.Logging.get_logger("PushDevData", console=True)
+        self._conn = db.connect(user="CdrGuest")
         self._cursor = self._conn.cursor()
         self._old = cdr_dev_data.Data(self._dir)
         self._new = cdr_dev_data.Data(self._cursor, self._old)
-        self._session = cdr.login(self._uid, self._pwd)
-        self._log = cdr.Log("PushDevData.log")
-        err = cdr.checkErr(self._session)
-        if err:
-            self._log.write("%s" % repr(err), stderr=True)
-            sys.exit(1)
-        self._log.write("session %s" % self._session, stdout=True)
-        self._log.write("using data preserved in %s" % self._dir, stdout=True)
+        self._uid = opts.user
+        self._session = cdr.login(self._uid)
+        self._logger.info("session %s", self._session)
+        self._logger.info("using data preserved in %s", self._dir)
         self._new_doc_types = []
 
     def restore_control_docs(self):
@@ -95,15 +94,14 @@ class Job:
         """
 
         # Walk through the preserved documents by type.
-        self._log.write("restoring docs for control doctypes", stdout=True)
+        self._logger.info("restoring docs for control doctypes")
         for doc_type in sorted(self._old.docs):
 
             # 'Old' docs were on DEV before refresh; 'new' are post refresh.
             old = self._old.docs[doc_type].docs
             new = self._new.docs[doc_type].docs
             if new:
-                self._log.write("restoring %s docs" % repr(doc_type),
-                                stdout=True)
+                self._logger.info("restoring %r docs", doc_type)
 
                 # Documents are keyed by unique title.
                 for key in old:
@@ -121,8 +119,7 @@ class Job:
             else:
 
                 # Defer documents for types we have to re-create
-                self._log.write("deferring %s docs" % repr(doc_type),
-                                stdout=True)
+                self._logger.info("deferring %r docs", doc_type)
                 self._new_doc_types.append(doc_type)
 
     def restore_doctypes(self):
@@ -132,7 +129,7 @@ class Job:
         First re-create the document type, then add each of the documents
         for that document type which had been on DEV.
         """
-        self._log.write("restoring new document types", stdout=True)
+        self._logger.info("restoring new document types")
         for doc_type in self._new_doc_types:
             if self._create_doctype(doc_type):
                 docs = self._old.docs[doc_type].docs
@@ -145,7 +142,7 @@ class Job:
         Don't leave an open CDR session hanging around.
         """
         cdr.logout(self._session)
-        self._log.write("restoration complete", stdout=True)
+        self._logger.info("restoration complete")
 
     def _create_doctype(self, name):
         """
@@ -158,7 +155,7 @@ class Job:
 
         # The preserved doc_type table and filter and schema docs have
         # the information we need.
-        self._log.write("creating %s doctype" % repr(name), stdout=True)
+        self._logger.info("creating %r doctype", name)
         table = self._old.tables["doc_type"]
         row = table.names[name]
         filter_id = self._get_filter_id(row["title_filter"])
@@ -170,8 +167,8 @@ class Job:
         info = cdr.dtinfo(**opts)
         info = cdr.addDoctype(self._session, info)
         if info.error:
-            self._log.write("unable to create doctype %s: %s" %
-                            (repr(name), info.error), stderr=True)
+            args = name, info.error
+            self._logger.error("unable to create doctype %r: %s", *args)
             return False
 
         # Plug in the document type's title filter, if any.
@@ -184,18 +181,19 @@ class Job:
 
         # Let developers work with the new document type on DEV.
         group = cdr.getGroup(self._session, Job.DEVELOPERS)
-        for action in ('ADD DOCUMENT',     'DELETE DOCTYPE', 
-                       'DELETE DOCUMENT',  'FILTER DOCUMENT', 
+        for action in ('ADD DOCUMENT',     'DELETE DOCTYPE',
+                       'DELETE DOCUMENT',  'FILTER DOCUMENT',
                        'FORCE CHECKIN',    'FORCE CHECKOUT',
-                       'GET DOCTYPE',      'GET SCHEMA', 
-                       'MODIFY DOCTYPE',   'MODIFY DOCUMENT', 
+                       'GET DOCTYPE',      'GET SCHEMA',
+                       'MODIFY DOCTYPE',   'MODIFY DOCUMENT',
                        'PUBLISH DOCUMENT', 'VALIDATE DOCUMENT'):
             group.actions[action].append(name)
-        errors = cdr.putGroup(self._session, Job.DEVELOPERS, group)
-        if errors:
-            self._log.write("unable to update permissions for doctype %s: %s" %
-                            (repr(name), errors), stderr=True)
-            sys.exit(1)
+        try:
+            cdr.putGroup(self._session, Job.DEVELOPERS, group)
+        except:
+            message = "unable to update permissions for doctype %r"
+            self._logger.exception(message, name)
+            raise
 
         # Report success.
         return True
@@ -226,8 +224,7 @@ class Job:
         Add a document which was lost because it was not on PROD.
         """
 
-        self._log.write("adding %s document %s" %
-                       (repr(doc_type), repr(doc_title)), stdout=True)
+        self._logger.info("adding %r document %r", doc_type, doc_title)
 
         # Wrap the document XML in the CdrDoc wrapper and create it.
         doc = cdr.makeCdrDoc(doc_xml, doc_type, ctrl={"DocTitle": doc_title})
@@ -235,7 +232,7 @@ class Job:
                             comment=Job.COMMENT, reason=Job.COMMENT)
         err = cdr.checkErr(doc_id)
         if err:
-            self._log.write("failure creating document: %s" % err, stderr=True)
+            self._logger.error("failure creating document: %s", err)
             return
 
         # Newly created document need to be versioned and unlocked separately.
@@ -246,15 +243,15 @@ class Job:
                                   comment=Job.COMMENT)
             err = cdr.checkErr(response)
             if err:
-                self._log.write("failure unlocking %s: %s" % (doc_id, err),
-                                stderr=True)
+                self._logger.error("failure unlocking %s: %s", doc_id, err)
 
     def _mod_doc(self, doc_type, doc_title, doc_xml, doc_id):
         """
         Add a new version for a document which was different on the two tiers.
         """
-        self._log.write("updating %s document %s (CDR%d)" %
-                       (repr(doc_type), repr(doc_title), doc_id), stdout=True)
+
+        args = doc_type, doc_title, doc_id
+        self._logger.info("updating %r document %r (CDR%d)", *args)
 
         # Lock the document, breaking any existing locks if necessary.
         doc = self._lock_doc(doc_id)
@@ -268,8 +265,8 @@ class Job:
                                   comment=Job.COMMENT)
             err = cdr.checkErr(response)
             if err:
-                self._log.write("failure saving %s: %s" %
-                                (cdr.normalize(doc_id), err), stderr=True)
+                args = cdr.normalize(doc_id), err
+                self._logger.error("failure saving %s: %s", *args)
 
     def _lock_doc(self, doc_id):
         """
@@ -287,8 +284,8 @@ class Job:
         err = cdr.checkErr(doc)
         if not err:
             return doc
-        self._log.write("failure locking %s: %s" %
-                        (cdr.normalize(doc_id), repr(err)), stderr=True)
+        args = cdr.normalize(doc_id), err
+        self._logger.error("failure locking %s: %r", *args)
         return None
 
     def _unlock_doc(self, doc_id):
@@ -298,8 +295,7 @@ class Job:
         id_string = cdr.normalize(doc_id)
         response = cdr.unlock(self._session, id_string, Job.COMMENT)
         if response:
-            self._log.write("failure unlocking %s: %s" %
-                            (id_string, response), stderr=True)
+            self._logger.error("failure unlocking %s: %s", id_string, response)
             return False
         return True
 

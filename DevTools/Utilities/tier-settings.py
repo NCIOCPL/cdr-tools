@@ -67,7 +67,7 @@ class TierSettings:
         fp = open(name, "wb")
         fp.write(self.json)
         fp.close()
-        print "saved %s" % name
+        print("saved %s" % name)
 
     def get_value(self, path):
         """
@@ -340,7 +340,7 @@ class Report:
         fp = open(name, "wb")
         self.wb.save(fp)
         fp.close()
-        print "saved", name
+        print("saved", name)
 
     def compare(self, s1, s2):
         """
@@ -466,11 +466,11 @@ class Report:
                 value = line[2:]
                 if line[0] in "+- ":
                     if line[0] == "+":
-                        print "%s\t\t%s" % (path, value)
+                        print("%s\t\t%s" % (path, value))
                     elif line[0] == "-":
-                        print "%s\t%s\t" % (path, value)
+                        print("%s\t%s\t" % (path, value))
                     elif line[0] == " ":
-                        print "%s\t%s\t%s" % (path, value, value)
+                        print("%s\t%s\t%s" % (path, value, value))
                     path = ""
 
 if __name__ == "__main__":

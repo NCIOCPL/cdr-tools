@@ -12,7 +12,7 @@ class Target(object):
         self.depth = 0
     def start(self, tag, attrib):
         if self.counter.args.text or self.counter.args.attributes:
-            print "%s%s" % (self.depth * self.INDENT, tag.encode("utf-8"))
+            print("%s%s" % (self.depth * self.INDENT, tag.encode("utf-8")))
         self.depth += 1
         self.counter.elem += 1
         self.counter.total += 1
@@ -21,7 +21,7 @@ class Target(object):
         if attrib and self.counter.args.attributes:
             for name, val in attrib.iteritems():
                 val = val.encode("utf-8")
-                print "%s@%s=%s" % (self.depth * self.INDENT, name, val)
+                print("%s@%s=%s" % (self.depth * self.INDENT, name, val))
     def end(self, tag):
         self.depth -= 1
     def data(self, data):
@@ -30,7 +30,7 @@ class Target(object):
         else:
             self.counter.text += 1
             if self.counter.args.text:
-                print "%s%s" % (self.depth * self.INDENT, data.encode("utf-8"))
+                print("%s%s" % (self.depth * self.INDENT, data.encode("utf-8")))
         self.counter.total += 1
     def comment(self, text):
         self.counter.comment += 1
@@ -39,7 +39,7 @@ class Target(object):
         self.counter.pi += 1
         self.counter.total += 1
     def close(self):
-        print """
+        print("""
 Results:
       Element nodes = %d
     Attribute nodes = %d
@@ -51,7 +51,7 @@ Results:
           Total = %d
 """ % (self.counter.elem, self.counter.attr, self.counter.text,
        self.counter.space, self.counter.comment, self.counter.pi,
-       self.counter.total)
+       self.counter.total))
 
 class Counter:
     def __init__(self):

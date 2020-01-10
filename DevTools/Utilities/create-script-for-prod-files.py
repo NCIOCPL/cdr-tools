@@ -74,4 +74,4 @@ for d in DIRS:
         if match:
             path = match.group(1)
             if not unwanted(path):
-                print(make_command(path, opts))
+                print((make_command(path, opts)))

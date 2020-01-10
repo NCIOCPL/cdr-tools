@@ -9,8 +9,8 @@ import os
 import sys
 
 def usage():
-    print "usage: GetHelpDocForEditing.py CDRID"
-    print " e.g.: GetHelpDocForEditing.py 123456"
+    print("usage: GetHelpDocForEditing.py CDRID")
+    print(" e.g.: GetHelpDocForEditing.py 123456")
     sys.exit(1)
 
 def move_file(filename):
@@ -21,9 +21,9 @@ def move_file(filename):
         newname = "%s.bak-%d" % (filename, counter)
     try:
         os.rename(filename, newname)
-        print "old %s backed up to %s" % (filename, newname)
+        print("old %s backed up to %s" % (filename, newname))
     except:
-        print "unable to rename %s to %s" % (filename, newname)
+        print("unable to rename %s to %s" % (filename, newname))
         sys.exit(1)
 
 if len(sys.argv) != 2:
@@ -42,4 +42,4 @@ fp = open(filename, "wb")
 fp.write(etree.tostring(tree, encoding="utf-8", pretty_print=True,
                         xml_declaration=True))
 fp.close()
-print "wrote %s" % filename
+print("wrote %s" % filename)

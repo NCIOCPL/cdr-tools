@@ -53,7 +53,7 @@ else:
 for token in opts.schemas:
     schemas = glob(token)
     if not schemas:
-        print "%s not found" % token
+        print("%s not found" % token)
         sys.exit(1)
 
     for schema in schemas:
@@ -64,7 +64,7 @@ for token in opts.schemas:
         query.where(query.Condition("d.title", title))
         query.where("t.name = 'schema'")
         row = query.execute().fetchone()
-        print "schema: %s" % schema
+        print("schema: %s" % schema)
         if not row:
             verb = "added"
             doc = Doc(session, xml=xml)
@@ -74,13 +74,13 @@ for token in opts.schemas:
             try:
                 doc.check_out()
             except Exception as e:
-                print("{}: {}".format(doc.cdr_id, e))
+                print(("{}: {}".format(doc.cdr_id, e)))
                 continue
         try:
             doc.save(title=title, unlock=True, version=True)
-            print("{} {}".format(verb, doc.cdr_id))
+            print(("{} {}".format(verb, doc.cdr_id)))
         except Exception as e:
-            print("{}: {}".format(doc.cdr_id, e))
+            print(("{}: {}".format(doc.cdr_id, e)))
 
 # Close the session if we created it here.
 if opts.user:
