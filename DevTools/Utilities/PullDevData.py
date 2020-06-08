@@ -8,7 +8,7 @@
 # to be preserved, name those document types on the command line.
 #
 # Usage:
-#   SaveDevDocs.py [newdoctype [newdoctype ...] ]
+#   PullDevData.py [newdoctype [newdoctype ...] ]
 #
 #----------------------------------------------------------------------
 
