@@ -11,50 +11,57 @@
 #
 #----------------------------------------------------------------------
 import cdr, sys, glob, difflib, os.path
+from argparse import ArgumentParser
+from cdrapi.docs import Doc
+from cdrapi.users import Session
 
 differ = difflib.Differ()
-session = 'guest'
-quiet = False
-if len(sys.argv) > 1 and sys.argv[1] == '-q':
-    quiet = True
-    sys.argv.remove('-q')
-args = sys.argv[1:] or ["*.xml"]
-for arg in args:
-    for name in glob.glob(arg):
+parser = ArgumentParser()
+parser.add_argument("--quiet", "-q", action="store_true")
+parser.add_argument("--tier", "-t")
+parser.add_argument("files", nargs="*", default="*.xml")
+opts = parser.parse_args()
+session = Session('guest', tier=opts.tier)
+for pattern in opts.files:
+    for name in glob.glob(pattern):
         baseName = os.path.basename(name)
         try:
-            localDoc = open(name).read().replace("\r", "").splitlines(True)
+            with open(name, encoding="utf-8") as fp:
+                localDoc = fp.read().replace("\r", "").splitlines(True)
         except Exception as e:
-            print("... unable to open %s: %s" % (name, e))
+            print(f"... unable to open {name}: {e}")
             continue
-        query = "CdrCtl/Title = {}".format(baseName)
-        results = cdr.search(session, query, doctypes=["schema"])
+        query = f"CdrCtl/Title = {baseName}"
+        results = cdr.search(session, query, doctypes=["schema"],
+                             tier=opts.tier)
         if len(results) < 1:
-            print("... schema %s not found in CDR" % baseName)
+            print(f"... schema {baseName} not found in CDR")
         else:
             for result in results:
-                if not quiet:
-                    print("comparing %s to %s" % (result.docId, name))
-                doc = cdr.getDoc(session, result.docId, getObject = True)
-                if type(doc) in (str, unicode):
-                    print("... getDoc(%s): %s" % (result.docId, doc))
-                else:
-                    cdrDoc = doc.xml.replace("\r", "").splitlines(True)
-                    diffSeq = differ.compare(localDoc, cdrDoc)
-                    diff = []
-                    for line in diffSeq:
-                        if line[0] != ' ':
-                            diff.append(line)
-                    diff = "".join(diff)
+                if not opts.quiet:
+                    print(f"comparing {result.docId} to {name}")
+                try:
+                    doc = Doc(session, id=result.docId)
+                    xml = doc.xml
+                except Exception as e:
+                    print(f"error: {e}")
+                    continue
+                cdrDoc = xml.replace("\r", "").splitlines(True)
+                diffSeq = differ.compare(localDoc, cdrDoc)
+                diff = []
+                for line in diffSeq:
+                    if line[0] != ' ':
+                        diff.append(line)
+                diff = "".join(diff)
 
-                    # Account for the fact that the final newline is stripped
-                    # from the schema when it is stored in the CDR
-                    # XXX Find out where this happens and think about whether
-                    #     it's appropriate.
-                    if diff.endswith("+ \n"):
-                        diff = diff[:-3]
-                    if quiet:
-                        if diff:
-                            print("%s does not match %s" % (result.docId, name))
-                    elif diff.strip():
-                        print(diff)
+                # Account for the fact that the final newline is stripped
+                # from the schema when it is stored in the CDR
+                # XXX Find out where this happens and think about whether
+                #     it's appropriate.
+                if diff.endswith("+ \n"):
+                    diff = diff[:-3]
+                if opts.quiet:
+                    if diff:
+                        print(f"{result.docId} does not match {name}")
+                elif diff.strip():
+                    print(diff)
