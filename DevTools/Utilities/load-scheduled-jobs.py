@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """Load the CDR scheduled jobs into a fresh database table.
 
 Wipes out any previous jobs from the database. Uses the output

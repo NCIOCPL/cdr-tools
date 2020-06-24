@@ -8,7 +8,7 @@
 # to be preserved, name those document types on the command line.
 #
 # Usage:
-#   SaveDevDocs.py [newdoctype [newdoctype ...] ]
+#   PullDevData.py [newdoctype [newdoctype ...] ]
 #
 #----------------------------------------------------------------------
 
@@ -16,7 +16,10 @@ import datetime
 import os
 import sys
 import time
+from cdr import run_command
 from cdrapi import db
+
+DUMP_JOBS = f"python {sys.path[0]}/dump-scheduled-jobs.py"
 
 #----------------------------------------------------------------------
 # Save all documents of a given type.
@@ -59,14 +62,27 @@ def saveTable(cursor, outputDir, tableName):
     fp.close()
 
 #----------------------------------------------------------------------
+# Save the scheduled jobs in JSON and in plain text.
+#----------------------------------------------------------------------
+def saveJobs(outputDir):
+    print("Saving scheduled jobs")
+    process = run_command(DUMP_JOBS)
+    with open(f"{outputDir}/scheduled-jobs.txt", "w") as fp:
+        fp.write(process.stdout)
+    process = run_command(f"{DUMP_JOBS} --json")
+    with open(f"{outputDir}/scheduled-jobs.json", "w") as fp:
+        fp.write(process.stdout)
+
+#----------------------------------------------------------------------
 # Do the work.
 #----------------------------------------------------------------------
 def main():
     outputDir = time.strftime('DevData-%Y%m%d%H%M%S')
     cursor = db.connect(user="CdrGuest").cursor()
     os.makedirs("%s/tables" % outputDir)
+    saveJobs(outputDir)
     print("Saving files to %s" % outputDir)
-    for table in ("action", "active_status", "doc_type", "filter_set",
+    for table in ("action", "active_status", "ctl", "doc_type", "filter_set",
                   "filter_set_member", "format", "grp", "grp_action",
                   "grp_usr", "link_prop_type",
                   "link_properties", "link_target", "link_type", "link_xml",

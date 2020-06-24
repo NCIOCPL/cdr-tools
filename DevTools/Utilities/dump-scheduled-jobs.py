@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Print the scheduled CDR job settings to standard out.
 
 Use the --json option to generate output usable by load-scheduled-jobs.py.

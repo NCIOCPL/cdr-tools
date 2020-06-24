@@ -299,7 +299,6 @@ class Directory:
             cls("Inetpub", "admin/Inetpub"),
             cls("Licensee", "publishing/Licensee"),
             cls("Scheduler", "scheduler"),
-            cls("glossifier", "glossifier"),
             cls("Schemas", "server/Schemas"),
             cls("Filters", "server/Filters"),
             cls("Build", "tools/Build"),

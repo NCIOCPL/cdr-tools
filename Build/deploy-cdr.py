@@ -437,7 +437,6 @@ class Control:
                 cls("Inetpub"),
                 cls("Licensee"),
                 cls("Scheduler"),
-                cls("Glossifier"),
                 cls("Schemas"),
                 cls("Filters"),
                 cls("Build"),

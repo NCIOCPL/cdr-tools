@@ -65,21 +65,21 @@ class Job:
             raise Exception("This script must only be run on the DEV tier.")
 
         # 2. Get what we need from the command line.
-        default = f"DevData-{stamp}"
         parser = ArgumentParser()
         parser.add_argument("--directory", required=True)
         parser.add_argument("--user", required=True)
-        group.add_argument("--session")
+        parser.add_argument("--session", required=True)
         opts = parser.parse_args()
 
         # 3. Create objects used to do the job's work.
         self._logger = cdr.Logging.get_logger("PushDevData", console=True)
         self._conn = db.connect(user="CdrGuest")
         self._cursor = self._conn.cursor()
+        self._dir = opts.directory
         self._old = cdr_dev_data.Data(self._dir)
         self._new = cdr_dev_data.Data(self._cursor, self._old)
         self._uid = opts.user
-        self._session = cdr.login(self._uid)
+        self._session = opts.session
         self._logger.info("session %s", self._session)
         self._logger.info("using data preserved in %s", self._dir)
         self._new_doc_types = []
@@ -114,7 +114,7 @@ class Job:
 
                         # PROD had it; if it differs, restore what was on DEV.
                         new_id, new_title, new_xml = new[key]
-                        if self._compare(old_xml, new_xml):
+                        if self._differ(old_xml, new_xml):
                             self._mod_doc(doc_type, old_title, old_xml, new_id)
             else:
 
@@ -299,11 +299,11 @@ class Job:
             return False
         return True
 
-    def _compare(self, old, new):
+    def _differ(self, old, new):
         """
         Compare two versions of a CDR document.
         """
-        return cmp(self._normalize(old), self._normalize(new))
+        return self._normalize(old) != self._normalize(new)
 
     def _normalize(self, xml):
         """

@@ -17,7 +17,6 @@ CHDIR /D %BASE%
 
 CALL :fetch_repo admin      || EXIT /B 1
 CALL :fetch_repo client     || EXIT /B 1
-CALL :fetch_repo glossifier || EXIT /B 1
 CALL :fetch_repo lib        || EXIT /B 1
 CALL :fetch_repo publishing || EXIT /B 1
 CALL :fetch_repo scheduler  || EXIT /B 1
