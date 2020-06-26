@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """Make a trivial change to force publishing to push the documents.
 """
 
@@ -115,7 +117,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", default="test")
     parser.add_argument("--tier")
     parser.add_argument("--element")
-    parser.add_argument("--ids", type=int, nargs="*")
+    parser.add_argument("--ids", type=int, nargs="*", metavar="ID")
     parser.add_argument("--count", type=int, default=10)
     parser.add_argument("--doctype", required=True, choices=doctypes)
     opts = parser.parse_args()
