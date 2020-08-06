@@ -5,6 +5,7 @@ CdrClientDebug*.cmd
 CdrManifest.xml
 CdrRunAgain.cmd
 *.pyc
+__pycache__
 cdr_redirect
 aspnet_client
 CheckDevData.py

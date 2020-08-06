@@ -35,6 +35,7 @@ class Control:
     SKIP = "Schemas", "Emailers"
     POPEN_OPTS = dict(
         shell=True,
+        text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
