@@ -6,24 +6,23 @@
 # modules that we can't account for. This script identifies the
 # following categories of Python modules used in the CDR system:
 #  * standard library modules (e.g., sys)
-#  * modules supplied by Active State's distribution (Windows and TK)
 #  * other third-party modules (e.g., lxml)
 #  * custom modules we've built ourselves
 #
 # Any imported module not included in one of these known sets will
 # be reported.
 #
-# Usage:
-#    find-unknown-python-modules.py [top-directory]
+# By default, the script starts with the current working directory
+# as the top of the portion of the file system to examine. The
+# --directory option can override that default.
 #
-# A second optional usage passes a second argument specifying the
-# name of a module. When invoked with this extra argument the script
-# will instead report all of the Python scripts and modules which
-# import the named module. This can be useful for identifying scripts
-# which are obsolete (e.g., they import modules which are no longer
+# The --target option can identify a module, which will cause the
+# script to report all of the scripts and modules which import the
+# named module. This can be useful for identifying scripts which
+# are obsolete (e.g., they import modules which are no longer
 # installed, which is a clue that they're no longer used). For example:
 #
-#    find-unknown-python-modules.py . xml.parsers.xmlproc
+#    cdr-python-modules.py --target xml.parsers.xmlproc
 #
 #----------------------------------------------------------------------
 
@@ -42,30 +41,23 @@ standard_library_modules = {
     "atexit",
     "base64",
     "binascii",
-    "builtins",
-    "bz2",
     "calendar",
     "cgi",
     "cgitb",
-    "concurrent", # from futures - used by ndscheduler
+    "collections",
     "copy",
     "csv",
     "ctypes",
     "datetime",
     "difflib",
-    "distutils.command.clean", # used by ndscheduler
     "email",
-    "email.Header",
-    "email.header",
     "email.message",
-    "email.MIMEText",
     "email.mime.audio",
     "email.mime.base",
     "email.mime.image",
     "email.mime.multipart",
     "email.mime.text",
     "email.utils",
-    "filecmp",
     "ftplib",
     "functools",
     "getopt",
@@ -74,35 +66,25 @@ standard_library_modules = {
     "gzip",
     "hashlib",
     "html",
-    "HTMLParser",
-    "httplib",
     "importlib", # used by ndscheduler
     "io",
     "json",
     "locale",
     "logging",
-    "logging.config",
-    "logging.handlers",
-    "math",
     "mimetypes",
     "msvcrt", # part of standard library, but only available on MS Windows
-    "multiprocessing",
     "operator",
     "optparse",
     "os",
     "os.path",
-    "pdb",
-    "pickle",
     "platform",
     "pprint",
     "random",
     "re",
     "shutil",
-    "signal",
     "six",
     "smtplib",
     "socket",
-    "struct",
     "string",
     "subprocess",
     "sys",
@@ -111,25 +93,16 @@ standard_library_modules = {
     "textwrap",
     "threading",
     "time",
-    "tkFileDialog",
-    "Tkinter",
-    "tkMessageBox",
     "traceback",
+    "unicodedata",
     "unittest",
-    "urllib",
     "urllib.error",
     "urllib.parse",
     "urllib.request",
     "urllib2",
     "urllib3.exceptions",
-    "urlparse",
-    "uuid",
-    "warnings",
     "webbrowser",
     "xml.dom.minidom",
-    "xml.etree.ElementTree",
-    "xml.etree.cElementTree",
-    "xml.parsers.expat",
     "xml.sax",
     "xml.sax.handler",
     "xml.sax.saxutils",
@@ -141,50 +114,28 @@ standard_library_modules = {
 # URL in a comment, see the closest comment above the module.
 #----------------------------------------------------------------------
 third_party_modules = {
-    "apscheduler.executors", # https://pypi.python.org/pypi/APScheduler
-    "apscheduler.jobstores", # (sits underneath ndscheduler)
-    "apscheduler.schedulers",
+    "apscheduler.schedulers.background",
+        # https://pypi.python.org/pypi/APScheduler
     "dateutil.parser", # https://pypi.python.org/pypi/python-dateutil
-    "dateutil.tz",     #  (used by ndscheduler)
     "dateutil.relativedelta",
-    "Image",           # https://python-pillow.org/
-    "ImageEnhance",
+    "elasticsearch5",
     "lxml",            # http://lxml.de/
     "lxml.etree",
     "lxml.html",
     "lxml.html.builder",
-    "mutagen",         # https://github.com/quodlibet/mutagen (replace MP3Info)
+    "mutagen.mp3",     # https://github.com/quodlibet/mutagen (replace MP3Info)
     # "MP3Info",         # http://www.lab49.com/~vivake/python/MP3Info.py
                        # (but not currently maintained, so we have it
                        # in subversion in lib/Python)
-    "ndscheduler",     # https://github.com/Nextdoor/ndscheduler
-    "ndscheduler.core",
-    "ndscheduler.core.datastore",
-    "ndscheduler.core.datastore.providers",
-    "ndscheduler.core.scheduler",
-    "ndscheduler.server",
-    "ndscheduler.server.handlers",
+    "openpyxl",        # https://pypi.org/project/openpyxl/
+    "openpyxl.styles",
+    "openpyxl.utils",
     "PIL",             # https://python-pillow.org/
-    "pip",             # https://pypi.python.org/pypi/pip
     "paramiko",        # http://www.paramiko.org/
     "pkg_resources",   # https://setuptools.readthedocs.io/en/latest/index.html
-    "psutil",          # https://github.com/giampaolo/psutil (used by scheduler)
-    "pymssql",         # http://www.pymssql.org (used by ndscheduler)
     "pyodbc",          # https://github.com/mkleehammer/pyodbc (db api)
-    "pytz",            # https://pypi.python.org/pypi/pytz (used by ndscheduler)
     "requests",        # http://requests.readthedocs.io/en/master/ (HTTP api)
     "requests.packages.urllib3.exceptions",
-    "setuptools",      # https://pypi.python.org/pypi/setuptools
-                       # (used by ndscheduler)
-    "sqlalchemy",      # http://www.sqlalchemy.org/ (DB API for scheduler)
-    "sqlalchemy.pool",
-    "tornado",         # http://www.tornadoweb.org (web server for scheduler)
-    "tornado.concurrent",
-    "tornado.gen",
-    "tornado.ioloop",
-    "tornado.platform.select",
-    "tornado.testing",
-    "tornado.web",
     "xlsxwriter",
     "xlrd",            # http://www.python-excel.org/
     "xlwt",
@@ -194,9 +145,8 @@ third_party_modules = {
 # Modules implemented specifically for the CDR project.
 #----------------------------------------------------------------------
 custom_modules = {
-    "AssignGroupNums", # imported by cdrpub module
+    "base_job",        # for rewritten scheduler
     "cdr",             # used throughout system
-    "cdr2gk",          # used by Publishing subsystem (to communicate with GK)
     "cdrapi",          # replaces C++ server
     "cdrapi.db",
     "cdrapi.docs",
@@ -207,7 +157,6 @@ custom_modules = {
     "cdrapi.users",
     "cdr_commands",    # CDR tunneling for client/server APIs
     "cdr_dev_data",    # used by scripts to preserve DEV data after refresh
-    "cdr_job_base",    # part of CDR scheduler
     "cdr_task_base",
     "cdr_stats",       # management report on CDR statistics
     "cdrbatch",        # used for queueing up long-running jobs
@@ -218,16 +167,11 @@ custom_modules = {
     "cdrmailer",       # used by mailer subsystem
     "cdrpub",          # used by publishing subsystem
     "cdrpw",           # interface to file containing system passwords
-    "core.const",      # part of CDR scheduler
-    "core.exceptions",
-    "mock",            # https://pypi.python.org/pypi/mock
-                       # (unit testing for ndscheduler)
+    "dictionary_loader", # population of ElasticSearch dictionary databases
     "ModifyDocs",      # used extensively by global change jobs
     "nci_thesaurus",   # used by scripts dealing with terminology documents
     "RepublishDocs",   # imported by CGI script Republish.py
     "RtfWriter",       # used by mailer subsystem
-    "task_property_bag", # part of CDR scheduler
-    "util.cdr_connection_info", # part of CDR scheduler
     "WebService",      # used by glossify and ClientRefresh services
 }
 

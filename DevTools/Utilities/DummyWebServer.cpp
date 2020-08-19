@@ -210,13 +210,13 @@ static std::string readPayload(int fd, int requested) {
 }
 
 /*
- * Read a single header line.  For the first line (called "start-line"
+ * Read a single header line. For the first line (called "start-line"
  * or "Request line" by the RFC) we'll get METHOD REQUEST-URI HTTP-VERSION
- * (e.g., "POST /GateKeeper/GateKeeper.asmx HTTP/1.1" or "GET /index.html
- * HTTP/1.1").  All the other headers will be in the form NAME: VALUE CR NL.
- * After the last header line we'll get an empty line (just CR NL).  When
- * that happens, we return false (which is how the caller knows we're
- * done collecting the headers).  Until then, we return true.
+ * (e.g., "GET /index.html HTTP/1.1"). All the other headers will be in
+ * the form NAME: VALUE CR NL. After the last header line we'll get an
+ * empty line (just CR NL). When that happens, we return false (which is
+ * how the caller knows we're done collecting the headers). Until then,
+ * we return true.
  */
 static bool readHeader(int fd, Header& header) {
     header.line = "";
