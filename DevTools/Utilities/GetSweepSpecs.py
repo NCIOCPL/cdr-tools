@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+
 """Fetch the current FileSweeper configuration.
 """
 
 from argparse import ArgumentParser
-from sys import stdout
+from sys import stdout, stderr
 from lxml import etree
 from cdrapi import db
 
@@ -24,7 +26,7 @@ if len(rows) > 1:
 if not rows:
     raise Exception("No sweep specification document found")
 xml = rows[0].xml
-print(rows[0].id)
+stderr.write(f"fetched CDR{rows[0].id}\n")
 # Print it
 if opts.raw:
     stdout.buffer.write(xml.encode("utf-8"))
