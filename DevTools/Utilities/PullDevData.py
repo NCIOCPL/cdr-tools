@@ -87,7 +87,7 @@ def saveDocs(cursor, outputDir, docType):
     if not row:
         raise Exception(f"no documents found of type {docType}")
     while row:
-        fp = open(f"{outputDir}/{docType}/{row[0]}.cdr", "w")
+        fp = open(f"{outputDir}/{docType}/{row[0]}.cdr", "w", encoding="utf-8")
         fp.write(repr(row))
         fp.close()
         row = cursor.fetchone()
@@ -133,7 +133,8 @@ def saveTestDocs(cursor, outputDir):
         print(f"       {row[0]} document")
         contentDir = f"{outputDir}/{row[0]}"
         Path(contentDir).mkdir(exist_ok=True)
-        Path(f"{contentDir}/{int(row[1])}.cdr").write_text(repr(row[1:]))
+        Path(f"{contentDir}/{int(row[1])}.cdr").write_text(repr(row[1:]),
+                                                           encoding="utf-8")
         row = cursor.fetchone()
 
 #----------------------------------------------------------------------
@@ -144,7 +145,7 @@ def saveTestDocs(cursor, outputDir):
 def saveTable(cursor, outputDir, tableName):
     print(f"Saving table {tableName}")
     cursor.execute(f"SELECT * FROM {tableName}")
-    fp = open(f"{outputDir}/tables/{tableName}", "w")
+    fp = open(f"{outputDir}/tables/{tableName}", "w", encoding="utf-8")
     fp.write("%s\n" % repr([col[0] for col in cursor.description]))
     for row in cursor.fetchall():
         values = []
@@ -162,11 +163,11 @@ def saveJobs(outputDir):
     print("Saving scheduled jobs")
     process = run_command(DUMP_JOBS)
 
-    with open(f"{outputDir}/scheduled-jobs.txt", "w") as fp:
+    with open(f"{outputDir}/scheduled-jobs.txt", "w", encoding="utf-8") as fp:
         fp.write(process.stdout)
     process = run_command(f"{DUMP_JOBS} --json")
 
-    with open(f"{outputDir}/scheduled-jobs.json", "w") as fp:
+    with open(f"{outputDir}/scheduled-jobs.json", "w", encoding="utf-8") as fp:
         fp.write(process.stdout)
 
 #----------------------------------------------------------------------
