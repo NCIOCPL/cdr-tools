@@ -40,9 +40,9 @@ def prohibited_docs(cursor):
        FROM document d
        JOIN query_term t
          ON d.id = t.doc_id
-	   JOIN doc_type dt
-	     ON dt.id = d.doc_type
-      WHERE t.path like '%/@KeepAtRefresh'""")
+       JOIN doc_type dt
+         ON dt.id = d.doc_type
+      WHERE t.path LIKE '%/@KeepAtRefresh'""")
     rows = cursor.fetchall()
 
     preserve = set()
@@ -51,14 +51,14 @@ def prohibited_docs(cursor):
 
     # Creating set of titles of prohibited documents
     cursor.execute("""\
-     select title, dt.name
-	   from document d
-	   join doc_type dt
-	     on d.doc_type = dt.id
-	  where dt.name in ('Summary', 'Media', 'DrugInformationSummary', 
+     SELECT title, dt.name
+       FROM document d
+       JOIN doc_type dt
+         ON d.doc_type = dt.id
+      WHERE dt.name in ('Summary', 'Media', 'DrugInformationSummary',
                         'GlossaryTermConcept', 'GlossaryTermName', 'Term')
-	  group by title, dt.name
-	 having count(*) > 1 """)
+      GROUP BY title, dt.name
+     HAVING COUNT(*) > 1 """)
     rows = cursor.fetchall()
 
     prohibited = set()
@@ -101,7 +101,7 @@ def saveTestDocs(cursor, outputDir):
 
         Loop over each document, create a new directory for the document
         type (if it doesn't already exist) and save the document
-        
+
         The restore process (PushDevDoc.py) depends on unique document
         titles.  This excludes documents like 714-X or Delirium, for which
         the English and Spanish titles are identical, to be used as
@@ -120,9 +120,9 @@ def saveTestDocs(cursor, outputDir):
       JOIN query_term t
         ON d.id = t.doc_id
       JOIN doc_type dt
- 	    ON dt.id = d.doc_type
-     WHERE t.path like '%/@KeepAtRefresh'
- 	 ORDER BY dt.name, d.id""")
+     ON dt.id = d.doc_type
+     WHERE t.path LIKE '%/@KeepAtRefresh'
+  ORDER BY dt.name, d.id""")
     row = cursor.fetchone()
 
     if not row:
@@ -174,15 +174,15 @@ def saveJobs(outputDir):
 # Do the work.
 #----------------------------------------------------------------------
 def main():
-    pull_tables = ("action",         "active_status", 
-                   "ctl",            "doc_type", 
-                   "filter_set",     "filter_set_member", 
-                   "format",         "grp",      
-                   "grp_action",     "grp_usr",  
-                   "link_prop_type", "link_properties", 
-                   "link_target",    "link_type", 
-                   "link_xml",       "query",     
-                   "query_term_def", "query_term_rule", 
+    pull_tables = ("action",         "active_status",
+                   "ctl",            "doc_type",
+                   "filter_set",     "filter_set_member",
+                   "format",         "grp",
+                   "grp_action",     "grp_usr",
+                   "link_prop_type", "link_properties",
+                   "link_target",    "link_type",
+                   "link_xml",       "query",
+                   "query_term_def", "query_term_rule",
                    "usr")
     outputDir = time.strftime('DevData-%Y%m%d%H%M%S')
     cursor = db.connect(user="CdrGuest").cursor()
