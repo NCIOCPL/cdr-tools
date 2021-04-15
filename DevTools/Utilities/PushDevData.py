@@ -35,13 +35,22 @@ def main():
     # 1. Initialization
     job = Job()
 
-    # 2. Restore control documents
-    job.restore_control_docs()
+    # 2. Restore control tables (not implemented)
+    #    Although the content of the control DB tables is extracted as
+    #    part of the PullDevDocs process it was not part of the original
+    #    implementation to restore.
+    #    Due to the complexity of restoring multiple complete tables,
+    #    think permissions, DB foreign keys, etc. a decision was made to
+    #    continue with the current restore process and exclude DB tables.
+    # job.restore_tables()
 
-    # 3. Restore new document types
-    job.restore_doctypes()
+    # 3. Restore old document types
+    job.restore_old_doctypes()
 
-    # 4. Clean up after ourselves.
+    # 4. Restore new document types
+    job.restore_new_doctypes()
+
+    # 5. Clean up after ourselves.
     job.clean_up()
 
 class Job:
@@ -51,9 +60,8 @@ class Job:
 
     DEVELOPERS = "Developers"
     COMMENT = "preserving work on development server"
-    DOCTYPES = ('Term', 'Summary', 'Media', 'DrugInformationSummary',
-                'GlossaryTermName', 'GlossaryTermConcept')
-
+    CONTENTTYPES = ('DrugInformationSummary', 'GlossaryTermConcept',
+                    'GlossaryTermName', 'Media', 'Summary', 'Term')
 
     def __init__(self):
         """
@@ -95,7 +103,7 @@ class Job:
         self._new_doc_types = []
 
 
-    def restore_control_docs(self):
+    def restore_old_doctypes(self):
         """
         Restores the documents for document types which already exist.
 
@@ -112,12 +120,12 @@ class Job:
         self._logger.info(msg)
 
         for doc_type in sorted(self._old.docs):
-
             # 'Old' docs were on DEV before refresh; 'new' are post refresh.
             old = self._old.docs[doc_type].docs
             new = self._new.docs[doc_type].docs
+
             if new:
-                if self._skip_content and doc_type in Job.DOCTYPES:
+                if self._skip_content and doc_type in Job.CONTENTTYPES:
                     self._logger.info("skipping %r docs", doc_type)
                     continue
                 else:
@@ -129,6 +137,7 @@ class Job:
 
                     # If PROD didn't have the document, (re-)create it.
                     if key not in new:
+                        self._logger.info(f"Adding new document '{old_title}'")
                         self._add_doc(doc_type, old_title, old_xml)
                     else:
 
@@ -142,7 +151,7 @@ class Job:
                 self._logger.info("deferring %r docs", doc_type)
                 self._new_doc_types.append(doc_type)
 
-    def restore_doctypes(self):
+    def restore_new_doctypes(self):
         """
         Re-create documents whose doctype was not in the PROD repository.
 

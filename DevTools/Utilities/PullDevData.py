@@ -14,6 +14,7 @@
 
 import datetime
 import os
+import re
 import sys
 import time
 from cdr import run_command
@@ -84,8 +85,10 @@ def saveDocs(cursor, outputDir, docType):
         ON t.id = d.doc_type
      WHERE t.name = ?""", docType)
     row = cursor.fetchone()
+
     if not row:
         raise Exception(f"no documents found of type {docType}")
+
     while row:
         fp = open(f"{outputDir}/{docType}/{row[0]}.cdr", "w", encoding="utf-8")
         fp.write(repr(row))
@@ -130,6 +133,18 @@ def saveTestDocs(cursor, outputDir):
         return
 
     while row:
+        # For GTC documents the document title is created from the concept
+        # definition and includes the CDR-ID.  The title needs to be
+        # normalized in order for the restore process to find the correct
+        # document.
+        # Since a recent DocTitle filter change the title should already
+        # be normalized but ... "belt and suspenders".
+        # ----------------------------------------------------------------
+        if row[0] == 'GlossaryTermConcept':
+            row[2] = re.sub('(\n+)( *)',' ',
+                            row[2].lower().strip())
+                            # row[2].lower().strip().split(': ', 1)[1])
+
         print(f"       {row[0]} document")
         contentDir = f"{outputDir}/{row[0]}"
         Path(contentDir).mkdir(exist_ok=True)
