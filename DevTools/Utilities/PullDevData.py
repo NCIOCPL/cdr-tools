@@ -141,9 +141,7 @@ def saveTestDocs(cursor, outputDir):
         # be normalized but ... "belt and suspenders".
         # ----------------------------------------------------------------
         if row[0] == 'GlossaryTermConcept':
-            row[2] = re.sub('(\n+)( *)',' ',
-                            row[2].lower().strip())
-                            # row[2].lower().strip().split(': ', 1)[1])
+            row[2] = re.sub(r'\s+',' ', row[2].lower().strip())
 
         print(f"       {row[0]} document")
         contentDir = f"{outputDir}/{row[0]}"
