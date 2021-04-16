@@ -13,13 +13,14 @@ work done by developers on the development server.
 # Standard libraries
 from argparse import ArgumentParser
 from datetime import datetime
-from glob import glob
+# from glob import glob
 
 # Local project libraries
 import cdr
 from cdrapi import db
 from cdrapi.settings import Tier
 import cdr_dev_data
+import sys
 
 def main():
     """
@@ -34,13 +35,22 @@ def main():
     # 1. Initialization
     job = Job()
 
-    # 2. Restore control documents
-    job.restore_control_docs()
+    # 2. Restore control tables (not implemented)
+    #    Although the content of the control DB tables is extracted as
+    #    part of the PullDevDocs process it was not part of the original
+    #    implementation to restore.
+    #    Due to the complexity of restoring multiple complete tables,
+    #    think permissions, DB foreign keys, etc. a decision was made to
+    #    continue with the current restore process and exclude DB tables.
+    # job.restore_tables()
 
-    # 3. Restore new document types
-    job.restore_doctypes()
+    # 3. Restore old document types
+    job.restore_old_doctypes()
 
-    # 4. Clean up after ourselves.
+    # 4. Restore new document types
+    job.restore_new_doctypes()
+
+    # 5. Clean up after ourselves.
     job.clean_up()
 
 class Job:
@@ -50,6 +60,8 @@ class Job:
 
     DEVELOPERS = "Developers"
     COMMENT = "preserving work on development server"
+    CONTENTTYPES = ('DrugInformationSummary', 'GlossaryTermConcept',
+                    'GlossaryTermName', 'Media', 'Summary', 'Term')
 
     def __init__(self):
         """
@@ -66,9 +78,14 @@ class Job:
 
         # 2. Get what we need from the command line.
         parser = ArgumentParser()
-        parser.add_argument("--directory", required=True)
-        parser.add_argument("--user", required=True)
-        parser.add_argument("--session", required=True)
+        parser.add_argument("--directory", required=True,
+                            help="directory to restore from")
+        parser.add_argument("--user", required=True,
+                            help="user ID")
+        parser.add_argument("--session", required=True,
+                            help="user session")
+        parser.add_argument("--skip-content", action="store_true",
+                            help="exclude practice documents from being restored")
         opts = parser.parse_args()
 
         # 3. Create objects used to do the job's work.
@@ -76,6 +93,7 @@ class Job:
         self._conn = db.connect(user="CdrGuest")
         self._cursor = self._conn.cursor()
         self._dir = opts.directory
+        self._skip_content = opts.skip_content or False
         self._old = cdr_dev_data.Data(self._dir)
         self._new = cdr_dev_data.Data(self._cursor, self._old)
         self._uid = opts.user
@@ -84,7 +102,8 @@ class Job:
         self._logger.info("using data preserved in %s", self._dir)
         self._new_doc_types = []
 
-    def restore_control_docs(self):
+
+    def restore_old_doctypes(self):
         """
         Restores the documents for document types which already exist.
 
@@ -94,14 +113,23 @@ class Job:
         """
 
         # Walk through the preserved documents by type.
-        self._logger.info("restoring docs for control doctypes")
-        for doc_type in sorted(self._old.docs):
+        msg = "restoring docs for control doctypes and test content"
+        if self._skip_content:
+            msg = "restoring docs for control doctypes only"
 
+        self._logger.info(msg)
+
+        for doc_type in sorted(self._old.docs):
             # 'Old' docs were on DEV before refresh; 'new' are post refresh.
             old = self._old.docs[doc_type].docs
             new = self._new.docs[doc_type].docs
+
             if new:
-                self._logger.info("restoring %r docs", doc_type)
+                if self._skip_content and doc_type in Job.CONTENTTYPES:
+                    self._logger.info("skipping %r docs", doc_type)
+                    continue
+                else:
+                    self._logger.info("restoring %r docs", doc_type)
 
                 # Documents are keyed by unique title.
                 for key in old:
@@ -109,6 +137,7 @@ class Job:
 
                     # If PROD didn't have the document, (re-)create it.
                     if key not in new:
+                        self._logger.info(f"Adding new document '{old_title}'")
                         self._add_doc(doc_type, old_title, old_xml)
                     else:
 
@@ -122,7 +151,7 @@ class Job:
                 self._logger.info("deferring %r docs", doc_type)
                 self._new_doc_types.append(doc_type)
 
-    def restore_doctypes(self):
+    def restore_new_doctypes(self):
         """
         Re-create documents whose doctype was not in the PROD repository.
 
@@ -141,7 +170,10 @@ class Job:
         """
         Don't leave an open CDR session hanging around.
         """
-        cdr.logout(self._session)
+        # The user and session ID are mandatory command line parameters
+        # Don't need to close the session.
+        ### cdr.logout(self._session)
+
         self._logger.info("restoration complete")
 
     def _create_doctype(self, name):
