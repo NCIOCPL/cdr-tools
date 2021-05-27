@@ -26,6 +26,8 @@ REM ----------------------------------------------------------------------
 SET PYTHON=D:\Python\python.exe
 SET DEPLOY=%BUILD%\Build\deploy-cdr.py
 SET UPDATE=%BUILD%\Build\install-docset.py %BUILD%
+SET LOADER=%BUILD%\Database\Loader
+SET INSTALL_LOADER_VALUES=%BUILD%\Build\install-loader-values.py -d %LOADER%
 
 REM ----------------------------------------------------------------------
 REM Make sure the share is reachable, and we really have a release there.
@@ -62,6 +64,7 @@ CHDIR /D D:\
 %PYTHON% %DEPLOY% %BUILD% || ECHO Deploy CDR failed && EXIT /B 1
 %PYTHON% %UPDATE%\Schemas schema || ECHO Update schemas failed && EXIT /B 1
 %PYTHON% %UPDATE%\Filters filter || ECHO Update filters failed && EXIT /B 1
+%PYTHON% %INSTALL_LOADER_VALUES% || ECHO Loader values failed && EXIT /B 1
 
 REM ----------------------------------------------------------------------
 REM You might need to add commands here for things which aren't taken
@@ -80,4 +83,5 @@ ECHO                   Deployment script completed
 ECHO *******************************************************************
 ECHO .
 :END
+ENDLOCAL
 PAUSE
