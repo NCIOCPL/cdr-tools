@@ -67,6 +67,7 @@ standard_library_modules = {
     "hashlib",
     "html",
     "importlib", # used by ndscheduler
+    "importlib.metadata",
     "io",
     "json",
     "locale",
@@ -77,6 +78,7 @@ standard_library_modules = {
     "optparse",
     "os",
     "os.path",
+    "pathlib",
     "platform",
     "pprint",
     "random",
@@ -101,6 +103,7 @@ standard_library_modules = {
     "urllib.request",
     "urllib2",
     "urllib3.exceptions",
+    "uuid",
     "webbrowser",
     "xml.dom.minidom",
     "xml.sax",
@@ -119,6 +122,7 @@ third_party_modules = {
     "dateutil.parser", # https://pypi.python.org/pypi/python-dateutil
     "dateutil.relativedelta",
     "elasticsearch5",
+    "elasticsearch7",
     "lxml",            # http://lxml.de/
     "lxml.etree",
     "lxml.html",
@@ -130,9 +134,9 @@ third_party_modules = {
     "openpyxl",        # https://pypi.org/project/openpyxl/
     "openpyxl.styles",
     "openpyxl.utils",
+    "openpyxl.workbook.views",
     "PIL",             # https://python-pillow.org/
     "paramiko",        # http://www.paramiko.org/
-    "pkg_resources",   # https://setuptools.readthedocs.io/en/latest/index.html
     "pyodbc",          # https://github.com/mkleehammer/pyodbc (db api)
     "requests",        # http://requests.readthedocs.io/en/master/ (HTTP api)
     "requests.packages.urllib3.exceptions",
@@ -187,6 +191,8 @@ def might_be_python(name):
     if name == "glossify":
         return True
     if name.endswith("~"):
+        return False
+    if name == "METADATA" or name == "PKG-INFO":
         return False
     if "." not in name:
         return True
