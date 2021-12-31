@@ -9,6 +9,7 @@ from lxml import etree
 from cdrapi import db
 from ModifyDocs import Job
 
+
 class TestMods(Job):
     """
     Derived class for a specific document transformation job
@@ -104,6 +105,7 @@ class TestMods(Job):
         node.text = f"{text}{self.SUFFIX}"
         return etree.tostring(root, encoding="utf-8")
 
+
 if __name__ == "__main__":
     """
     Collect the command-line options, create the job, and run it
@@ -125,4 +127,3 @@ if __name__ == "__main__":
     job = TestMods(**vars(opts))
     job.run()
     print(" ".join([str(id) for id in job.ids]))
-

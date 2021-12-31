@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 #
 # Pulls control documents and tables which need to be preserved from the
 # development server in preparation for refreshing the CDR database from
@@ -10,7 +10,7 @@
 # Usage:
 #   PullDevData.py [newdoctype [newdoctype ...] ]
 #
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 
 import datetime
 import os
@@ -23,9 +23,10 @@ from pathlib import Path
 
 DUMP_JOBS = f"python {sys.path[0]}/dump-scheduled-jobs.py"
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Ensure only documents with unique title are being preserved
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def prohibited_docs(cursor):
     """ Creating two sets for comparison
          - set of documents to be preserved
@@ -33,7 +34,7 @@ def prohibited_docs(cursor):
 
         return True if the intersection is not empty
     """
-    print(f"Checking for prohibited test documents")
+    print("Checking for prohibited test documents")
 
     # Creating set of titles to be preserved
     cursor.execute("""\
@@ -72,9 +73,9 @@ def prohibited_docs(cursor):
     return False
 
 
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # Save all documents of a given type.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def saveDocs(cursor, outputDir, docType):
     print(f"Saving document type {docType}")
     os.mkdir(f"{outputDir}/{docType}")
@@ -95,9 +96,10 @@ def saveDocs(cursor, outputDir, docType):
         fp.close()
         row = cursor.fetchone()
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Save test documents specifically marked to be restored
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def saveTestDocs(cursor, outputDir):
     """ For each test document to be restored include the document type,
         CDR-ID, title and XML
@@ -141,7 +143,7 @@ def saveTestDocs(cursor, outputDir):
         # be normalized but ... "belt and suspenders".
         # ----------------------------------------------------------------
         if row[0] == 'GlossaryTermConcept':
-            row[2] = re.sub(r'\s+',' ', row[2].lower().strip())
+            row[2] = re.sub(r'\s+', ' ', row[2].lower().strip())
 
         print(f"       {row[0]} document")
         contentDir = f"{outputDir}/{row[0]}"
@@ -150,11 +152,12 @@ def saveTestDocs(cursor, outputDir):
                                                            encoding="utf-8")
         row = cursor.fetchone()
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Save a table.  First line of output is the list of column names.
 # Subsequent lines are the contents of each table row, one per line.
 # Use Python's eval() to reconstruct the row values.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def saveTable(cursor, outputDir, tableName):
     print(f"Saving table {tableName}")
     cursor.execute(f"SELECT * FROM {tableName}")
@@ -169,9 +172,10 @@ def saveTable(cursor, outputDir, tableName):
         fp.write("%s\n" % repr(tuple(values)))
     fp.close()
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Save the scheduled jobs in JSON and in plain text.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def saveJobs(outputDir):
     print("Saving scheduled jobs")
     process = run_command(DUMP_JOBS)
@@ -183,9 +187,10 @@ def saveJobs(outputDir):
     with open(f"{outputDir}/scheduled-jobs.json", "w", encoding="utf-8") as fp:
         fp.write(process.stdout)
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Do the work.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def main():
     pull_tables = ("action",         "active_status",
                    "ctl",            "doc_type",
@@ -215,5 +220,6 @@ def main():
     # Saving individual test/training documents marked for preserve
     # -------------------------------------------------------------
     saveTestDocs(cursor, outputDir)
+
 
 main()

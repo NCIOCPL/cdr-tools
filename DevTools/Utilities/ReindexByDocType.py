@@ -26,13 +26,14 @@ rows = query.order("d.id").execute(cursor).fetchall()
 if opts.skip:
     rows = rows[opts.skip:]
 where = opts.tier if opts.tier else Tier().name
-stderr.write("reindexing {} documents on {}\n".format(len(rows), where))
+stderr.write(f"reindexing {len(rows)} documents on {where}\n")
 count = 0
 for doc_id, in rows:
     count += 1
     args = doc_id, count, len(rows)
     stderr.write("\rreindexing CDR{:010d} {:d} of {:d}".format(*args))
-    resp = cdr.reindex("guest", doc_id, tier=opts.tier)
-    if resp:
-        stderr.write("\n{!r}\n".format(resp))
+    try:
+        cdr.reindex("guest", doc_id, tier=opts.tier)
+    except Exception as e:
+        stderr.write(f"\n{e!r}\n")
 stderr.write("\n")

@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-#----------------------------------------------------------------------
+#!/usr/bin/env python3
+# ----------------------------------------------------------------------
 #
 # Command-line script to list filters by name with file names based
 # on PROD CDR IDs.  Useful for finding a CDR filter in a git working
 # directory.
 #
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 from cdrapi import db
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 #
 # Script for changing a CDR filter document.  Must be used on each
 # tier where the filter exists in order to bring the filter titles
@@ -10,27 +10,32 @@
 #
 # JIRA::OCECDR-3694
 #
-#----------------------------------------------------------------------
-import cdr, optparse, sys, re
+# ---------------------------------------------------------------------
+import cdr
+import optparse
+import re
+import sys
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Find out if the response to a CDR client-server command indicates
 # failure.  If so, describe the problem and exit.  Note that this
 # function works properly even when passed a document object, because
 # cdr.getErrors() only looks for error messages if a string is passed
 # for the first argument.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def checkForProblems(response, optionsParser):
-    errors = cdr.getErrors(response, errorsExpected = False, asSequence = True)
+    errors = cdr.getErrors(response, errorsExpected=False, asSequence=True)
     if errors:
         for error in errors:
             sys.stderr.write("%s\n" % error)
         optionsParser.error("aborting")
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Create an object which can describe the behavior of this command
 # and the options and arguments accepted/required.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def createOptionParser():
     op = optparse.OptionParser(usage="%prog [options] UID PWD CDRID FILE",
                                description="""\
@@ -59,9 +64,10 @@ the filter's title.""")
                   default="")
     return op
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Extract the filter title from the document.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def getNewTitle(doc):
 
     match = re.search("<!--\\s*filter title:(.*?)-->", doc, re.I)
@@ -72,7 +78,8 @@ def getNewTitle(doc):
         raise Exception("Filter title in document comment is empty")
     return title
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Store the new version of the filter.  Processing steps:
 #
 #  1. Parse the command-line options and arguments.
@@ -83,12 +90,12 @@ def getNewTitle(doc):
 #  6. Store the new version on the target CDR server.
 #  7. Report the number of the new version.
 #
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def main():
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 1. Parse the command-line options and arguments.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     op = createOptionParser()
     (options, args) = op.parse_args()
     if len(args) != 4:
@@ -107,35 +114,35 @@ def main():
     if not options.comment:
         options.comment = "Filter title changed"
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 2. Load the new version of the filter from the file system.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     fp = open(filename, 'r')
     docXml = fp.read()
     fp.close()
     if ']]>' in docXml:
         op.error("CdrDoc wrapper must be stripped from the file")
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 3. Log into the CDR on the target server.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     session = cdr.login(uid, pwd)
     checkForProblems(session, op)
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 4. Check out the document from the target CDR server.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     docObj = cdr.getDoc(session, fullId, checkout='Y', getObject=True)
     checkForProblems(docObj, op)
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 5. Plug in the new title for the filter.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     docObj.ctrl['DocTitle'] = getNewTitle(docXml)
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 6. Store the new version on the target CDR server.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     doc = str(docObj)
     print('Versioned: %s, Publishable: %s' % (options.version,
                                               options.publishable))
@@ -144,9 +151,9 @@ def main():
                        ver=options.version, verPublishable=options.publishable)
     checkForProblems(cdrId, op)
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 7. Report the number of the latest version.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     versions = cdr.lastVersions(session, cdrId)
     if options.version == "N":
         print("CWD for %s updated" % cdrId)
@@ -154,6 +161,7 @@ def main():
         print("Latest version of %s is %d" % (cdrId, versions[0]))
     print("")
     print("DON'T FORGET TO CHANGE THE TITLE OF THIS FILTER ON ALL TIERS!")
+
 
 if __name__ == '__main__':
     main()

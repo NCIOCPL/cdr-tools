@@ -1,18 +1,17 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 #
 # Script for installing a new version of a CDR publishing control document.
 #
 # Example usage:
 #   UpdatePubControlDoc.py -p Y -c OCECDR-99999 elmer vewy-secwet Primary.xml
 #
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 import argparse
-import cgi
 import getpass
 import os
-import re
 import cdr
+
 
 def create_parser():
     """
@@ -44,6 +43,7 @@ server.
     group.add_argument("--user", "-u")
     return parser
 
+
 def get_doc_id(path, tier):
     """
     Extract the document title from the filename and look up the CDR
@@ -63,6 +63,7 @@ def get_doc_id(path, tier):
         raise Exception(u"Ambiguous title %r" % title)
     return result[0].docId
 
+
 def main():
     """
     Store the new version of the filter.  Processing steps:
@@ -77,9 +78,9 @@ def main():
       8. Clean up.
     """
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 1. Parse the command-line options and arguments.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     parser = create_parser()
     opts = parser.parse_args()
     pub = "Y" if opts.publishable else "N"
@@ -90,22 +91,22 @@ def main():
     # -----------------------------------------------------------------
     comment = opts.comment or "Replaced w/o user comment"
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 2. Load the new version of the control document from the file system.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     with open(opts.filename) as fp:
         xml = fp.read()
     if "]]>" in xml:
         parser.error("CdrDoc wrapper must be stripped from the file")
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 3. Find out what the control document's document ID is.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     doc_id = get_doc_id(opts.filename, opts.tier)
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 4. Log into the CDR on the target server.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     if opts.session:
         session = opts.session
     else:
@@ -115,18 +116,18 @@ def main():
         if error_message:
             parser.error(error_message)
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 5. Check out the document from the target CDR server.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     args = dict(checkout="Y", getObject=True, tier=opts.tier)
     doc = cdr.getDoc(session, doc_id, **args)
     error_message = cdr.checkErr(doc)
     if error_message:
         parser.error(error_message)
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 6. Store the new version on the target CDR server.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     doc.xml = xml
     args = dict(
         doc=str(doc),
@@ -147,17 +148,18 @@ def main():
     if not doc_id:
         print("aborting with failure")
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 7. Report the number of the latest version.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     versions = cdr.lastVersions(session, doc_id, tier=opts.tier)
     print(("Saved {} as version {}".format(doc_id, versions[0])))
 
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     # 8. Clean up.
-    #------------------------------------------------------------------
+    # -----------------------------------------------------------------
     if not opts.session:
         cdr.logout(session, tier=opts.tier)
+
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Install a new filter on a lower-tier server
 
@@ -41,6 +41,7 @@ SEE ALSO
     group.add_argument("--user")
     parser.add_argument("--tier")
     return parser
+
 
 class DocInfo:
     """
@@ -120,6 +121,7 @@ class DocInfo:
             args = self.title, ids
             parser.error("{!r} already present ({}) in the CDR".format(*args))
 
+
 def main():
     """
     Top-level entry point
@@ -166,12 +168,12 @@ Use CreateFilter.py to create the filter in the production database, then
         parser.error(error)
 
     # Unlock the document and display its ID.
-    response = cdr.unlock(session, cdr_id, tier=opts.tier)
-    error = cdr.checkErr(response)
-    if error:
-        parser.error(error)
-    else:
+    try:
+        cdr.unlock(session, cdr_id, tier=opts.tier)
         print(cdr_id)
+    except Exception as e:
+        parser.error(str(e))
+
 
 if __name__ == "__main__":
     main()

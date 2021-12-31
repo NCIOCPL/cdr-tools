@@ -64,4 +64,3 @@ for nid in sorted(nodes):
     stderr.write(f"\rfetched {done} of {len(nodes)} nodes")
 book.save(filename="pdq-content.xlsx")
 stderr.write("\nsaved pdq-content.xslx\n")
-

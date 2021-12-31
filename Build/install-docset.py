@@ -15,13 +15,13 @@ JIRA::OCECDR-4300
 """
 
 import argparse
-import logging
 import os
 import re
 import subprocess
 import sys
 import cdr
 import cdrapi.db as cdrdb
+
 
 class DocumentSet:
     """
@@ -37,6 +37,7 @@ class DocumentSet:
       cursor - for running guest CDR database queries
     """
 
+    DOCTYPE = ACCOUNT = None  # Overridden in the derived classes
     POPEN_OPTS = dict(
         shell=True,
         text=True,
@@ -129,6 +130,7 @@ class DocumentSet:
 
         p = subprocess.Popen(args, **cls.POPEN_OPTS)
         output, error = p.communicate()
+
         class Result:
             def __init__(self, code, output):
                 self.code = code
@@ -164,7 +166,7 @@ class DocumentSet:
             if not rows:
                 return
             if len(rows) > 1:
-                self.logger.warning("multiple %r docs", self.title)
+                self.control.logger.warning("multiple %r docs", self.title)
             else:
                 self.id, self.old = rows[0]
 
@@ -202,10 +204,10 @@ class DocumentSet:
                 self.control.logger.info("%s is new", self.name)
                 return True
             comment = "Added by install-docset.py"
-            ctrl = { "DocTitle": self.title }
-            opts = { "type": self.doctype, "encoding": "utf-8", "ctrl": ctrl }
-            cdr_doc = cdr.Doc(self.xml, **opts)
-            opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
+            ctrl = {"DocTitle": self.title}
+            opts = {"type": self.doctype, "encoding": "utf-8", "ctrl": ctrl}
+            cdr_doc = str(cdr.Doc(self.xml, **opts))
+            opts = dict(doc=cdr_doc, checkIn="Y", ver="Y", comment=comment)
             opts["publishable"] = self.control.PUBLISHABLE
             cdr_id = cdr.addDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
@@ -227,11 +229,11 @@ class DocumentSet:
                 return True
             cdr.checkOutDoc(self.control.session, self.id, force="Y")
             comment = "Updated by install-docset.py"
-            ctrl = { "DocTitle": self.title }
-            opts = { "type": self.doctype, "encoding": "utf-8", "ctrl": ctrl }
+            ctrl = {"DocTitle": self.title}
+            opts = {"type": self.doctype, "encoding": "utf-8", "ctrl": ctrl}
             opts["id"] = cdr.normalize(self.id)
-            cdr_doc = cdr.Doc(self.xml, **opts)
-            opts = dict(doc=str(cdr_doc), checkIn="Y", ver="Y", comment=comment)
+            cdr_doc = str(cdr.Doc(self.xml, **opts))
+            opts = dict(doc=cdr_doc, checkIn="Y", ver="Y", comment=comment)
             opts["publishable"] = self.control.PUBLISHABLE
             cdr_id = cdr.repDoc(self.control.session, **opts)
             error = cdr.checkErr(cdr_id)
@@ -240,6 +242,7 @@ class DocumentSet:
                 sys.exit(1)
             self.control.logger.info("replaced %s (%s)", self.name, cdr_id)
             return True
+
 
 class SchemaSet(DocumentSet):
     """
@@ -305,6 +308,7 @@ class SchemaSet(DocumentSet):
             DocumentSet.Document.__init__(self, control, name, xml)
             self.fetch_doc()
 
+
 class FilterSet(DocumentSet):
     """
     Processing control for installing a CDR filter document set.
@@ -342,6 +346,7 @@ class FilterSet(DocumentSet):
                     self.control.logger.warning("empty title for %s", name)
                 else:
                     self.fetch_doc()
+
 
 if __name__ == "__main__":
     "Top-level entry point."

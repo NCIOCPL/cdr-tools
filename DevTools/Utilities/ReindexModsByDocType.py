@@ -1,10 +1,10 @@
-#!/usr/bin/env python
-#----------------------------------------------------------
+#!/usr/bin/env python3
+# ----------------------------------------------------------
 # Re-index all documents of some document type for which the document
 # was saved in the last N days, where N is passed on the command line.
 #
 # A version of ReindexByDocType.py
-#----------------------------------------------------------
+# ----------------------------------------------------------
 
 from argparse import ArgumentParser
 from datetime import date, timedelta
@@ -32,10 +32,12 @@ print(f"reindexing {len(rows):d} documents")
 count = 0
 for row in rows:
     print(f"reindexing CDR{row.id:010d}", flush=True)
-    resp = reindex("guest", row.id, tier=opts.tier)
-    if resp: print(resp)
+    try:
+        reindex("guest", row.id, tier=opts.tier)
+    except Exception as e:
+        print(e)
 
     # Pause every 50 docs (to avoid swallowing the machine? swamping sshd?)
     count += 1
     if count % 50 == 0:
-        time.sleep(1)
+        sleep(1)

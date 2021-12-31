@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Rebuilds the manifest used to keep CDR client files up-to-date.
 # Rewrite of original utility by Jeff Holmes 2002-05-14.
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 import cdr
 import hashlib
 import lxml.etree as etree
@@ -12,8 +12,9 @@ import socket
 import os
 
 CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
-MANIFEST_PATH    = f"{CLIENT_FILES_DIR}/{cdr.MANIFEST_NAME}"
-IS_WINDOWS       = True if "windows" in platform.platform().lower() else False
+MANIFEST_PATH = f"{CLIENT_FILES_DIR}/{cdr.MANIFEST_NAME}"
+IS_WINDOWS = True if "windows" in platform.platform().lower() else False
+
 
 class File:
     """
@@ -33,10 +34,12 @@ class File:
     """
     def __init__(self, path):
         self.name = path
-        self.key = self.name.lower() # for sorting
+        self.key = self.name.lower()  # for sorting
+
     def __lt__(self, other):
         "Compare by file names, ignoring case."
         return self.key < other.key
+
 
 def gather_files(dir_path):
     """
@@ -51,18 +54,23 @@ def gather_files(dir_path):
             files.append(File(this_path))
     return files
 
+
 def create_ticket(md5):
     """
     Create a block for the manifest which can be used for a quick
     determination that at least one file is different (or missing)
     between the client and the server.
     """
+
+    # Suppress false positive error from pylint.
+    host = socket.gethostname()  # pylint: disable=no-member
     ticket = etree.Element("Ticket")
     etree.SubElement(ticket, "Application").text = sys.argv[0]
-    etree.SubElement(ticket, "Host").text = str(socket.gethostname())
+    etree.SubElement(ticket, "Host").text = str(host)
     etree.SubElement(ticket, "Author").text = str(os.environ["USERNAME"])
     etree.SubElement(ticket, "Checksum").text = md5.hexdigest().lower()
     return ticket
+
 
 def md5(file_bytes):
     """
@@ -72,6 +80,7 @@ def md5(file_bytes):
     m = hashlib.md5()
     m.update(file_bytes)
     return m.hexdigest().lower()
+
 
 def create_filelist(files, manifest_md5):
     """
@@ -89,6 +98,7 @@ def create_filelist(files, manifest_md5):
             manifest_md5.update(file_bytes)
     return wrapper
 
+
 def write_manifest(manifest_xml):
     """
     Serialize the manifest file to disk.
@@ -101,6 +111,7 @@ def write_manifest(manifest_xml):
     """
     with open(MANIFEST_PATH, "w") as fp:
         fp.write(manifest_xml)
+
 
 def refresh_manifest(where):
     """
@@ -116,7 +127,7 @@ def refresh_manifest(where):
     """
     try:
         os.unlink(MANIFEST_PATH)
-    except:
+    except Exception:
         pass
     os.chdir(where)
     files = gather_files(".")
@@ -137,6 +148,7 @@ def refresh_manifest(where):
             print(f"return code: {result.returncode}")
         if result.stdout:
             print(result.stdout)
+
 
 if __name__ == "__main__":
     """

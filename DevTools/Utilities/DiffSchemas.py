@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-#----------------------------------------------------------------------
+#!/usr/bin/env python3
+# ----------------------------------------------------------------------
 #
 # Compare schemas in working sandbox with those in the CDR.
 # Name individual schema files on the command line or use wildcards.
@@ -9,8 +9,11 @@
 # only identifies which schema files do not match the corresponding
 # CDR document and reports errors.
 #
-#----------------------------------------------------------------------
-import cdr, sys, glob, difflib, os.path
+# ----------------------------------------------------------------------
+import cdr
+import glob
+import difflib
+import os.path
 from argparse import ArgumentParser
 from cdrapi.docs import Doc
 from cdrapi.users import Session

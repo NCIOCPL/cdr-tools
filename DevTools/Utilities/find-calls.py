@@ -20,6 +20,7 @@ import argparse
 import ast
 import os
 
+
 class Finder:
     """Control object for tool"""
 
@@ -85,7 +86,7 @@ class Finder:
         with open(path) as fp:
             try:
                 source = fp.read()
-            except:
+            except Exception:
                 print(path)
                 raise
         return ast.parse(source, path)

@@ -12,15 +12,13 @@ work done by developers on the development server.
 
 # Standard libraries
 from argparse import ArgumentParser
-from datetime import datetime
-# from glob import glob
 
 # Local project libraries
 import cdr
 from cdrapi import db
 from cdrapi.settings import Tier
 import cdr_dev_data
-import sys
+
 
 def main():
     """
@@ -53,6 +51,7 @@ def main():
     # 5. Clean up after ourselves.
     job.clean_up()
 
+
 class Job:
     """
     Object which performs the work of restoring CDR documents on DEV.
@@ -60,8 +59,28 @@ class Job:
 
     DEVELOPERS = "Developers"
     COMMENT = "preserving work on development server"
-    CONTENTTYPES = ('DrugInformationSummary', 'GlossaryTermConcept',
-                    'GlossaryTermName', 'Media', 'Summary', 'Term')
+    CONTENTTYPES = (
+        'DrugInformationSummary',
+        'GlossaryTermConcept',
+        'GlossaryTermName',
+        'Media',
+        'Summary',
+        'Term'
+    )
+    ACTIONS = (
+        'ADD DOCUMENT',
+        'DELETE DOCTYPE',
+        'DELETE DOCUMENT',
+        'FILTER DOCUMENT',
+        'FORCE CHECKIN',
+        'FORCE CHECKOUT',
+        'GET DOCTYPE',
+        'GET SCHEMA',
+        'MODIFY DOCTYPE',
+        'MODIFY DOCUMENT',
+        'PUBLISH DOCUMENT',
+        'VALIDATE DOCUMENT',
+    )
 
     def __init__(self):
         """
@@ -85,7 +104,8 @@ class Job:
         parser.add_argument("--session", required=True,
                             help="user session")
         parser.add_argument("--skip-content", action="store_true",
-                            help="exclude practice documents from being restored")
+                            help="exclude practice documents "
+                            "from being restored")
         opts = parser.parse_args()
 
         # 3. Create objects used to do the job's work.
@@ -101,7 +121,6 @@ class Job:
         self._logger.info("session %s", self._session)
         self._logger.info("using data preserved in %s", self._dir)
         self._new_doc_types = []
-
 
     def restore_old_doctypes(self):
         """
@@ -172,7 +191,7 @@ class Job:
         """
         # The user and session ID are mandatory command line parameters
         # Don't need to close the session.
-        ### cdr.logout(self._session)
+        # cdr.logout(self._session)
 
         self._logger.info("restoration complete")
 
@@ -183,6 +202,8 @@ class Job:
         1. Extract the information about the doctype from the saved table.
         2. Plug in the doctype's title filter, if any.
         3. Add permissions for developers to work with docs of this type.
+
+        2021-12-31: suppress pylint false positives
         """
 
         # The preserved doc_type table and filter and schema docs have
@@ -198,8 +219,8 @@ class Job:
                 "schema": schema, "comment": comment}
         info = cdr.dtinfo(**opts)
         info = cdr.addDoctype(self._session, info)
-        if info.error:
-            args = name, info.error
+        if info.error:  # pylint: disable=no-member
+            args = name, info.error  # pylint: disable=no-member
             self._logger.error("unable to create doctype %r: %s", *args)
             return False
 
@@ -213,16 +234,11 @@ class Job:
 
         # Let developers work with the new document type on DEV.
         group = cdr.getGroup(self._session, Job.DEVELOPERS)
-        for action in ('ADD DOCUMENT',     'DELETE DOCTYPE',
-                       'DELETE DOCUMENT',  'FILTER DOCUMENT',
-                       'FORCE CHECKIN',    'FORCE CHECKOUT',
-                       'GET DOCTYPE',      'GET SCHEMA',
-                       'MODIFY DOCTYPE',   'MODIFY DOCUMENT',
-                       'PUBLISH DOCUMENT', 'VALIDATE DOCUMENT'):
+        for action in self.ACTIONS:
             group.actions[action].append(name)
         try:
             cdr.putGroup(self._session, Job.DEVELOPERS, group)
-        except:
+        except Exception:
             message = "unable to update permissions for doctype %r"
             self._logger.exception(message, name)
             raise
@@ -325,9 +341,10 @@ class Job:
         Release an existing lock on a CDR document.
         """
         id_string = cdr.normalize(doc_id)
-        response = cdr.unlock(self._session, id_string, Job.COMMENT)
-        if response:
-            self._logger.error("failure unlocking %s: %s", id_string, response)
+        try:
+            cdr.unlock(self._session, id_string, comment=Job.COMMENT)
+        except Exception as e:
+            self._logger.error("failure unlocking %s: %s", id_string, e)
             return False
         return True
 
@@ -358,8 +375,9 @@ class Job:
         rows = self._cursor.fetchall()
         return rows and rows[0][0] or None
 
-#----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
 # Entry point.
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 if __name__ == "__main__":
     main()

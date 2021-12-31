@@ -45,7 +45,7 @@ if not password:
     try:
         with open("pdqpw") as fp:
             password = fp.read().strip()
-    except:
+    except Exception:
         pass
 if not password:
     password = getpass("password for PDQ account: ")

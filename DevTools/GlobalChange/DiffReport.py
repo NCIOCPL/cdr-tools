@@ -1,13 +1,17 @@
-#----------------------------------------------------------------------
+#!/usr/bin/env python3
+# ----------------------------------------------------------------------
 # Concatenate output of diff files for quick review of test mode
 # global change runs.
 #
 #                                       Alan Meyer
 #                                       May, 2011
-#----------------------------------------------------------------------
-import sys, os, re
+# ----------------------------------------------------------------------
+import sys
+import os
+import re
 
-FPAT = re.compile("(?P<cdrid>CDR\d{10})\.(?P<ver>[a-z]{3,5})\.diff")
+FPAT = re.compile(r"(?P<cdrid>CDR\d{10})\.(?P<ver>[a-z]{3,5})\.diff")
+
 
 def usage(msg=None):
     """
@@ -34,6 +38,8 @@ usage: DiffReport.py docver {docver} {docver}
   lastv and pub are all the same version then only cwd will appear even if
   all three have been specified.
 """)
+
+
 if len(sys.argv) < 2:
     usage("Insufficient arguments")
 
@@ -53,7 +59,7 @@ for f in fnames:
     m = FPAT.match(f)
     if m:
         cdrId = m.group("cdrid")
-        ver   = m.group("ver")
+        ver = m.group("ver")
 
         # Only show CDR ID once, with blank line separator
         if cdrId != lastCdrId:
@@ -73,4 +79,3 @@ for f in fnames:
         text = fp.read()
         print(text)
         fp.close()
-

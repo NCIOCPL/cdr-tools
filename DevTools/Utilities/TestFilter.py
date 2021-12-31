@@ -1,11 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 ###########################################################
 # Test filter a CDR doc from the command line.
 #
 # Run without args for usage info.
 ###########################################################
 
-import sys, getopt, re, cdr
+import sys
+import getopt
+import cdr
 from cdrapi import db
 from datetime import datetime
 
@@ -22,6 +24,7 @@ INDENT_FILTER = """<?xml version="1.0"?>
 
 # For trace messages - courtesy of Oliver Becker, Humboldt U. Berlin
 # http://www2.informatik.hu-berlin.de/~obecker/XSLT/
+# 2021-12-31: added string splicing to comply with PEP-8 on line lengths.
 TRACE_FILTER = """<?xml version="1.0"?>
 
 <!--
@@ -135,7 +138,8 @@ TRACE_FILTER = """<?xml version="1.0"?>
 
   <!-- output parameter values -->
   <xsl:template match="xsl:param" mode="traceParams">
-    <alias:text>&#xA;   param: name="<xsl:value-of select="@name" />" value="</alias:text>
+    <alias:text>&#xA;   param: """ """\
+name="<xsl:value-of select="@name" />" value="</alias:text>
     <alias:value-of select="${@name}" />" <alias:text />
     <!--
     <alias:copy-of select="${@name}" />" <alias:text />
@@ -149,7 +153,8 @@ TRACE_FILTER = """<?xml version="1.0"?>
       <xsl:apply-templates />
     </xsl:copy>
     <xsl:if test="ancestor::xsl:template">
-      <alias:message>   variable: name="<xsl:value-of select="@name" />" value="<alias:text />
+      <alias:message>   variable: """ """\
+name="<xsl:value-of select="@name" />" value="<alias:text />
       <alias:value-of select="${@name}" />" </alias:message>
     </xsl:if>
   </xsl:template>
@@ -199,7 +204,7 @@ TRACE_FILTER = """<?xml version="1.0"?>
 
   <xsl:template match="text()" mode="trace:getCurrent">
     <xsl:value-of
-         select="concat('/text()[', count(preceding-sibling::text())+1, ']')" />
+        select="concat('/text()[', count(preceding-sibling::text())+1, ']')" />
   </xsl:template>
 
   <xsl:template match="comment()" mode="trace:getCurrent">
@@ -267,7 +272,7 @@ def stripMsgNoise(msgText):
     Return:
         Stripped text.
     """
-    warnPat = re.compile(r"^  Warning \[.*\]?")
+    # warnPat = re.compile(r"^  Warning \[.*\]?")
 
     # Treat each line
     msgLines = msgText.split("\n")
@@ -286,9 +291,9 @@ def stripMsgNoise(msgText):
 
 
 # Option defaults
-fullOutput   = True
+fullOutput = True
 indentOutput = False
-traceDbg     = False
+traceDbg = False
 
 # Option overrides from command line
 opts, args = getopt.getopt(sys.argv[1:], "ipt")
@@ -370,7 +375,7 @@ if traceDbg:
     # If filter is in database, have to fetch it
     if not inline:
         # Filter supplied by title
-        if type(filter) == type(""):
+        if isinstance(filter, str):
             # Strip off "name:" that we know must be there
             filterTitle = filter[5:]
 
@@ -421,14 +426,14 @@ if traceDbg:
 
 # Gather optional parms
 parms = []
-argx  = 2
+argx = 2
 while argx < len(args):
     parms.append(args[argx].split('='))
     argx += 1
 
 # Filter identifier strings should be in list format for cdr.filterDoc()
 if not inline:
-    filter = [filter,]
+    filter = [filter]
 
 # Filter doc
 startClock = datetime.now()
@@ -449,8 +454,8 @@ if traceDbg:
 # If pretty printing with indentation
 if indentOutput:
     resp = cdr.filterDoc(session, filter=INDENT_FILTER, doc=xml, inline=True)
-if type(resp) in (type(""), type(u"")):
-    sys.stderr.write("Unable to indent output:\n  %s\n--- continuing:\n" % resp)
+if isinstance(resp, str):
+    sys.stderr.write(f"Unable to indent output:\n  {resp}\n--- continuing:\n")
 else:
     xml = resp[0]
 

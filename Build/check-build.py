@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 
+
 class Control:
     """
     Master driver with runtime configuration settings for processing.
@@ -144,6 +145,7 @@ class Control:
             if os.path.isdir("{}:/cdr".format(drive)):
                 return drive
         return None
+
 
 if __name__ == "__main__":
     "Top-level entry point."

@@ -26,6 +26,7 @@ import shutil
 import subprocess
 import sys
 
+
 class Control:
     """
     Master driver with runtime configuration settings for processing.
@@ -213,6 +214,7 @@ class Control:
                 return drive
         return None
 
+
 class Directory:
     """
     Object representing a directory to be build for a CDR release.
@@ -306,6 +308,7 @@ class Directory:
             cls("api", "server/api"),
             cls("ClientFiles"),
         ]
+
 
 if __name__ == "__main__":
     "Top-level entry point."

@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 """Reparse the schemas, rebuilding DTDs which are out of date.
+
+2021-12-10: added comments to suppress pylint errors (it's not smart enough
+to understand how setattr() works).
 """
 
 import sys
@@ -10,6 +13,8 @@ import cdr
 LOGGER = cdr.Logging.get_logger("CheckDTDs", console=True)
 
 CLIENT_FILES_DIR = len(sys.argv) > 1 and sys.argv[1] or cdr.CLIENT_FILES_DIR
+
+
 def getDocTypeResponses(docType):
     opts = dict(Type=docType, OmitDtd="Y", GetEnumValues="Y")
     cmd = etree.Element("CdrGetDocType", **opts)
@@ -29,52 +34,56 @@ def getDocTypeResponses(docType):
         raise Exception("CdrGetDocType FAILURE: " + xml)
     return xml[start:end] + '</CdrGetDocTypeResp>\n'
 
+
 def saveDocTypeResponses(docTypeFilePath, docTypeResponses):
     with open(docTypeFilePath, 'w', encoding="utf-8") as fp:
         fp.write(docTypeResponses)
 
+
 def loadDocTypeResponses(docTypeFilePath):
     with open(docTypeFilePath, 'r', encoding="utf-8") as fp:
-        return f.read()
+        return fp.read()
 
-directory       = '%s/Rules' % CLIENT_FILES_DIR
+
+directory = '%s/Rules' % CLIENT_FILES_DIR
 docTypeFileName = 'CdrDocTypes.xml'
 docTypeFilePath = '%s/%s' % (CLIENT_FILES_DIR, docTypeFileName)
 docTypes = cdr.getDoctypes('guest')
 docTypeResponses = ['<DocTypeResponses>\n']
 for docType in docTypes:
-    if docType.upper() in ("FILTER", "CSS", "SCHEMA"): continue
+    if docType.upper() in ("FILTER", "CSS", "SCHEMA"):
+        continue
     try:
         dtInfo = cdr.getDoctype('guest', docType)
         docTypeResponses.append(getDocTypeResponses(docType))
-        #sys.stderr.write("new DTD retrieved\n")
-        if not dtInfo.dtd:
+        # sys.stderr.write("new DTD retrieved\n")
+        if not dtInfo.dtd:  # pylint: disable=no-member
             sys.stderr.write("Can't get new DTD for %s\n" % repr(docType))
             LOGGER.warning("Can't get new DTD for %r", docType)
             continue
-        start = dtInfo.dtd.find("<!ELEMENT")
-        #sys.stderr.write("new start is at %d\n" % start)
+        start = dtInfo.dtd.find("<!ELEMENT")  # pylint: disable=no-member
+        # sys.stderr.write("new start is at %d\n" % start)
         if start == -1:
             sys.stderr.write("Malformed DTD for %s type\n" % repr(docType))
             LOGGER.warning("Malformed DTD for %r type", docType)
-            #print dtInfo.dtd
+            # print dtInfo.dtd
             continue
-        newDtd = dtInfo.dtd[start:]
+        newDtd = dtInfo.dtd[start:]  # pylint: disable=no-member
         path = "%s/%s.dtd" % (directory, docType)
-        #sys.stderr.write("checking %s\n" % path)
+        # sys.stderr.write("checking %s\n" % path)
         try:
             current = open(path).read()
         except Exception as e:
             sys.stderr.write("failure opening %s: %s\n" % (path, e))
             LOGGER.exception("failure opening %s", path)
             current = None
-        #sys.stderr.write("old DTD read\n")
+        # sys.stderr.write("old DTD read\n")
         if current:
             start = current.find('<!ELEMENT')
             if start == -1:
                 sys.stderr.write("Malformed DTD: %s.dtd\n" % docType)
                 continue
-            #sys.stderr.write("old start is at %d\n" % start)
+            # sys.stderr.write("old start is at %d\n" % start)
             current = current[start:]
             if newDtd == current:
                 print("DTD for %25s  is current" % docType)
@@ -84,14 +93,14 @@ for docType in docTypes:
         else:
             print("DTD for %25s     added" % docType)
         try:
-            open(path, "w").write(dtInfo.dtd)
+            open(path, "w").write(dtInfo.dtd)  # pylint: disable=no-member
         except Exception as e:
             sys.stderr.write("failure writing %s: %s\n" % (path, e))
             LOGGER.exception("failure writing %s", path)
     except Exception as e:
         LOGGER.exception("loadDocTypeResponses failure")
         sys.stderr.write(str(e) + "\n")
-        #pass
+
 docTypeResponses.append('</DocTypeResponses>\n')
 docTypeResponses = "".join(docTypeResponses)
 try:
@@ -100,7 +109,7 @@ try:
         saveDocTypeResponses(docTypeFilePath, docTypeResponses)
     else:
         print("%s unchanged" % repr(docTypeFileName))
-except:
+except Exception:
     print("saving new %s" % repr(docTypeFileName))
     saveDocTypeResponses(docTypeFilePath, docTypeResponses)
 print("*** DON'T FORGET TO RUN RefreshManifest.py IF APPROPRIATE! ***")

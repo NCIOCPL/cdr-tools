@@ -4,13 +4,15 @@
 """
 
 import argparse
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 import webbrowser
 
 try:
     from cdrapi.settings import Tier
     TIER = Tier().name
-except:
+except Exception:
     TIER = "PROD"
 
 TIERS = {
@@ -31,7 +33,7 @@ args = parser.parse_args()
 host = args.host or TIERS.get(args.tier or TIER)
 if "." not in host:
     host += ".cancer.gov"
-parms = { "doc-id": args.id }
+parms = {"doc-id": args.id}
 if args.version:
     parms["version"] = args.version
     parms["vtype"] = "num"

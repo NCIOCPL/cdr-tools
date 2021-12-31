@@ -4,9 +4,8 @@
 """
 
 from argparse import ArgumentParser
-from getpass import getpass
 from sys import stderr
-from cdr import login, unlock
+from cdr import unlock
 from cdrapi import db
 
 COMMENT = "Unlocked by UnlockDocsForUser script"
@@ -25,8 +24,8 @@ rows = query.execute(cursor).fetchall()
 print(f"unlocking {len(rows):d} documents")
 if rows:
     for row in rows:
-        err = unlock(opts.session, row.id, tier=opts.tier, reason=COMMENT)
-        if err:
-            stderr.write(f"Failure unlocking CDR{row.id:010d}: {err}\n")
-        else:
+        try:
+            unlock(opts.session, row.id, tier=opts.tier, reason=COMMENT)
             print(f"unlocked CDR{row.id:010d}")
+        except Exception as e:
+            stderr.write(f"Failure unlocking CDR{row.id:010d}: {e}\n")

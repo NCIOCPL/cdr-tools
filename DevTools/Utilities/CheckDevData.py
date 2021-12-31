@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """Compare saved state of DEV with refreshed DEV.
 
@@ -34,6 +34,7 @@ HEAD = builder.HEAD(
     builder.TITLE(TITLE),
     builder.STYLE(RULES),
 )
+
 
 def compare_table(body, name, old, new):
     items = []
@@ -92,15 +93,16 @@ def compare_table(body, name, old, new):
         new_only = [(row, "added") for row in (new_rows - old_rows)]
         deltas = old_only + new_only
         try:
-            for row, which_set in sorted(deltas, key=lambda v:str(v)):
+            for row, which_set in sorted(deltas, key=lambda v: str(v)):
                 items.append(builder.LI(f"{which_set}: {row}"))
-        except:
+        except Exception:
             print(deltas)
             raise
     if items:
         body.append(builder.UL(*items))
     else:
         body.append(builder.P(CHECK, OK))
+
 
 def compare_tables(body, old, new):
     body.append(builder.H2("Table Comparisons"))
@@ -110,6 +112,7 @@ def compare_tables(body, old, new):
             compare_table(body, name, old, new)
         else:
             body.append(builder.UL(builder.LI(builder.B("TABLE LOST"))))
+
 
 def diff_xml(old, new, verbose=False):
     differ = Differ()
@@ -123,13 +126,15 @@ def diff_xml(old, new, verbose=False):
         color = COLORS.get(line[0], "white")
         if line and line[0] in COLORS:
             changes = True
-            span = builder.SPAN(f"{line}\n", style=f"background-color: {color}")
+            span = builder.SPAN(f"{line}\n",
+                                style=f"background-color: {color}")
             lines.append(span)
         elif verbose:
             lines.append(builder.SPAN(line))
     if changes:
         return builder.PRE(FIXED, *lines)
     return None
+
 
 def compare_docs(body, old, new, verbose):
     body.append(builder.H2("Document Comparisons"))
@@ -154,6 +159,7 @@ def compare_docs(body, old, new, verbose):
                 body.append(builder.P(CHECK, OK))
             else:
                 body.append(builder.UL(*items))
+
 
 parser = ArgumentParser()
 parser.add_argument("--old", required=True)

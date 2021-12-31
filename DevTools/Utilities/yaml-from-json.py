@@ -127,18 +127,18 @@ class Summary:
                 f"  title{suffix}:",
                 f"    value: {self.__quote(values.title)}",
                 f"  status{suffix}:",
-                f"    value: 1",
+                "    value: 1",
                 f"  langcode{suffix}:",
-                f"    value: es",
+                "    value: es",
             ]
         else:
             keywords = keywords or "''"
             lines = [
                 f"  title: {self.__quote(values.title)}",
-                f"  status: 1",
-                f"  langcode: en",
-                f"  field_hhs_syndication:",
-                f"    - syndicate: 1",
+                "  status: 1",
+                "  langcode: en",
+                "  field_hhs_syndication:",
+                "    - syndicate: 1",
                 f"      keywords: {keywords}",
             ]
         svpc = getattr(values, "svpc", "0")
@@ -148,7 +148,7 @@ class Summary:
         intro_text = ["      " + line for line in intro_text_lines if line]
         lines += [
             f"  moderation_state{suffix}:",
-            f"    value: published",
+            "    value: published",
             f"  field_pdq_url{suffix}:",
             f"    value: {values.url.replace(self.PREFIX, '')}",
             f"  field_pdq_cdr_id{suffix}:",
@@ -166,7 +166,7 @@ class Summary:
             f"  field_page_description{suffix}:",
             f"    value: {self.__quote(values.description)}",
             f"  field_public_use{suffix}:",
-            f"    value: 1",
+            "    value: 1",
             f"  field_pdq_is_svpc{suffix}:",
             f"    value: {svpc}",
             f"  field_pdq_suppress_otp{suffix}:",
@@ -217,16 +217,16 @@ class Summary:
         """
 
         return [
-            f"    - entity: paragraph",
-            f"      type: pdq_summary_section",
-            f"      field_pdq_section_id:",
+            "    - entity: paragraph",
+            "      type: pdq_summary_section",
+            "      field_pdq_section_id:",
             f"        value: {section['id']}",
-            f"      field_pdq_section_title:",
-            f"        - format: plain_text",
+            "      field_pdq_section_title:",
+            "        - format: plain_text",
             f"          value: {self.__quote(section['title'])}",
-            f"      field_pdq_section_html:",
-            f"        - format: raw_html",
-            f"          value: |",
+            "      field_pdq_section_html:",
+            "        - format: raw_html",
+            "          value: |",
         ] + self.__indent(section["html"], self.CIS_HTML_INDENT)
 
     def __quote(self, me):

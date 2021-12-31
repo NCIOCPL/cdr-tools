@@ -35,11 +35,11 @@ opts = parser.parse_args()
 if opts.user:
     try:
         session = Session.create_session(opts.user)
-    except:
+    except Exception:
         password = getpass()
         try:
             session = Session.create_session(opts.user, password=password)
-        except:
+        except Exception:
             print("invalid credentials")
             sys.exit(1)
 else:
