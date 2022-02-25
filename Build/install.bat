@@ -12,7 +12,7 @@ REM      in a public repository)
 REM   3. (optionally) add any extra steps needed for this specific
 REM      release on the Windows server (e.g., add new DB tables)
 REM
-REM (cf. https://collaborate.nci.nih.gov/display/OCECTBWIKI/CDR+Release+Deployment+How-To)
+REM (cf. https://github.com/NCIOCPL/cdr-tools/tree/master/Build)
 REM ======================================================================
 
 REM ----------------------------------------------------------------------
