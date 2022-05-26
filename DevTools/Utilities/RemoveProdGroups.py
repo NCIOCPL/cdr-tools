@@ -44,10 +44,6 @@ def updateGroups(session, testing, tier):
     # Groups to be reset
     # ------------------
     groups = {
-        "BatchCTGovMapping Notification": ['volker'],
-        "CTGov Duplicate Notification": ['volker'],
-        "CTGov Export Notification": ['bkline', 'volker'],
-        "CTGov Link Fix Notification": ['bkline', 'volker'],
         "GovDelivery ES Docs Notification": ['operator', 'volker'],
         "GovDelivery EN Docs Notification": ['operator', 'volker'],
         "Hotfix Remove Notification": ['operator', 'volker'],
