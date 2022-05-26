@@ -78,7 +78,6 @@ ACTIONS = (
     ("ADD QUERY TERM DEF", ""),
     ("DELETE QUERY TERM DEF", ""),
     ("SUMMARY MAILERS", ""),
-    ("RECEIVE MAILER REPORTS", "Person"),
     ("UNLOCK", ""),
     ("MAKE GLOBAL CHANGES", "xxtest"),
     ("ADD FILTER SET", ""),
