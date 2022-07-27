@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Tool for pulling scripts from a production directory down to the
 # local file system.  Doesn't recurse.  Handles binary files.
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 import argparse
 import os
 import re
@@ -16,13 +16,13 @@ parser.add_argument("--path", default=r"d:\Inetpub\wwwroot\cgi-bin\cdr")
 parser.add_argument("--dir", default="cgi-prod")
 opts = parser.parse_args()
 tier = opts.tier and ("-%s" % opts.tier.lower()) or ""
-args = (tier, "Request=Submit", opts.session)
+args = tier, "Request=Submit", opts.session
 BASE = "https://cdr%s.cancer.gov/cgi-bin/cdr/log-tail.py?%s&Session=%s" % args
 
 try:
     os.makedirs(opts.dir)
     sys.stderr.write("created %s\n" % opts.dir)
-except:
+except Exception:
     sys.stderr.write("%s already created\n" % opts.dir)
 
 response = requests.get("%s&p=%s\\*" % (BASE, opts.path))

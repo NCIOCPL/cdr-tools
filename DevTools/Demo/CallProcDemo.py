@@ -19,6 +19,7 @@ from argparse import ArgumentParser
 import datetime
 from cdrapi import db
 
+
 def get_last_results_set(cursor, proc_name, params):
     cursor.execute(f"{{CALL {proc_name} (?)}}", params)
     # cursor.execute(f"EXEC {proc_name} ?", params) also works
@@ -30,6 +31,7 @@ def get_last_results_set(cursor, proc_name, params):
         if not cursor.nextset():
             done = True
     return lastSet
+
 
 cursor = db.connect().cursor()
 parser = ArgumentParser()

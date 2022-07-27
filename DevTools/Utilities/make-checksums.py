@@ -12,6 +12,7 @@ from hashlib import sha256
 import os
 from sys import stderr
 
+
 class Control:
 
     def __init__(self):
@@ -46,5 +47,6 @@ class Control:
     def extract_id(path):
         basename, extension = os.path.splitext(os.path.split(path)[-1])
         return int(basename[3:])
+
 
 Control().run()

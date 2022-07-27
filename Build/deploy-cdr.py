@@ -23,6 +23,7 @@ import subprocess
 import sys
 import time
 
+
 class Control:
     """
     Master driver with runtime configuration settings for processing.
@@ -190,6 +191,7 @@ class Control:
 
         p = subprocess.Popen(args, **cls.POPEN_OPTS)
         output, error = p.communicate()
+
         class Result:
             def __init__(self, code, output):
                 self.code = code
@@ -369,7 +371,7 @@ class Control:
             control.fix_permissions(target)
 
         def install_inetpub_files(self, control):
-            """
+            r"""
             Replace the Inetpub/wwwroot tree.
 
             This directory requires special handling for three reasons:
@@ -445,6 +447,7 @@ class Control:
                 cls("ClientFiles"),
             ]
             return dict([(d.name.lower(), d) for d in dirs])
+
 
 if __name__ == "__main__":
     "Top-level entry point."

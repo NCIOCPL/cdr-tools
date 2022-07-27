@@ -15,7 +15,7 @@ parser.add_argument("--threshold", type=int, default=0)
 opts = parser.parse_args()
 doc = Doc(Session("guest"), id=opts.doc_id)
 ids = {}
-for node in doc.root.xpath(f"//*[@cdr:id]", namespaces=Doc.NSMAP):
+for node in doc.root.xpath("//*[@cdr:id]", namespaces=Doc.NSMAP):
     value = node.get(CDR_ID)
     ids[value] = ids.get(value, 0) + 1
 for value, count in sorted(ids.items()):

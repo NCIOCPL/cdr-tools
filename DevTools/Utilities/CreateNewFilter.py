@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Create a new stub filter document in the CDR
 
@@ -8,14 +8,8 @@ See CreateNewFilter.py --help for details.
 import argparse
 import getpass
 import cdr
+from html import escape
 
-# Support Python 3
-try:
-    unicode
-    from cgi import escape
-except:
-    unicode = str
-    from html import escape
 
 def create_parser():
     """
@@ -49,14 +43,15 @@ SEE ALSO
     group.add_argument("--user")
     return parser
 
+
 def main():
     parser = create_parser()
     opts = parser.parse_args()
     title = opts.title
     if not title:
         parser.error("empty title argument")
-    if not isinstance(title, unicode):
-        title = unicode(title.strip(), "latin-1")
+    if not isinstance(title, str):
+        title = str(title.strip(), "latin-1")
     if "--" in title:
         parser.error("filter title cannot contain --")
     if not opts.session:
@@ -67,7 +62,7 @@ def main():
             parser.error(error)
     else:
         session = opts.session
-    stub = u"""\
+    stub = """\
 <?xml version="1.0" ?>
 <!-- Filter title: {} -->
 <xsl:transform               xmlns:xsl = "http://www.w3.org/1999/XSL/Transform"
@@ -97,16 +92,17 @@ def main():
     error = cdr.checkErr(cdr_id)
     if error:
         parser.error(error)
-    response = cdr.unlock(session, cdr_id, tier="PROD")
-    error = cdr.checkErr(response)
-    if error:
-        parser.error(error)
-    name = cdr_id + ".xml"
+    try:
+        cdr.unlock(session, cdr_id, tier="PROD")
+    except Exception as e:
+        parser.error(str(e))
+    name = f"{cdr_id}.xml"
     with open(name, "wb") as fp:
         fp.write(stub)
-    print(("Created {}".format(name)))
+    print(f"Created {name}")
     if not opts.session:
         cdr.logout(session, tier="PROD")
+
 
 if __name__ == '__main__':
     main()

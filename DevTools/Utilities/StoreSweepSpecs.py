@@ -16,9 +16,9 @@ parser.add_argument("--session", "-s", required=True)
 opts = parser.parse_args()
 
 # Load the XML document
-with open(opts.filepath) as fp:
+with open(opts.filepath, "rb") as fp:
     xml = fp.read()
-if "]]>" in xml:
+if b"]]>" in xml:
     parser.error("CdrDoc wrapper must be stripped from the file")
 
 # Prepare the save operation
@@ -53,7 +53,7 @@ if result:
 
 # Otherwise, create the document (with a first version)
 else:
-    doc = cdr.Doc(xml, doctype, encoding="utf-8")
+    doc = cdr.Doc(xml, doctype=doctype, encoding="utf-8")
     save_opts["doc"] = str(doc)
     doc_id, warnings = cdr.addDoc(opts.session, **save_opts)
 

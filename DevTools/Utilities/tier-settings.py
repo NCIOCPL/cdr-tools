@@ -1,17 +1,17 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Fetch server settings for the CDR tiers and optionally report on
 # the differences between pairs of tiers. Run with --help for options.
 # OCECDR-4101
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 import argparse
 import datetime
 import difflib
 import getpass
 import json
 import requests
-import sys
 import xlwt
+
 
 class TierSettings:
     """
@@ -46,10 +46,10 @@ class TierSettings:
             fp = open(source, "rb")
             self.json = fp.read()
             fp.close()
-        except:
+        except Exception:
             host = self.get_host(self.tier)
             url = "https://%s/cgi-bin/cdr/fetch-tier-settings.py" % host
-            data = { "Session": source }
+            data = {"Session": source}
             response = requests.get(url, data)
             self.json = response.text
             self.save()
@@ -82,9 +82,8 @@ class TierSettings:
             values = values.get(key)
             if values is None:
                 break
-        if isinstance(values, basestring):
-            if path.endswith("environ/DOCUMENT_ROOT"):
-                values = values.rstrip("/")
+        if isinstance(values, str) and path.endswith("environ/DOCUMENT_ROOT"):
+            values = values.rstrip("/")
         return values
 
     @staticmethod
@@ -106,7 +105,8 @@ class TierSettings:
 
         host = TierSettings.get_host(tier)
         url = "https://%s/cgi-bin/secure/login.py" % host
-        requests.packages.urllib3.disable_warnings()
+        urllib3 = requests.packages.urllib3  # pylint: disable=no-member
+        urllib3.disable_warnings()
         auth = requests.auth.HTTPDigestAuth(user, password)
         response = requests.get(url, auth=auth, verify=False)
         return response.text.strip()
@@ -167,6 +167,7 @@ tier name by a colon.""")
             tiers.append(TierSettings(tier, source))
         if len(tiers) > 1:
             Report(tiers).save(TierSettings.STAMP)
+
 
 class Report:
     """
@@ -309,7 +310,7 @@ class Report:
 
         self.tiers = tiers
         self.wb = xlwt.Workbook(encoding="UTF-8")
-        self.wb.set_colour_RGB(0x21, 153, 52, 102) #993366
+        self.wb.set_colour_RGB(0x21, 153, 52, 102)  # 993366
         self.data_style = self.make_style()
         self.header_style = self.make_style(header=True)
         for position in range(1, len(tiers)):
@@ -377,7 +378,7 @@ class Report:
         if v1 != v2:
             if v1 is None or v2 is None:
                 self.add_row(path, v1, v2)
-            elif isinstance(v1, basestring) and isinstance(v2, basestring):
+            elif isinstance(v1, str) and isinstance(v2, str):
                 self.add_row(path, v1, v2)
             elif type(v1) != type(v2):
                 self.add_row(path, v1, v2)
@@ -414,7 +415,7 @@ class Report:
             val = repr(val)
             if len(val) > self.MAX_REPR_LEN:
                 val = val[:self.MAX_REPR_LEN] + " ..."
-        if not isinstance(val, basestring):
+        if not isinstance(val, str):
             val = str(val)
         self.sheet.write(self.row_number, col, val, self.data_style)
 
@@ -450,8 +451,8 @@ class Report:
             v1 = self.prune_search_path(v1)
             v2 = self.prune_search_path(v2)
         if path not in self.SKIP and v1 != v2:
-            v1 = "\n".join([unicode(v) for v in v1])
-            v2 = "\n".join([unicode(v) for v in v2])
+            v1 = "\n".join([str(v) for v in v1])
+            v2 = "\n".join([str(v) for v in v2])
             self.add_row(path, v1, v2)
         return
         differ = difflib.Differ()
@@ -472,6 +473,7 @@ class Report:
                     elif line[0] == " ":
                         print("%s\t%s\t%s" % (path, value, value))
                     path = ""
+
 
 if __name__ == "__main__":
     """

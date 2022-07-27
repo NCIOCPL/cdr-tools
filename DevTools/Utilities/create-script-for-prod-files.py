@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Tool for generating script to drive get-prod-scripts.py.
 #
-# To use this:
+# Example usage:
 #  1. mkdir prod-20150106
 #  2. cd prod-20150106
 #  3. set SESS="--session CDR-SESSION-ID"
@@ -10,7 +10,7 @@
 #  4. get-prod-files.cmd
 #
 # To fetch from a non-prod tier, add --tier TIER (e.g. --tier stage)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 import argparse
 import logging
 import re
@@ -32,6 +32,8 @@ logging.basicConfig(
     filename="create-script-for-prod-files.log",
     level=logging.INFO
 )
+
+
 def unwanted(path):
     p = path.lower()
     if p.endswith(r"\cvs"):
@@ -51,6 +53,7 @@ def unwanted(path):
             return True
     return False
 
+
 def make_command(path, opts):
     command = ["python ../get-prod-scripts.py --session %s" % opts.session]
     if opts.tier:
@@ -58,6 +61,7 @@ def make_command(path, opts):
     command.append('--path "%s"' % path)
     command.append('--dir "%s"' % path[3:])
     return " ".join(command)
+
 
 base = "%s?Session=%s" % (BASE, opts.session)
 logging.info("base=%s", base)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 #
 # Finds all of the import statements in all of the Python scripts in
 # a specified portion of the file system and reports any imported
@@ -24,17 +24,16 @@
 #
 #    cdr-python-modules.py --target xml.parsers.xmlproc
 #
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 
 import argparse
 import ast
 import os
-import sys
 import datetime
 
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # These are the standard library modules known to be used by the CDR.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 standard_library_modules = {
     "argparse",
     "ast",
@@ -66,17 +65,19 @@ standard_library_modules = {
     "gzip",
     "hashlib",
     "html",
-    "importlib", # used by ndscheduler
+    "importlib",  # used by ndscheduler
+    "importlib.metadata",
     "io",
     "json",
     "locale",
     "logging",
     "mimetypes",
-    "msvcrt", # part of standard library, but only available on MS Windows
+    "msvcrt",  # part of standard library, but only available on MS Windows
     "operator",
     "optparse",
     "os",
     "os.path",
+    "pathlib",
     "platform",
     "pprint",
     "random",
@@ -101,6 +102,7 @@ standard_library_modules = {
     "urllib.request",
     "urllib2",
     "urllib3.exceptions",
+    "uuid",
     "webbrowser",
     "xml.dom.minidom",
     "xml.sax",
@@ -109,16 +111,17 @@ standard_library_modules = {
     "zipfile",
 }
 
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # Other third-party modules used by the CDR. For modules without a
 # URL in a comment, see the closest comment above the module.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 third_party_modules = {
+    # https://pypi.python.org/pypi/APScheduler
     "apscheduler.schedulers.background",
-        # https://pypi.python.org/pypi/APScheduler
-    "dateutil.parser", # https://pypi.python.org/pypi/python-dateutil
+    "dateutil.parser",  # https://pypi.python.org/pypi/python-dateutil
     "dateutil.relativedelta",
     "elasticsearch5",
+    "elasticsearch7",
     "lxml",            # http://lxml.de/
     "lxml.etree",
     "lxml.html",
@@ -130,9 +133,9 @@ third_party_modules = {
     "openpyxl",        # https://pypi.org/project/openpyxl/
     "openpyxl.styles",
     "openpyxl.utils",
+    "openpyxl.workbook.views",
     "PIL",             # https://python-pillow.org/
     "paramiko",        # http://www.paramiko.org/
-    "pkg_resources",   # https://setuptools.readthedocs.io/en/latest/index.html
     "pyodbc",          # https://github.com/mkleehammer/pyodbc (db api)
     "requests",        # http://requests.readthedocs.io/en/master/ (HTTP api)
     "requests.packages.urllib3.exceptions",
@@ -141,9 +144,9 @@ third_party_modules = {
     "xlwt",
 }
 
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # Modules implemented specifically for the CDR project.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 custom_modules = {
     "base_job",        # for rewritten scheduler
     "cdr",             # used throughout system
@@ -167,7 +170,7 @@ custom_modules = {
     "cdrmailer",       # used by mailer subsystem
     "cdrpub",          # used by publishing subsystem
     "cdrpw",           # interface to file containing system passwords
-    "dictionary_loader", # population of ElasticSearch dictionary databases
+    "dictionary_loader",  # population of ElasticSearch dictionary databases
     "ModifyDocs",      # used extensively by global change jobs
     "nci_thesaurus",   # used by scripts dealing with terminology documents
     "RepublishDocs",   # imported by CGI script Republish.py
@@ -175,30 +178,34 @@ custom_modules = {
     "WebService",      # used by glossify and ClientRefresh services
 }
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Determine whether a file could be a Python file based on its name.
 # Basically if the file name has an extension, that extension must
 # be .py or .pyw to be a Python source file (in this context).
 # If the file name has no extension, and does not end in a tilde
 # character (used by many editors to denote a backup file), then
 # the file could be a Python file.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def might_be_python(name):
     if name == "glossify":
         return True
     if name.endswith("~"):
+        return False
+    if name == "METADATA" or name == "PKG-INFO":
         return False
     if "." not in name:
         return True
     lower = name.lower()
     return lower.endswith(".py") or lower.endswith(".pyw")
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Return a string describing the type of module a name represents,
 # based on membership in one of the sets above. If we end up using
 # a module we've never used before, we'll modify the approriate set
 # to include that module (not likely to happen very often).
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def mod_type(name):
     if name in standard_library_modules:
         return "standard library"
@@ -208,9 +215,10 @@ def mod_type(name):
         return "custom"
     return "unknown"
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Determine whether we already know about the origin of a named module.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def is_unknown(name):
     if name in standard_library_modules:
         return False
@@ -220,9 +228,10 @@ def is_unknown(name):
         return False
     return True
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Generate the requested report.
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 def main():
 
     # Initialize the local variables, some from the command line arguments.
@@ -243,12 +252,12 @@ def main():
     # Walk through all of the files in the subtree of the file system.
     for base, dirs, files in os.walk(opts.directory):
         if ".svn" in base or ".git" in base:
-            continue # older version of SVN have crap all over the place
+            continue  # older versions of SVN have crap all over the place
         total += len(files)
         for name in files:
             if might_be_python(name):
                 path = f"{base}/{name}".replace("\\", "/")
-                #print("parsing", path)
+                # print("parsing", path)
                 try:
                     with open(path) as fp:
                         source = fp.read()
@@ -259,7 +268,7 @@ def main():
                     continue
                 try:
                     tree = ast.parse(source)
-                except:
+                except Exception:
                     print(f"{path!r} is not a Python 3 file")
                     raise
                 parsed += 1
@@ -268,7 +277,7 @@ def main():
                         for alias in node.names:
                             if opts.show_unused:
                                 used.add(alias.name)
-                            #print("import", alias.name)
+                            # print("import", alias.name)
                             if opts.target:
                                 if alias.name == opts.target:
                                     print(path)
@@ -278,7 +287,7 @@ def main():
                     elif isinstance(node, ast.ImportFrom):
                         if opts.show_unused:
                             used.add(node.module)
-                        #print(f"from {node.module} import ...")
+                        # print(f"from {node.module} import ...")
                         if opts.target:
                             if node.module == opts.target:
                                 print(path)
@@ -315,9 +324,10 @@ def main():
     print(f"{parsed:d} scripts parsed in {elapsed.total_seconds()} seconds")
     print(f"{total:d} files examined")
 
-#----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
 # Only run the report if the file is loaded as a script (instead of
 # as a module).
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     main()

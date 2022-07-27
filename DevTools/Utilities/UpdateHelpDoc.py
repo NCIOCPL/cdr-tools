@@ -6,12 +6,14 @@ Lock a CDR help page document and replace it from a disk file copy.
 import cdr
 import sys
 
+
 def usage():
     print("usage: UpdateHelpDoc.py SESSION FILENAME")
     print("   or: UpdateHelpDoc.py UID PWD FILENAME")
     print("")
     print("where FILENAME is CDRID.xml (e.g., 999999.xml)")
     sys.exit(1)
+
 
 if len(sys.argv) not in (3, 4) or not sys.argv[-1].endswith(".xml"):
     usage()
@@ -26,7 +28,7 @@ try:
     fp = open(filename, "rb")
     xml = fp.read()
     fp.close()
-except:
+except Exception:
     usage()
 doc_obj = cdr.getDoc(session, doc_id, checkout="Y", getObject=True)
 doc_obj.xml = xml

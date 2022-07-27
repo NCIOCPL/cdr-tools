@@ -14,6 +14,9 @@ on the drive where Python is installed.
 
 For example:
     backup-python.py D 2.7.10
+
+2021-12-31: this tool may no longer be needed, as the Python 3 installer
+from python.org is able to upgrade in place.
 """
 
 import datetime
@@ -21,9 +24,11 @@ import os
 import subprocess
 import sys
 
+
 def report(what):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(("{} {}".format(now, what)))
+
 
 if len(sys.argv) != 3:
     sys.stderr.write("usage: backup-python.py DRIVE VERSION\n")
@@ -49,4 +54,3 @@ else:
         sys.exit(1)
     report("Python backed up to {}".format(path))
 sys.exit(0)
-

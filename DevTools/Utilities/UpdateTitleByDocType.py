@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-#----------------------------------------------------------
+# ----------------------------------------------------------
 # Regenerate and update document table titles for all docs of a
 # given doctype.
-#----------------------------------------------------------
+# ----------------------------------------------------------
 
 from argparse import ArgumentParser
 import time
