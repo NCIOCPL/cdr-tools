@@ -92,8 +92,8 @@ class Job:
         """
 
         # 1. Safety check.
-        if Tier().name != "DEV":
-            raise Exception("This script must only be run on the DEV tier.")
+        if Tier().name not in ["DEV", "QA"]:
+            raise Exception("This script must only be run on the DEV or QA tier.")
 
         # 2. Get what we need from the command line.
         parser = ArgumentParser()

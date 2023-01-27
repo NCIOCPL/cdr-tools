@@ -23,7 +23,6 @@ from pathlib import Path
 
 DUMP_JOBS = f"python {sys.path[0]}/dump-scheduled-jobs.py"
 
-
 # ---------------------------------------------------------------------
 # Ensure only documents with unique title are being preserved
 # ---------------------------------------------------------------------
