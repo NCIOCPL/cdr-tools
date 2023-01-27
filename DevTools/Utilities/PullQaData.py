@@ -9,7 +9,7 @@
 # line.
 #
 # Usage:
-#   PullQaData.py [newdoctype [newdoctype ...] ]
+#   PullDevData.py [newdoctype [newdoctype ...] ]
 #
 #----------------------------------------------------------------------
 
@@ -128,7 +128,7 @@ def saveTestDocs(cursor, outputDir):
 # Do the work.
 #----------------------------------------------------------------------
 def main():
-    outputDir = time.strftime('QaData-%Y%m%d%H%M%S')
+    outputDir = time.strftime('DevData-%Y%m%d%H%M%S')
     cursor = db.connect(user="CdrGuest").cursor()
     os.mkdir(f"{outputDir}")
 
