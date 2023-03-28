@@ -37,7 +37,6 @@ REM ----------------------------------------------------------------------
 :move_dirs
 CHDIR /D %CLIENTFILES%
 MOVE %XMETAL%\Display  . || ECHO Failure moving Display  && EXIT /B 1
-MOVE %XMETAL%\Forms    . || ECHO Failure moving Forms    && EXIT /B 1
 MOVE %XMETAL%\Icons    . || ECHO Failure moving Icons    && EXIT /B 1
 MOVE %XMETAL%\Macros   . || ECHO Failure moving Macros   && EXIT /B 1
 MOVE %XMETAL%\Rules    . || ECHO Failure moving Rules    && EXIT /B 1
