@@ -43,6 +43,7 @@ MOVE %XMETAL%\Rules    . || ECHO Failure moving Rules    && EXIT /B 1
 MOVE %XMETAL%\Template . || ECHO Failure moving Template && EXIT /B 1
 MOVE %LOADER%\cdr.ico .  || ECHO Failure moving CDR icon && EXIT /B 1
 MOVE %LOADER%\cdr-loader.pyw . || ECHO Failure moving loader && EXIT /B 1
+MOVE %XMETAL%\certificate.png . || ECHO Failure moving cert image && EXIT /B 1
 EXIT /B 0
 
 REM ----------------------------------------------------------------------
