@@ -255,7 +255,7 @@ class Directory:
         script = None
         if self.name == "ClientFiles":
             script = os.path.join(control.SCRIPTS, self.BUILD_CLI)
-            args = script, base, drive, control.stamp
+            args = script, base
         else:
             source = os.path.join(control.opts.base, "branch", self.source)
             target = os.path.join(control.opts.base, self.name)
