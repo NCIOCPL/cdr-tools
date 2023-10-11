@@ -44,7 +44,7 @@ def updateGroups(session, testing, tier):
 
     # Groups to be reset are stored in the control table
     # --------------------------------------------------
-    getGroups = cdr.getControlValue("DBRefresh", "RemoveProdGroups")
+    getGroups = cdr.getControlValue("DBRefresh", "RemoveProdGroups", tier=tier)
     print("Groups stored in Control Table")
     print("==============================")
     print(getGroups)
