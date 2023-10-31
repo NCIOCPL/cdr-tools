@@ -29,6 +29,8 @@ SET UPDATE=%BUILD%\Build\install-docset.py %BUILD%
 SET LOADER=%BUILD%\Database\Loader
 SET INSTALL_LOADER_VALUES=%BUILD%\Build\install-loader-values.py -d %LOADER%
 SET INSTALL_PUB_CONTROL_DOCS=%BUILD%\Build\install-pub-control-documents.py
+FOR /F %%s in ('python -c "import datetime; now=datetime.datetime.now(); print(now.strftime(\"%%Y%%m%%d%%H%%M%%S\"));"') DO SET STAMP=%%s
+SET BACKUP=D:\tmp\pre-deployment-backup-%STAMP%.zip
 
 REM ----------------------------------------------------------------------
 REM Make sure the share is reachable, and we really have a release there.
@@ -57,6 +59,12 @@ IF NOT EXIST D:\etc\cdrapphosts.rc (
     ECHO .
     goto END
 )
+
+REM ----------------------------------------------------------------------
+REM Back up the existing files.
+REM ----------------------------------------------------------------------
+ECHO Backup up original files to %BACKUP%
+CALL %BUILD%\Build\backupDeploy.cmd %BACKUP% || ECHO Backup failed && EXIT /B 1
 
 REM ----------------------------------------------------------------------
 REM This is the part where we actually do the deployment.

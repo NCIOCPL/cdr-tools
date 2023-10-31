@@ -12,6 +12,7 @@ import argparse
 import getpass
 import sys
 import cdr
+import json
 
 TIERS = "PROD", "STAGE", "QA", "DEV"
 
@@ -41,21 +42,15 @@ the email notification groups and remove all users.""")
 # ---------------------------------------------------------------------
 def updateGroups(session, testing, tier):
 
-    # Groups to be reset
-    # ------------------
-    groups = {
-        "GovDelivery ES Docs Notification": ['operator', 'volker'],
-        "GovDelivery EN Docs Notification": ['operator', 'volker'],
-        "Hotfix Remove Notification": ['operator', 'volker'],
-        "ICRDB Statistics Notification": ['operator', 'volker'],
-        "Licensee Report Notification": ['operator', 'volker'],
-        "Nightly Publishing Notification": ['operator', 'volker'],
-        "Operator Publishing Notification": ['operator', 'volker'],
-        "Test Group Dada": ['volker'],
-        "Test Publishing Notification": ['operator', 'volker'],
-        "VOL Notification": ['operator', 'volker'],
-        "Weekly Publishing Notification": ['operator', 'volker']
-    }
+    # Groups to be reset are stored in the control table
+    # --------------------------------------------------
+    getGroups = cdr.getControlValue("DBRefresh", "RemoveProdGroups", tier=tier)
+    print("Groups stored in Control Table")
+    print("==============================")
+    print(getGroups)
+    print()
+    groups = json.loads(getGroups)
+    allGroups = cdr.getGroups(session, tier=tier)
 
     ierror = 0
     for group_name in groups:

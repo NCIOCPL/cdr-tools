@@ -4,6 +4,7 @@
 """
 
 from pathlib import Path
+from cdr import Logging
 from cdrapi import db
 from cdrapi.docs import Doc
 from cdrapi.settings import Tier
@@ -20,6 +21,7 @@ OPTIONS = dict(
     val_types=("schema", "links"),
 )
 
+logger = Logging.get_logger("deploy")
 tier = Tier()
 session = Session.create_session(ACCOUNT, password=tier.password(ACCOUNT))
 query = db.Query("document d", "d.id", "d.title")
@@ -29,6 +31,8 @@ for doc_id, doc_title in query.execute().fetchall():
     path = Path(f"{tier.basedir}/Publishing/{doc_title}.xml")
     if path.exists():
         doc = Doc(session, id=doc_id)
+        args = doc.cdr_id, doc.title
+        logger.info("installing publishing control doc %s (%s)", *args)
         print(f"updating publishing control doc {doc.cdr_id} ({doc.title})")
         doc.check_out(force=True, comment=COMMENT)
         doc.xml = path.read_text(encoding="utf-8")

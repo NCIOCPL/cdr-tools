@@ -399,7 +399,7 @@ class Control:
                 tiericon = os.path.join(target, f"favicon-{control.tier}.ico")
                 shutil.copy(tiericon, favicon)
                 shutil.copy(tiericon,
-                            control.drive + r"\cdr\ClientFiles\cdr.ico")
+                            control.drive + r":\cdr\ClientFiles\cdr.ico")
             control.fix_permissions(target)
 
         def copy(self, what, where):
