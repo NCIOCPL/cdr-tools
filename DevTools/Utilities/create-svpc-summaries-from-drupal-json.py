@@ -26,7 +26,7 @@ from requests import get
 
 INLINE = dict(em="Emphasis", strong="Strong")
 NS = "{cips.nci.nih.gov/cdr}"
-IGNORE = "div", "drupal-entity"
+IGNORE = "div", "drupal-entity", "button"
 CANCER_GOV = "https://www.cancer.gov"
 
 def check_url(url):
