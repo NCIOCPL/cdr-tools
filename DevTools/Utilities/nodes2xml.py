@@ -348,6 +348,9 @@ class Summary:
     @cached_property
     def url(self):
         """Web address for the summary."""
+
+        if self.langcode == "es":
+            return f"https://www.cancer.gov/espanol{self.alias}"
         return f"https://www.cancer.gov{self.alias}"
 
     def check_url(self, url):
