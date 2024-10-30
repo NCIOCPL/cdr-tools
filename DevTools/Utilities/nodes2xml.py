@@ -64,14 +64,13 @@ class Control:
             with open(path, encoding="utf-8") as fp:
                 return load(fp)
         prefix = "espanol/" if langcode == "es" else ""
-        for node_type in self.NODE_TYPES:
-            include = self.NODE_TYPES[node_type]
+        for node_type, include in self.NODE_TYPES.items():
             parms = f"filter[drupal_internal__nid]={nid}&include={include}"
             url = f"{self.url}/{prefix}jsonapi/node/{node_type}?{parms}"
-            response = get(url)
+            response = get(url, timeout=60)
             if response.ok:
                 return response.json()
-        raise Exception(f"{nid} ({langcode}): {response.reason}")
+        raise RuntimeError(f"{nid} ({langcode}): {response.reason}")
 
     @cached_property
     def directory(self):
@@ -127,10 +126,10 @@ class Summary:
     """Summary document built from Drupal article values."""
 
     CANCER_GOV = "https://www.cancer.gov"
-    IGNORE = "div", "drupal-entity"
+    IGNORE = "div", "drupal-entity", "button"
     INLINE = dict(em="Emphasis", strong="Strong")
     NS = "{cips.nci.nih.gov/cdr}"
-    NSMAP = dict(cdr="cips.nci.nih.gov/cdr")
+    NSMAP = {"cdr": "cips.nci.nih.gov/cdr"}
 
     def __init__(self, control, values, **opts):
         """Capture the caller's values.
@@ -349,6 +348,9 @@ class Summary:
     @cached_property
     def url(self):
         """Web address for the summary."""
+
+        if self.langcode == "es":
+            return f"https://www.cancer.gov/espanol{self.alias}"
         return f"https://www.cancer.gov{self.alias}"
 
     def check_url(self, url):
@@ -365,7 +367,7 @@ class Summary:
             return url
         if url in self.__control.url_cache:
             return self.__control.url_cache[url]
-        response = get(url)
+        response = get(url, timeout=60)
         sleep(.5)
         if response.ok:
             self.__control.url_cache[url] = response.url
@@ -433,7 +435,7 @@ class Summary:
             elif child.tag == "span":
                 children.append(self.get_text(child))
             elif child.tag not in self.IGNORE:
-                raise Exception(f"{node.tag} has unexpected {child.tag}")
+                raise RuntimeError(f"{node.tag} has unexpected {child.tag}")
             if child.tail:
                 children.append(child.tail)
         element = E(tag, *children)

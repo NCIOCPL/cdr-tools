@@ -26,7 +26,7 @@ from requests import get
 
 INLINE = dict(em="Emphasis", strong="Strong")
 NS = "{cips.nci.nih.gov/cdr}"
-IGNORE = "div", "drupal-entity"
+IGNORE = "div", "drupal-entity", "button"
 CANCER_GOV = "https://www.cancer.gov"
 
 def check_url(url):
@@ -188,7 +188,10 @@ for p in Path(".").glob("node-*-e*.json"):
     language = "Spanish" if langcode == "es" else "English"
     alias = values["path"][0]["alias"].strip()
     summary_type = alias.split("/")[-1].split("-")[-1]
-    url = f"https://www.cancer.gov{alias}"
+    if langcode == "es":
+        url = f"https://www.cancer.gov/espanol{alias}"
+    else:
+        url = f"https://www.cancer.gov{alias}"
     description = values["field_page_description"][0]["value"].strip()
     #date_last_modified = values["field_date_posted"][0]["value"]
     date_last_modified = None
