@@ -297,7 +297,6 @@ class Directory:
             cls("lib", "lib"),
             cls("Mailers", "publishing/Mailers"),
             cls("Publishing", "publishing/Publishing"),
-            cls("Utilities", "tools/Utilities"),
             cls("Inetpub", "admin/Inetpub"),
             cls("Licensee", "publishing/Licensee"),
             cls("Scheduler", "scheduler"),

@@ -28,5 +28,6 @@ EXIT /B 0
 SET RNAME=%1
 SET URL=%NCIOCPL%/cdr-%RNAME%/tarball/%BRANCH%
 curl -L -s -k %URL% | tar -xz || ECHO %RNAME% fetch %URL% failed && EXIT /B 1
+python -c "import time; time.sleep(1)"
 mv NCIOCPL-cdr-%RNAME%* %RNAME% || ECHO %RNAME% rename failed && EXIT /B 1
 EXIT /B 0
