@@ -11,5 +11,3 @@ developers on the lower tiers and CBIIT staff on the upper tiers
 * [DevTools](DevTools) - scripts used by the CDR developers for generating
 reports, analyzing data, installing filters and schemas, and other such
 routine tasks
-* [Utilities](Utilities) - other miscellaneous scripts (should probably
-be consolidated into the other directories in this repository)
