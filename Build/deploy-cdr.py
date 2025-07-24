@@ -41,6 +41,10 @@ class Control:
     """
 
     SERVICES = "CDRScheduler", "W3SVC"
+    SERVICE_DISPLAY_NAMES = {
+        "CDRScheduler": "CDR Scheduler",
+        "W3SVC": "World Wide Web Publishing Service",
+    }
     POPEN_OPTS = dict(
         shell=True,
         stdout=subprocess.PIPE,
@@ -246,6 +250,8 @@ class Control:
 
             If the command fails, log the problem and exit.
 
+            No longer used.
+
             Pass:
               option - string for the command to invoke
 
@@ -265,9 +271,15 @@ class Control:
         def running(self):
             """
             Ask the service manager whether the service is started.
+
+            Here, too, nssm caused problems, so we're falling back
+            on the output from NET START.
             """
 
-            return "SERVICE_RUNNING" in self.control("status")
+            # return "SERVICE_RUNNING" in self.control("status")
+            display_name = Control.SERVICE_DISPLAY_NAMES[self.name]
+            result = Control.execute(["NET", "START"])
+            return display_name in result.output.decode("utf-8")
 
         def start(self):
             """
