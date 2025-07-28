@@ -57,7 +57,7 @@ static int readSocket(int, char*, int);
  * Creates a socket and listens for connections on it.  Runs until stopped
  * by an interrupt (e.g., control+C).
  */
-main(int ac, char **av)
+int main(int ac, char **av)
 {
     int                 sock;
     struct sockaddr_in  addr;
@@ -265,7 +265,8 @@ static std::string makeFilename(int counter) {
     struct tm* now = localtime(&clock);
     char buf[256];
     strftime(buf, sizeof buf, "DummyWebServer-%Y%m%d%H%M%S", now);
-    sprintf(buf + strlen(buf), "-%d.log", counter);
+    size_t remaining = sizeof(buf) - strlen(buf);
+    snprintf(buf + strlen(buf), remaining, "-%d.log", counter);
     return std::string(buf);
 }
 
@@ -273,13 +274,14 @@ static std::string makeFilename(int counter) {
  * Sends the client a simple HTTP response.
  */
 void sendResponse(int fd) {
-    char* response = "<body><i><b>We're testing right now!</b></i></body>";
+    const char* rsp = "<body><i><b>We're testing right now!</b></i></body>";
     char headers[256];
-    int len = strlen(response);
-    sprintf(headers,
+    int len = strlen(rsp);
+    snprintf(headers,
+            sizeof(headers),
             "HTTP/1.1 200 OK\r\n"
             "Content-type: text/html\r\n"
             "Content-length: %d\r\n\r\n", len);
     send(fd, headers, strlen(headers), 0);
-    send(fd, response, len, 0);
+    send(fd, rsp, len, 0);
 }
